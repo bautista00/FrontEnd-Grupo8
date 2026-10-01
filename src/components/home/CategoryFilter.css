@@ -1,0 +1,41 @@
+.category-filter {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+
+.category-filter::-webkit-scrollbar {
+  display: none;
+}
+
+.category-filter__option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--color-surface);
+  color: var(--color-text-soft);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition:
+    background-color var(--transition),
+    color var(--transition);
+}
+
+.category-filter__option:hover {
+  background: #ebe4dc;
+  color: var(--color-ink);
+}
+
+.category-filter__option--active,
+.category-filter__option--active:hover {
+  background: var(--color-ink);
+  color: #fff;
+}
