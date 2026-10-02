@@ -1,14 +1,18 @@
-:root {
-  --color-bg: #faf8f5;
-  --color-surface-white: #ffffff;
-  --color-text: #1b1c1a;
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+@theme {
+  --color-paper: #faf8f5;
+  --color-card: #ffffff;
+  --color-surface: #f4efeb;
+  --color-body: #1b1c1a;
   --color-ink: #15110d;
   --color-ink-hover: #2a2621;
   --color-border: #e8e2d8;
   --color-muted: #7d766e;
-  --color-text-soft: #4b463f;
+  --color-soft: #4b463f;
   --color-disabled: #cec5bc;
-  --color-surface: #f4efeb;
   --color-gold: #755a2a;
   --color-gold-soft: #8a6d3b;
   --color-error: #9b2c2c;
@@ -16,139 +20,104 @@
   --font-serif: 'Noto Serif', Georgia, serif;
   --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 
-  --container: 1440px;
-  --gutter: 24px;
-  --radius: 8px;
+  --container-page: 1440px;
+
   --shadow-sm: 0 1px 2px rgba(21, 17, 13, 0.06);
   --shadow-md: 0 8px 24px rgba(21, 17, 13, 0.1);
-  --transition: 0.2s ease;
+
+  --default-transition-duration: 200ms;
+  --default-transition-timing-function: ease;
+
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
 }
 
-@media (min-width: 1024px) {
+/* hover siempre activo (Tailwind lo limita a dispositivos con hover real) */
+@custom-variant hover (&:hover);
+
+/* Tablet/mobile (<= 900px) y mobile chico (<= 560px) */
+@custom-variant tablet (@media (max-width: 900px));
+@custom-variant phone (@media (max-width: 560px));
+
+@layer base {
   :root {
-    --gutter: 48px;
+    --gutter: 24px;
   }
-}
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
+  @media (min-width: 1024px) {
+    :root {
+      --gutter: 48px;
+    }
+  }
 
-html {
-  scroll-behavior: smooth;
-}
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
 
-body {
-  margin: 0;
-  font-family: var(--font-sans);
-  background-color: var(--color-bg);
-  color: var(--color-text);
-  -webkit-font-smoothing: antialiased;
-}
+  html {
+    scroll-behavior: smooth;
+  }
 
-h1,
-h2,
-h3 {
-  font-family: var(--font-serif);
-  font-weight: 400;
-  margin: 0;
-}
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    background-color: var(--color-paper);
+    color: var(--color-body);
+    -webkit-font-smoothing: antialiased;
+  }
 
-p {
-  margin: 0;
-}
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-serif);
+    font-weight: 400;
+    margin: 0;
+  }
 
-a {
-  color: inherit;
-  text-decoration: none;
-}
+  p {
+    margin: 0;
+  }
 
-button,
-select,
-input {
-  font: inherit;
-  color: inherit;
-}
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
 
-button {
-  cursor: pointer;
-}
+  button,
+  select,
+  input {
+    font: inherit;
+    color: inherit;
+  }
 
-:focus-visible {
-  outline: 2px solid var(--color-gold);
-  outline-offset: 2px;
-}
+  button {
+    cursor: pointer;
+  }
 
-/* Layout general: el footer siempre abajo */
-.app {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
+  :focus-visible {
+    outline: 2px solid var(--color-gold);
+    outline-offset: 2px;
+  }
 
-.app > .home {
-  flex: 1;
-}
+  /* Scrollbar discreto */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
 
-/* Botones compartidos */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px 16px;
-  border: 1px solid var(--color-ink);
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  transition:
-    background-color var(--transition),
-    color var(--transition);
-}
+  ::-webkit-scrollbar-track {
+    background: var(--color-surface);
+  }
 
-.btn--dark {
-  background: var(--color-ink);
-  color: #fff;
-}
+  ::-webkit-scrollbar-thumb {
+    background: #d4c9bd;
+    border-radius: 3px;
+  }
 
-.btn--dark:hover {
-  background: var(--color-ink-hover);
-}
-
-.btn--outline {
-  background: transparent;
-  color: var(--color-ink);
-  font-weight: 500;
-  text-transform: none;
-  letter-spacing: 0;
-  font-size: 12px;
-}
-
-.btn--outline:hover {
-  background: var(--color-ink);
-  color: #fff;
-}
-
-/* Scrollbar discreto */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--color-surface);
-}
-
-::-webkit-scrollbar-thumb {
-  background: #d4c9bd;
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #b3a495;
+  ::-webkit-scrollbar-thumb:hover {
+    background: #b3a495;
+  }
 }

@@ -7,7 +7,6 @@ import VehicleGrid from '../components/home/VehicleGrid'
 import { RotateCcwIcon } from '../components/icons/Icons'
 import { TIPOS, VEHICULOS } from '../data/vehiculos'
 import { precioFinal } from '../utils/formatters'
-import './Home.css'
 
 const sorters = {
   recommended: (a, b) => b.fechaPublicacion.localeCompare(a.fechaPublicacion),
@@ -42,7 +41,7 @@ export default function Home() {
   }
 
   return (
-    <main className="home">
+    <main className="flex-1 w-full max-w-page mx-auto px-(--gutter) pt-10 pb-14 lg:pt-14">
       <Hero />
 
       <SearchBar
@@ -56,20 +55,24 @@ export default function Home() {
         onSearch={scrollToFleet}
       />
 
-      <section id="fleet-results" className="fleet">
-        <div className="fleet__toolbar">
+      <section id="fleet-results">
+        <div className="flex flex-col items-stretch gap-4 mb-5 min-[900px]:flex-row min-[900px]:items-center min-[900px]:justify-between">
           <CategoryFilter tipos={TIPOS} tipoId={tipoId} onChange={setTipoId} />
           <SortSelect value={sortBy} onChange={setSortBy} />
         </div>
 
-        <div className="fleet__summary">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-6 text-[12px] text-muted">
           <span>
-            Mostrando <strong>{vehiculos.length}</strong> unidades disponibles bajo estándares de
+            Mostrando <strong className="text-ink">{vehiculos.length}</strong> unidades disponibles bajo estándares de
             certificación
           </span>
 
           {hayFiltros && (
-            <button type="button" className="fleet__reset" onClick={resetFiltros}>
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 p-0 bg-transparent border-0 text-[12px] text-inherit transition-[color] hover:text-ink"
+              onClick={resetFiltros}
+            >
               <RotateCcwIcon size={12} />
               Restablecer filtros
             </button>
@@ -77,7 +80,7 @@ export default function Home() {
         </div>
 
         {vehiculos.length === 0 ? (
-          <p className="fleet__status">No se encontraron vehículos para esta selección.</p>
+          <p className="py-12 text-center text-[14px] text-muted">No se encontraron vehículos para esta selección.</p>
         ) : (
           <VehicleGrid items={vehiculos} />
         )}

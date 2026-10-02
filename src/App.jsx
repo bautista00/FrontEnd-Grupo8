@@ -4,7 +4,7 @@ import Home from './views/Home'
 
 export default function App() {
   return (
-    <div className="app">
+    <div className="min-h-screen flex flex-col">
       <Navbar />
       <Home />
       <Footer />
