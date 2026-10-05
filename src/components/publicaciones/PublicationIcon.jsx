@@ -25,7 +25,7 @@ const iconos = {
   navigation: [navigation, 20], close: [close, 14], check: [check, 14], arrow: [arrow, 16],
 }
 
-export default function PublicationIcon({ nombre }) {
+export default function PublicationIcon({ nombre, className = '' }) {
   const [src, size] = iconos[nombre]
-  return <img src={src} alt="" aria-hidden="true" width={size} height={size} className="publication-icon" />
+  return <img src={src} alt="" aria-hidden="true" width={size} height={size} className={'inline-block shrink-0 align-middle ' + className} />
 }
