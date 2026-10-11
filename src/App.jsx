@@ -5,6 +5,10 @@ import Navbar from './components/layout/Navbar'
 import Home from './views/Home'
 import MyPublications from './views/MyPublications'
 import PublicationForm from './views/PublicationForm'
+import Cart from "./views/Cart"
+import ConfirmReservation from "./views/ConfirmReservation"
+import MyReservations from "./views/MyReservations"
+import ReservationDetails from "./views/ReservationDetails"
 
 export default function App() {
   const { pathname } = useLocation()
@@ -14,6 +18,8 @@ export default function App() {
       <Navbar />
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/mis-reservas" element={<MyReservations />} />
+        <Route path="/mis-reservas/detalle" element={<ReservationDetails />} />
         <Route path="/mis-publicaciones" element={<MyPublications />} />
         <Route path="/publicaciones/nueva" element={<PublicationForm key="crear" />} />
         <Route path="/publicaciones/editar" element={<PublicationForm key="editar" modo="editar" />} />
@@ -24,6 +30,9 @@ export default function App() {
             <Link to="/" className="inline-block mt-5 text-gold">Volver al inicio</Link>
           </main>
         } />
+        <Route path="/carrito" element={<Cart />} />
+        {/* Esta ruta muestra la segunda pantalla del flujo de reserva. */}
+        <Route path="/carrito/confirmar" element={<ConfirmReservation />} />
       </Routes>
       <Footer />
     </div>

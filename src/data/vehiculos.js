@@ -26,6 +26,9 @@ export const VEHICULOS = [
     zona: 'CABA',
     localidad: 'Palermo',
     ciudad: 'Buenos Aires',
+    // Horario y dirección de ejemplo para la maqueta del itinerario.
+    horaRetiroDevolucion: '10:00:00',
+    direccion: 'Av. Santa Fe 5820',
     precioDia: 185000,
     descuentoPorcentaje: 0,
     fechaPublicacion: '2026-09-28',

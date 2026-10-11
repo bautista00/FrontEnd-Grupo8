@@ -1,4 +1,4 @@
-import { Link, NavLink, useLocation } from 'react-router-dom'
+import { href, Link, NavLink, useLocation } from 'react-router-dom'
 import { CartIcon } from '../icons/Icons'
 import { btnBase, btnDark, btnSize } from '../ui/buttonStyles'
 
@@ -15,7 +15,7 @@ const CANTIDAD_CARRITO = 1
 // Los destinos que aún no existen se muestran deshabilitados.
 const NAV_LINKS = [
   { label: 'Explorar', href: '/' },
-  { label: 'Mis reservas' },
+  { label: 'Mis reservas',href: '/mis-reservas' },
   { label: 'Mis publicaciones', href: '/mis-publicaciones' },
   { label: 'Mis vehículos' },
 ]

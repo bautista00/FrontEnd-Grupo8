@@ -38,6 +38,13 @@ export const CalendarIcon = (props) => (
   </Icon>
 )
 
+export const CalendarXIcon = (propiedades) => (
+  <Icon {...propiedades}>
+    <rect x="3" y="4" width="18" height="18" rx="2" />
+    <path d="M16 2v4M8 2v4M3 10h18M10 14l4 4M14 14l-4 4" />
+  </Icon>
+)
+
 export const CarIcon = (props) => (
   <Icon {...props}>
     <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9L18 10l-2.7-4.5A2 2 0 0 0 13.6 4.5H9.4a2 2 0 0 0-1.7 1L5 10l-2.5 1.1C1.7 11.3 1 12.1 1 13v3c0 .6.4 1 1 1h2" />
