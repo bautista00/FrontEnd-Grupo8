@@ -1,6 +1,6 @@
 import { formatearFecha } from '../../utils/formatters'
 
-export default function ConfirmCartRemoval({ carrito, alCerrar }) {
+export default function ConfirmCartRemoval({ carrito, alCerrar, alConfirmar, mensaje }) {
   // El nombre y las fechas llegan desde el carrito.
   const vehiculo = carrito.publicacion
   const fechaInicioTexto = formatearFecha(carrito.fechaInicio)
@@ -27,11 +27,17 @@ export default function ConfirmCartRemoval({ carrito, alCerrar }) {
           Las fechas del {fechaInicioTexto} al {fechaFinTexto} se liberan y otra persona puede reservarlas.
         </p>
 
+        {/* Si falla la eliminación, conservamos el carrito y mostramos el error. */}
+        {mensaje && (
+          <p role="alert" className="mt-4 p-3 bg-red-50 border border-red-200 rounded-[4px] text-[12px] leading-[1.7] text-red-700">{mensaje}</p>
+        )}
+
         <div className="flex flex-wrap justify-end gap-3 mt-8 phone:flex-col">
           <button type="button" className="px-5 py-3 bg-card border border-border rounded-[4px] text-[12px] text-soft disabled:cursor-not-allowed" onClick={alCerrar}>
             Mantener
           </button>
-          <button type="button" className="px-5 py-3 bg-red-600 border border-red-600 rounded-[4px] text-[12px] text-white disabled:cursor-not-allowed" disabled>
+          {/* Ejecuta la función quitarCarrito que recibimos desde Cart. */}
+          <button type="button" className="px-5 py-3 bg-red-600 border border-red-600 rounded-[4px] text-[12px] text-white" onClick={alConfirmar}>
             Quitar del carrito
           </button>
         </div>

@@ -25,7 +25,8 @@ export default function SelectedVehicle({ vehiculo, titulo = 'Vehículo seleccio
             {vehiculo.localidad}, {vehiculo.zona}
           </p>
           <div className="flex flex-wrap gap-1.5 mt-3">
-            <span className="px-2 py-[3px] bg-paper border border-border rounded-[3px] text-[10px] text-soft">{vehiculo.cantidadAsientos} asientos</span>
+            {/* El backend usa asientos; los ejemplos anteriores usan cantidadAsientos. */}
+            <span className="px-2 py-[3px] bg-paper border border-border rounded-[3px] text-[10px] text-soft">{vehiculo.asientos ?? vehiculo.cantidadAsientos} asientos</span>
             <span className="px-2 py-[3px] bg-paper border border-border rounded-[3px] text-[10px] text-soft">{vehiculo.anio}</span>
             {vehiculo.color && (
               <span className="px-2 py-[3px] bg-paper border border-border rounded-[3px] text-[10px] text-soft">{vehiculo.color}</span>

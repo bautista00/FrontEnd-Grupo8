@@ -7,7 +7,10 @@ import { formatARS as formatearPrecio } from '../../utils/formatters'
 export default function CartSummary({ carrito, estaVencido }) {
   const navegar = useNavigate()
   const continuarReserva = () => {
-    navegar('/carrito/confirmar')
+    // Un carrito vencido no puede pasar a la confirmación.
+    if (new Date(carrito.fechaExpiracion).getTime() <= Date.now()) return
+    // Enviamos el carrito real a la siguiente vista.
+    navegar('/carrito/confirmar', { state: { carrito } })
   }
   return (
     <section className="min-w-0 p-6 bg-card border border-border rounded-lg phone:p-[18px]" aria-labelledby="cart-summary-title">
@@ -27,7 +30,7 @@ export default function CartSummary({ carrito, estaVencido }) {
       </div>
 
       {/* La retención de fechas del carrito vencido se conectará después. */}
-      <button type="button" onClick={continuarReserva} className={`flex items-center justify-center gap-2 w-full mt-6 px-4 py-3 border rounded-[4px] text-[11px] disabled:cursor-not-allowed ${estaVencido ? 'bg-border border-border text-muted' : 'bg-ink border-ink text-white'}`}>
+      <button type="button" onClick={continuarReserva} disabled={estaVencido} className={`flex items-center justify-center gap-2 w-full mt-6 px-4 py-3 border rounded-[4px] text-[11px] disabled:cursor-not-allowed ${estaVencido ? 'bg-border border-border text-muted' : 'bg-ink border-ink text-white'}`}>
         {/* Cambiamos el texto del mismo botón según la prop estaVencido. */}
         {estaVencido ? 'Volvé a retener las fechas' : 'Continuar con la reserva'}
         {/* && muestra la flecha solamente cuando el carrito sigue vigente. */}
