@@ -7,6 +7,7 @@ import PublicationIcon from '../components/publicaciones/PublicationIcon'
 import PublicationSection from '../components/publicaciones/PublicationSection'
 import PublicationVehicle from '../components/publicaciones/PublicationVehicle'
 import PublicationLocation from '../components/publicaciones/PublicationLocation'
+import { tieneCoordenadas } from '../components/publicaciones/ubicacion'
 import PublicationPrice from '../components/publicaciones/PublicationPrice'
 import PublicationAvailability from '../components/publicaciones/PublicationAvailability'
 import PublicationPreview from '../components/publicaciones/PublicationPreview'
@@ -23,13 +24,16 @@ function valoresIniciales(publicacion) {
     ciudad: publicacion?.ciudad ?? '',
     provincia: publicacion?.provincia ?? '',
     codigoPostal: publicacion?.codigoPostal ?? '',
+    latitud: publicacion?.latitud ?? null,
+    longitud: publicacion?.longitud ?? null,
+    placeId: publicacion?.placeId ?? '',
     horaRetiroDevolucion: publicacion?.horaRetiroDevolucion ?? '',
     descripcion: publicacion?.descripcion ?? '',
     periodos: publicacion?.periodos ?? [],
   }
 }
 
-export default function PublicationForm({ modo = 'crear', publicacion, vehiculos = [], rutaRegistroVehiculo }) {
+export default function PublicationForm({ modo = 'crear', publicacion, vehiculos = [], rutaRegistroVehiculo, SelectorUbicacion, MapaUbicacion }) {
   const editando = modo === 'editar'
   const [valores, setValores] = useState(() => valoresIniciales(publicacion))
   const [versionFormulario, setVersionFormulario] = useState(0)
@@ -39,7 +43,7 @@ export default function PublicationForm({ modo = 'crear', publicacion, vehiculos
   const pasos = [
     ['Vehículo', Boolean(valores.idVehiculo)],
     ['Ubicación', ['direccion', 'zona', 'localidad', 'ciudad', 'provincia', 'codigoPostal', 'horaRetiroDevolucion']
-      .every((campo) => valores[campo].trim() !== '')],
+      .every((campo) => valores[campo].trim() !== '') && tieneCoordenadas(valores)],
     ['Precio y días', valores.precioDia !== '' && Number(valores.precioDia) >= 1
       && Number(valores.descuentoPorcentaje || 0) >= 0 && Number(valores.descuentoPorcentaje || 0) <= 50
       && valores.periodos.length > 0],
@@ -48,7 +52,31 @@ export default function PublicationForm({ modo = 'crear', publicacion, vehiculos
 
   function cambiarCampo(event) {
     const { name, value } = event.target
-    setValores({ ...valores, [name]: value })
+    setValores((actuales) => {
+      const cambiaDireccion = name === 'direccion' && value !== actuales.direccion
+      const cambiaZona = ['localidad', 'ciudad', 'provincia', 'codigoPostal'].includes(name)
+        && actuales[name].trim() !== '' && value !== actuales[name]
+      return {
+        ...actuales,
+        [name]: value,
+        ...((cambiaDireccion || cambiaZona) ? { latitud: null, longitud: null, placeId: '' } : {}),
+      }
+    })
+  }
+
+  function seleccionarUbicacion(ubicacion) {
+    setValores((actuales) => ({
+      ...actuales,
+      direccion: ubicacion.direccion ?? '',
+      zona: ubicacion.zona ?? '',
+      localidad: ubicacion.localidad ?? '',
+      ciudad: ubicacion.ciudad ?? '',
+      provincia: ubicacion.provincia ?? '',
+      codigoPostal: ubicacion.codigoPostal ?? '',
+      latitud: ubicacion.latitud ?? null,
+      longitud: ubicacion.longitud ?? null,
+      placeId: ubicacion.placeId ?? '',
+    }))
   }
 
   function cambiarPeriodos(periodos) {
@@ -92,9 +120,11 @@ export default function PublicationForm({ modo = 'crear', publicacion, vehiculos
               <p className={descriptionStyles}>Marcá los períodos en los que se puede reservar el auto. Fuera de ellos, nadie puede elegir esos días.</p>
               <PublicationAvailability key={versionFormulario} periodos={valores.periodos} onChange={cambiarPeriodos} />
             </PublicationSection>
-            <PublicationLocation valores={valores} onChange={cambiarCampo} editando />
+            <PublicationLocation valores={valores} onChange={cambiarCampo} onUbicacionSeleccionada={seleccionarUbicacion}
+              SelectorUbicacion={SelectorUbicacion} MapaUbicacion={MapaUbicacion} editando />
           </> : <>
-            <PublicationLocation valores={valores} onChange={cambiarCampo} />
+            <PublicationLocation valores={valores} onChange={cambiarCampo} onUbicacionSeleccionada={seleccionarUbicacion}
+              SelectorUbicacion={SelectorUbicacion} MapaUbicacion={MapaUbicacion} />
             <PublicationSection titulo="Precio y días disponibles" numero="3">
               <PublicationPrice valores={valores} onChange={cambiarCampo} />
               <p className={descriptionStyles}>Solo se puede reservar dentro de estos períodos. Después los ajustás desde la publicación.</p>
