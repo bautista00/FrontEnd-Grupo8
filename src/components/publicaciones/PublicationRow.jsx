@@ -1,20 +1,26 @@
 import { metaStyles, actionsStyles, textButtonStyles } from './publicationStyles'
 import { Link } from 'react-router-dom'
 import PublicationIcon from './PublicationIcon'
+import PublicationPhoto from './PublicationPhoto'
+import PublicationStateActions from './PublicationStateActions'
 import { btnBase, btnDark, btnOutline, btnSize } from '../ui/buttonStyles'
 import { formatARS, precioFinal } from '../../utils/formatters'
 import { ESTADOS_PUBLICACION, formatFechaPublicacion } from '../../utils/publicaciones'
 
-export default function PublicationRow({ publicacion }) {
+export default function PublicationRow({ publicacion, apiUrl, token, onConfirmed, onPending, disabled }) {
+  return <PublicationStateActions publicacion={publicacion} apiUrl={apiUrl} token={token} onConfirmed={onConfirmed} onPending={onPending} disabled={disabled}>
+    {(acciones) => <Row publicacion={{ ...publicacion, estado: acciones.estado }} apiUrl={apiUrl} token={token} acciones={acciones} />}
+  </PublicationStateActions>
+}
+
+function Row({ publicacion, apiUrl, token, acciones }) {
   const estado = ESTADOS_PUBLICACION[publicacion.estado]
   const desactivada = publicacion.estado === 'DESACTIVADA'
-  const portada = publicacion.portada
   return (
     <article className={'flex items-center gap-5 p-6 bg-white border border-border rounded-lg max-[1100px]:flex-wrap phone:p-[18px]' + (desactivada ? ' opacity-70' : '')}>
       <div className="relative grid place-items-center w-48 h-30 shrink-0 bg-surface rounded-[4px] overflow-hidden phone:w-full phone:h-auto phone:aspect-[16/10]">
-        {portada ? <img src={portada} alt={publicacion.marca + ' ' + publicacion.modelo} className="w-full h-full object-cover" />
-          : <PublicationIcon nombre="car" />}
-        <span className="absolute top-2 left-2 bg-white rounded-[3px] px-1.5 py-0.5 text-[9px] uppercase">{publicacion.tipoVehiculo}</span>
+        <PublicationPhoto key={publicacion.idVehiculo} idVehiculo={publicacion.idVehiculo} apiUrl={apiUrl} token={token} alt={publicacion.marca + ' ' + publicacion.modelo} />
+        {publicacion.tipoVehiculo && <span className="absolute top-2 left-2 bg-white rounded-[3px] px-1.5 py-0.5 text-[9px] uppercase">{publicacion.tipoVehiculo}</span>}
       </div>
       <div className="flex-1 min-w-0 phone:basis-full">
         <div className={metaStyles}>
@@ -31,10 +37,11 @@ export default function PublicationRow({ publicacion }) {
       <div className="grid gap-4 justify-items-end max-[1100px]:flex max-[1100px]:w-full max-[1100px]:flex-wrap max-[1100px]:items-center max-[1100px]:justify-between">
         <p className="font-serif font-bold text-[24px]">{formatARS(precioFinal(publicacion))}<span className="font-sans text-[12px] font-normal text-muted"> / día</span></p>
         <div className={actionsStyles}>
-          {desactivada ? <Link to="/publicaciones/nueva" className={btnBase + ' ' + btnOutline + ' ' + btnSize}>Publicar de nuevo</Link> : <>
-            <button type="button" disabled className={btnBase + ' ' + btnOutline + ' ' + btnSize}>{publicacion.estado === 'ACTIVA' ? 'Pausar' : 'Reactivar'}</button>
-            <button type="button" disabled className={textButtonStyles + ' text-error'}>Desactivar</button>
-            <Link to={'/publicaciones/' + publicacion.idPublicacion + '/editar'} className={btnBase + ' ' + btnDark + ' ' + btnSize}>Editar publicación</Link>
+          {desactivada && !acciones.pendiente ? <Link to="/publicaciones/nueva" className={btnBase + ' ' + btnOutline + ' ' + btnSize}>Publicar de nuevo</Link> : <>
+            <button type="button" disabled={acciones.disabled} onClick={() => acciones.confirmar(publicacion.estado === 'ACTIVA' ? 'pausar' : 'reactivar')} className={btnBase + ' ' + btnOutline + ' ' + btnSize}>{publicacion.estado === 'ACTIVA' ? 'Pausar' : 'Reactivar'}</button>
+            <button type="button" disabled={acciones.disabled} onClick={() => acciones.confirmar('desactivar')} className={textButtonStyles + ' text-error'}>Desactivar</button>
+            {acciones.disabled ? <button type="button" disabled className={btnBase + ' ' + btnDark + ' ' + btnSize}>Editar publicación</button>
+              : <Link to={'/publicaciones/' + publicacion.idPublicacion + '/editar'} className={btnBase + ' ' + btnDark + ' ' + btnSize}>Editar publicación</Link>}
           </>}
         </div>
       </div>

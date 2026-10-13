@@ -10,7 +10,7 @@ function fechaTexto(fecha) {
   return new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'short' }).format(new Date(fecha + 'T12:00:00'))
 }
 
-export default function PublicationAvailability({ periodos, onChange }) {
+export default function PublicationAvailability({ periodos, onChange, onSelectionChange }) {
   const [mes, setMes] = useState(() => {
     const hoy = new Date()
     return new Date(hoy.getFullYear(), hoy.getMonth(), 1)
@@ -32,16 +32,19 @@ export default function PublicationAvailability({ periodos, onChange }) {
     if (fecha < fechaHoy || fecha === inicio) return
     if (!inicio) {
       setInicio(fecha)
+      onSelectionChange?.(fecha)
       return
     }
     const desde = fecha < inicio ? fecha : inicio
     const hasta = fecha < inicio ? inicio : fecha
-    onChange([...periodos, { desde, hasta }])
+    onChange([...periodos, { desde, hasta, clave: crypto.randomUUID() }])
     setInicio('')
+    onSelectionChange?.('')
   }
 
   function descartarSeleccion() {
     setInicio('')
+    onSelectionChange?.('')
   }
 
   return <div className="grid grid-cols-2 gap-4 mt-4 phone:grid-cols-1">
@@ -70,7 +73,7 @@ export default function PublicationAvailability({ periodos, onChange }) {
     <div>
       <div className="flex flex-wrap gap-2.5 text-muted text-[11px]"><span className="text-gold">● Disponible para reservar</span><span>○ No publicado</span></div>
       {periodos.length === 0 && <p className={helpStyles}>Sin períodos seleccionados.</p>}
-      {periodos.map((periodo, indice) => <div key={periodo.desde + '-' + periodo.hasta + '-' + indice} className="flex items-center gap-1.5 mt-2.5 p-2 border border-border rounded-[4px] text-[11px]">
+      {periodos.map((periodo, indice) => <div key={periodo.idDisponibilidad ?? periodo.clave ?? indice} className="flex items-center gap-1.5 mt-2.5 p-2 border border-border rounded-[4px] text-[11px]">
         <PublicationIcon nombre="calendar" />
         <span className="flex-1">Del {fechaTexto(periodo.desde)} al {fechaTexto(periodo.hasta)}</span>
         <button type="button" className="grid place-items-center border-0 bg-transparent p-1" aria-label={'Quitar período del ' + fechaTexto(periodo.desde) + ' al ' + fechaTexto(periodo.hasta)}
