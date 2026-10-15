@@ -34,7 +34,7 @@ export default function App() {
         <Route path="/carrito" element={<Cart />} />
         {/* Esta ruta muestra la segunda pantalla del flujo de reserva. */}
         <Route path="/carrito/confirmar" element={<ConfirmReservation />} />
-        {/* Maqueta del resultado: todavía no se abre al confirmar el carrito. */}
+        {/* Resultado al crear la reserva; sus datos todavía son de ejemplo. */}
         <Route path="/reservas/resultado" element={<ReservationResult />} />
       </Routes>
       <Footer />

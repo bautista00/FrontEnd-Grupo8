@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import ReservationItinerary from "../components/reservations/ReservationItinerary"
 import PaymentMethod from "../components/reservations/PaymentMethod"
 import PaymentSummary from "../components/reservations/PaymentSummary"
@@ -8,6 +8,7 @@ import SelectedVehicle from "../components/reservations/SelectedVehicle"
 export default function ConfirmReservation() {
   // Recibimos el carrito enviado por CartSummary.
   const ubicacion = useLocation()
+  const navegar = useNavigate()
   const [carrito, actualizarCarrito] = useState(() => {
     const carritoRecibido = ubicacion.state?.carrito
     if (!carritoRecibido) return null
@@ -86,7 +87,10 @@ export default function ConfirmReservation() {
       .then((datosConfirmacion) => {
         // Guardamos los identificadores y estados que devuelve el backend.
         actualizarConfirmacion(datosConfirmacion)
-        actualizarMensaje('Reserva creada. Quedó pendiente de aprobación.')
+        // Navegamos solamente después de crear la reserva correctamente.
+        navegar('/reservas/resultado', {
+          state: { idReserva: datosConfirmacion.idReserva }
+        })
       })
       .catch((error) => {
         console.error('Error al confirmar la reserva:', error)
