@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { formatARS as formatearPrecio } from '../../utils/formatters'
 
-export default function PaymentSummary({ carrito, metodoPago }) {
+export default function PaymentSummary({ carrito, metodoPago, alConfirmar }) {
   // La selección llega desde la vista, igual que a PaymentMethod.
   const esMercadoPago = metodoPago === 'MERCADO_PAGO'
   const segundos = Math.max(0, carrito.segundosRestantes)
@@ -42,8 +42,8 @@ export default function PaymentSummary({ carrito, metodoPago }) {
           : `Tus fechas siguen retenidas ${minutos}:${segundosDelMinuto} min.`}
       </p>
 
-      {/* La confirmación se conectará al backend más adelante. */}
-      <button type="button" className="w-full mt-4 px-4 py-3 bg-ink border-0 rounded-[4px] text-[11px] leading-[1.6] text-card disabled:cursor-not-allowed disabled:opacity-65" disabled>
+      {/* El clic ejecuta la función de la vista; por ahora solo con efectivo. */}
+      <button type="button" onClick={alConfirmar} className="w-full mt-4 px-4 py-3 bg-ink border-0 rounded-[4px] text-[11px] leading-[1.6] text-card disabled:cursor-not-allowed disabled:opacity-65" disabled={estaVencido || esMercadoPago}>
         {estaVencido
           ? 'Volvé a retener las fechas'
           : esMercadoPago

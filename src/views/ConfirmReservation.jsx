@@ -22,6 +22,12 @@ export default function ConfirmReservation() {
   // La vista guarda el método elegido.
   const [metodoPago, actualizarMetodoPago] = useState('MERCADO_PAGO')
 
+  // Guarda la respuesta del backend cuando se crea la reserva.
+  const [confirmacion, actualizarConfirmacion] = useState(null)
+
+  // Guarda el mensaje que después mostraremos en pantalla.
+  const [mensaje, actualizarMensaje] = useState('')
+
   const fechaExpiracion = carrito ? carrito.fechaExpiracion : null
 
   useEffect(() => {
@@ -38,6 +44,55 @@ export default function ConfirmReservation() {
 
     return () => clearInterval(intervalo)
   }, [fechaExpiracion])
+
+  const confirmarReserva = () => {
+    // Evitamos confirmar si no hay carrito o ya creamos la reserva.
+    if (carrito === null || confirmacion !== null) return
+
+    // Mercado Pago lo conectaremos después.
+    if (metodoPago !== 'EFECTIVO') {
+      actualizarMensaje('Por ahora, elegí efectivo para confirmar.')
+      return
+    }
+
+    const token = localStorage.getItem('jwtToken')
+
+    if (!token) {
+      actualizarMensaje('Necesitás iniciar sesión para confirmar.')
+      return
+    }
+
+    actualizarMensaje('')
+
+    fetch(
+      `http://localhost:8080/carritos/${carrito.idCarrito}/confirmar`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        // Convertimos el objeto a JSON para enviarlo al backend.
+        body: JSON.stringify({ metodoPago })
+      }
+    )
+      .then((respuesta) => {
+        if (!respuesta.ok) {
+          throw new Error('No se pudo crear la reserva')
+        }
+
+        return respuesta.json()
+      })
+      .then((datosConfirmacion) => {
+        // Guardamos los identificadores y estados que devuelve el backend.
+        actualizarConfirmacion(datosConfirmacion)
+        actualizarMensaje('Reserva creada. Quedó pendiente de aprobación.')
+      })
+      .catch((error) => {
+        console.error('Error al confirmar la reserva:', error)
+        actualizarMensaje('No pudimos crear la reserva. Intentá nuevamente.')
+      })
+  }
 
   // Evitamos leer datos cuando no hay carrito.
   if (carrito === null) {
@@ -70,8 +125,12 @@ export default function ConfirmReservation() {
           <Link to="/carrito" className="inline-block mt-6 text-[11px] text-soft hover:underline">← Volver al carrito</Link>
         </div>
 
-        {/* Ambos componentes comparten la selección de la vista. */}
-        <PaymentSummary carrito={carrito} metodoPago={metodoPago} />
+        {/* El resumen recibe los datos y la función para confirmar. */}
+        <PaymentSummary
+          carrito={carrito}
+          metodoPago={metodoPago}
+          alConfirmar={confirmarReserva}
+        />
       </div>
     </main>
   )

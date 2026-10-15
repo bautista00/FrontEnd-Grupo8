@@ -9,6 +9,7 @@ import Cart from "./views/Cart"
 import ConfirmReservation from "./views/ConfirmReservation"
 import MyReservations from "./views/MyReservations"
 import ReservationDetails from "./views/ReservationDetails"
+import ReservationResult from './views/ReservationResult'
 
 export default function App() {
   const { pathname } = useLocation()
@@ -33,6 +34,8 @@ export default function App() {
         <Route path="/carrito" element={<Cart />} />
         {/* Esta ruta muestra la segunda pantalla del flujo de reserva. */}
         <Route path="/carrito/confirmar" element={<ConfirmReservation />} />
+        {/* Maqueta del resultado: todavía no se abre al confirmar el carrito. */}
+        <Route path="/reservas/resultado" element={<ReservationResult />} />
       </Routes>
       <Footer />
     </div>
