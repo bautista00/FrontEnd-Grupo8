@@ -50,12 +50,6 @@ export default function ConfirmReservation() {
     // Evitamos confirmar si no hay carrito o ya creamos la reserva.
     if (carrito === null || confirmacion !== null) return
 
-    // Mercado Pago lo conectaremos después.
-    if (metodoPago !== 'EFECTIVO') {
-      actualizarMensaje('Por ahora, elegí efectivo para confirmar.')
-      return
-    }
-
     const token = localStorage.getItem('jwtToken')
 
     if (!token) {
@@ -87,14 +81,43 @@ export default function ConfirmReservation() {
       .then((datosConfirmacion) => {
         // Guardamos los identificadores y estados que devuelve el backend.
         actualizarConfirmacion(datosConfirmacion)
-        // Navegamos solamente después de crear la reserva correctamente.
-        navegar('/reservas/resultado', {
-          state: { idReserva: datosConfirmacion.idReserva }
-        })
+
+        if (metodoPago === 'EFECTIVO') {
+          // Navegamos solamente después de crear la reserva correctamente.
+          navegar('/reservas/resultado', {
+            state: { idReserva: datosConfirmacion.idReserva }
+          })
+          return
+        }
+
+        // Con Mercado Pago pedimos el checkout del pago recién creado.
+        return fetch(
+          `http://localhost:8080/pagos/${datosConfirmacion.idPago}/checkout`,
+          {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` }
+          }
+        )
+          .then((respuesta) => {
+            if (!respuesta.ok) {
+              throw new Error('No se pudo iniciar el pago')
+            }
+
+            return respuesta.json()
+          })
+          .then((checkout) => {
+            // Salimos de la app: Mercado Pago nos devuelve a /reservas/:idReserva.
+            window.location.href = checkout.initPoint
+          })
       })
       .catch((error) => {
         console.error('Error al confirmar la reserva:', error)
-        actualizarMensaje('No pudimos crear la reserva. Intentá nuevamente.')
+        // Si falló el checkout, la reserva ya existe: no pedimos reintentar.
+        actualizarMensaje(
+          error.message === 'No se pudo iniciar el pago'
+            ? 'La reserva se creó, pero no pudimos abrir Mercado Pago. Revisala en Mis reservas.'
+            : 'No pudimos crear la reserva. Intentá nuevamente.'
+        )
       })
   }
 
@@ -125,6 +148,10 @@ export default function ConfirmReservation() {
           <SelectedVehicle vehiculo={carrito.publicacion} />
           <ReservationItinerary datos={carrito} publicacion={carrito.publicacion} />
           <PaymentMethod metodoPago={metodoPago} alCambiar={actualizarMetodoPago} />
+
+          {mensaje && (
+            <p className="mt-4 p-3 bg-amber-50 border border-border rounded-[0.25rem] text-[0.6875rem] leading-[1.6] text-amber-700">{mensaje}</p>
+          )}
 
           <Link to="/carrito" className="inline-block mt-6 text-[0.6875rem] text-soft hover:underline">← Volver al carrito</Link>
         </div>

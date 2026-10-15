@@ -42,8 +42,8 @@ export default function PaymentSummary({ carrito, metodoPago, alConfirmar }) {
           : `Tus fechas siguen retenidas ${minutos}:${segundosDelMinuto} min.`}
       </p>
 
-      {/* El clic ejecuta la función de la vista; por ahora solo con efectivo. */}
-      <button type="button" onClick={alConfirmar} className="w-full mt-4 px-4 py-3 bg-ink border-0 rounded-[0.25rem] text-[0.6875rem] leading-[1.6] text-card disabled:cursor-not-allowed disabled:opacity-65" disabled={estaVencido || esMercadoPago}>
+      {/* El clic ejecuta la función de la vista con el método elegido. */}
+      <button type="button" onClick={alConfirmar} className="w-full mt-4 px-4 py-3 bg-ink border-0 rounded-[0.25rem] text-[0.6875rem] leading-[1.6] text-card disabled:cursor-not-allowed disabled:opacity-65" disabled={estaVencido}>
         {estaVencido
           ? 'Volvé a retener las fechas'
           : esMercadoPago

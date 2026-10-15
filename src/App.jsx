@@ -10,6 +10,7 @@ import ConfirmReservation from "./views/ConfirmReservation"
 import MyReservations from "./views/MyReservations"
 import ReservationDetails from "./views/ReservationDetails"
 import ReservationResult from './views/ReservationResult'
+import PaymentReturn from './views/PaymentReturn'
 
 export default function App() {
   const { pathname } = useLocation()
@@ -36,6 +37,9 @@ export default function App() {
         <Route path="/carrito/confirmar" element={<ConfirmReservation />} />
         {/* Resultado al crear la reserva; sus datos todavía son de ejemplo. */}
         <Route path="/reservas/resultado" element={<ReservationResult />} />
+        {/* Mercado Pago vuelve al backend y el backend redirige acá con el estado del pago. */}
+        <Route path="/reservas" element={<PaymentReturn />} />
+        <Route path="/reservas/:idReserva" element={<PaymentReturn />} />
       </Routes>
       <Footer />
     </div>
