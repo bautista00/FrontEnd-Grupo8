@@ -12,7 +12,7 @@ export default function ReservationFilters({ hayReservasConfirmadas,filtroSelecc
         <button
           key={filtro.id}
           type="button"
-          className={`inline-flex items-center gap-2 px-3 py-2 border-0 rounded-[3px] text-[11px] disabled:cursor-not-allowed ${filtro.id === filtroSeleccionado ? 'bg-ink text-white' : 'bg-transparent text-soft'}`}
+          className={`inline-flex items-center gap-2 px-3 py-2 border-0 rounded-[0.1875rem] text-[0.6875rem] disabled:cursor-not-allowed ${filtro.id === filtroSeleccionado ? 'bg-ink text-white' : 'bg-transparent text-soft'}`}
           aria-pressed={filtro.id === filtroSeleccionado}
           onClick={()=> alCambiar(filtro.id)}
         >

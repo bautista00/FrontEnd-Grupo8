@@ -24,64 +24,64 @@ export default function UpcomingReservationCard({ reserva, publicacion, pago }) 
   return (
     <article className="min-w-0 p-6 bg-card border border-border rounded-lg phone:p-4" aria-labelledby={`reservation-${reserva.idReserva}-vehicle`}>
       <header className="flex flex-wrap items-center justify-between gap-3 mb-5">
-        <span className={`inline-flex items-center gap-1.5 px-2 py-[3px] border rounded-[3px] text-[10px] font-semibold ${estadoVisual.clases}`}>
+        <span className={`inline-flex items-center gap-1.5 px-2 py-[0.1875rem] border rounded-[0.1875rem] text-[0.625rem] font-semibold ${estadoVisual.clases}`}>
           <span className="w-1.5 h-1.5 rounded-full bg-current" aria-hidden="true" />
           {estadoVisual.texto}
         </span>
         {/* El número visible es idReserva; no existe un codigoReserva. */}
-        <p className="text-[10px] text-muted">
+        <p className="text-[0.625rem] text-muted">
           Reserva #{reserva.idReserva} · Realizada el {fechaCreacionTexto}
         </p>
       </header>
 
       {/* Las columnas mantienen la proporción de imagen, datos y resumen. */}
-      <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1.8fr)_minmax(220px,1fr)] gap-6 tablet:grid-cols-1">
-        <div className="relative grid place-items-center aspect-[8/5] min-h-[200px] bg-surface rounded-[4px] text-disabled tablet:aspect-auto">
-          <span className="absolute top-3 left-3 px-2 py-1 bg-card rounded-[3px] text-[9px] uppercase text-ink">
+      <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1.8fr)_minmax(13.75rem,1fr)] gap-6 tablet:grid-cols-1">
+        <div className="relative grid place-items-center aspect-[8/5] min-h-[12.5rem] bg-surface rounded-[0.25rem] text-disabled tablet:aspect-auto">
+          <span className="absolute top-3 left-3 px-2 py-1 bg-card rounded-[0.1875rem] text-[0.5625rem] uppercase text-ink">
             {publicacion.tipoVehiculo}
           </span>
           <CarIcon size={36} />
         </div>
 
         <div className="min-w-0 self-center">
-          <h3 id={`reservation-${reserva.idReserva}-vehicle`} className="text-[24px] leading-[1.3] text-ink phone:text-[22px]">
+          <h3 id={`reservation-${reserva.idReserva}-vehicle`} className="text-[1.5rem] leading-[1.3] text-ink phone:text-[1.375rem]">
             {publicacion.marca} {publicacion.modelo} {publicacion.anio}
           </h3>
-          <p className="flex items-center gap-1.5 mt-2 text-[11px] text-muted">
+          <p className="flex items-center gap-1.5 mt-2 text-[0.6875rem] text-muted">
             <MapPinIcon size={14} className="shrink-0 text-gold" />
             {publicacion.localidad}, {publicacion.zona}
           </p>
 
-          <dl className="grid grid-cols-2 gap-4 mt-5 mb-0 p-4 bg-paper border border-border rounded-[4px] phone:grid-cols-1">
+          <dl className="grid grid-cols-2 gap-4 mt-5 mb-0 p-4 bg-paper border border-border rounded-[0.25rem] phone:grid-cols-1">
             <div>
-              <dt className="mb-1 text-[9px] uppercase text-muted">Retiro</dt>
-              <dd className="m-0 text-[11px] leading-[1.6] text-ink">
+              <dt className="mb-1 text-[0.5625rem] uppercase text-muted">Retiro</dt>
+              <dd className="m-0 text-[0.6875rem] leading-[1.6] text-ink">
                 <time dateTime={reserva.fechaInicio}>{formatearFecha(reserva.fechaInicio)}</time>
                 {/* El horario pertenece a la publicación, si está disponible. */}
                 {horaRetiro && <span className="block text-muted">{horaRetiro.slice(0, 5)} hs</span>}
               </dd>
             </div>
             <div>
-              <dt className="mb-1 text-[9px] uppercase text-muted">Devolución</dt>
-              <dd className="m-0 text-[11px] leading-[1.6] text-ink">
+              <dt className="mb-1 text-[0.5625rem] uppercase text-muted">Devolución</dt>
+              <dd className="m-0 text-[0.6875rem] leading-[1.6] text-ink">
                 <time dateTime={reserva.fechaFin}>{formatearFecha(reserva.fechaFin)}</time>
                 {horaRetiro && <span className="block text-muted">{horaRetiro.slice(0, 5)} hs</span>}
               </dd>
             </div>
           </dl>
-          <p className="mt-2 text-[11px] text-muted">Duración: {reserva.cantidadDias} días</p>
+          <p className="mt-2 text-[0.6875rem] text-muted">Duración: {reserva.cantidadDias} días</p>
         </div>
 
         <div className="flex flex-col justify-between gap-6 pl-6 border-l border-border tablet:pl-0 tablet:pt-4 tablet:border-l-0 tablet:border-t">
           <div>
-            <p className="text-[9px] uppercase text-muted">Total</p>
+            <p className="text-[0.5625rem] uppercase text-muted">Total</p>
             <p className="mt-1 text-ink">
-              <strong className="font-serif text-[24px]">{formatearPrecio(reserva.precioTotal)}</strong>
-              <span className="ml-1 text-[10px] text-muted">ARS</span>
+              <strong className="font-serif text-[1.5rem]">{formatearPrecio(reserva.precioTotal)}</strong>
+              <span className="ml-1 text-[0.625rem] text-muted">ARS</span>
             </p>
             {/* El método viene de pago.metodo, no de la reserva. */}
             {pago && (
-              <p className="mt-2 text-[11px] leading-[1.6] text-soft">
+              <p className="mt-2 text-[0.6875rem] leading-[1.6] text-soft">
                 {pago.metodo === 'EFECTIVO' ? 'Pago en efectivo' : 'Pago con Mercado Pago'}
               </p>
             )}
@@ -91,7 +91,7 @@ export default function UpcomingReservationCard({ reserva, publicacion, pago }) 
           <Link
             to="/mis-reservas/detalle"
             state={{ idReserva: reserva.idReserva }}
-            className="flex items-center justify-center w-full px-4 py-3 bg-ink border-0 rounded-[4px] text-[11px] text-white"
+            className="flex items-center justify-center w-full px-4 py-3 bg-ink border-0 rounded-[0.25rem] text-[0.6875rem] text-white"
           >
             Ver detalle de reserva
           </Link>

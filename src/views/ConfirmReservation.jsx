@@ -103,10 +103,10 @@ export default function ConfirmReservation() {
     return (
       <main className="flex-1 w-full max-w-page mx-auto px-(--gutter) pt-10 pb-16 phone:pt-7 phone:pb-10">
         <header className="mb-6">
-          <h1 className="mt-1.5 text-[36px] leading-[1.2] text-ink phone:text-[30px]">No hay un carrito para confirmar</h1>
-          <p className="mt-2 text-[12px] leading-[1.7] text-muted">Volvé al carrito y presioná «Continuar con la reserva» para revisar sus datos.</p>
+          <h1 className="mt-1.5 text-[2.25rem] leading-[1.2] text-ink phone:text-[1.875rem]">No hay un carrito para confirmar</h1>
+          <p className="mt-2 text-[0.75rem] leading-[1.7] text-muted">Volvé al carrito y presioná «Continuar con la reserva» para revisar sus datos.</p>
         </header>
-        <Link to="/carrito" className="inline-block mt-6 text-[11px] text-soft hover:underline">Volver al carrito</Link>
+        <Link to="/carrito" className="inline-block mt-6 text-[0.6875rem] text-soft hover:underline">Volver al carrito</Link>
       </main>
     )
   }
@@ -114,9 +114,9 @@ export default function ConfirmReservation() {
   return (
     <main className="flex-1 w-full max-w-page mx-auto px-(--gutter) pt-10 pb-16 phone:pt-7 phone:pb-10">
       <header className="mb-6">
-        <p className="text-[10px] leading-[1.5] tracking-[0.05em] uppercase text-muted">Reserva · Paso 2 de 2: pago y confirmación</p>
-        <h1 className="mt-1.5 text-[36px] leading-[1.2] text-ink phone:text-[30px]">Confirmar reserva</h1>
-        <p className="mt-2 text-[12px] leading-[1.7] text-muted">Revisá los datos del alquiler y elegí cómo pagar.</p>
+        <p className="text-[0.625rem] leading-[1.5] tracking-[0.05em] uppercase text-muted">Reserva · Paso 2 de 2: pago y confirmación</p>
+        <h1 className="mt-1.5 text-[2.25rem] leading-[1.2] text-ink phone:text-[1.875rem]">Confirmar reserva</h1>
+        <p className="mt-2 text-[0.75rem] leading-[1.7] text-muted">Revisá los datos del alquiler y elegí cómo pagar.</p>
       </header>
 
       <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-start gap-6 tablet:grid-cols-1">
@@ -126,7 +126,7 @@ export default function ConfirmReservation() {
           <ReservationItinerary datos={carrito} publicacion={carrito.publicacion} />
           <PaymentMethod metodoPago={metodoPago} alCambiar={actualizarMetodoPago} />
 
-          <Link to="/carrito" className="inline-block mt-6 text-[11px] text-soft hover:underline">← Volver al carrito</Link>
+          <Link to="/carrito" className="inline-block mt-6 text-[0.6875rem] text-soft hover:underline">← Volver al carrito</Link>
         </div>
 
         {/* El resumen recibe los datos y la función para confirmar. */}

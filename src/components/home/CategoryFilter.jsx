@@ -1,7 +1,7 @@
 import { CarIcon } from '../icons/Icons'
 
 const OPTION_BASE =
-  'inline-flex items-center gap-2 px-4 py-2.5 border-0 rounded-[4px] text-[11px] font-bold tracking-[0.06em] uppercase whitespace-nowrap transition-[background-color,color]'
+  'inline-flex items-center gap-2 px-4 py-2.5 border-0 rounded-[0.25rem] text-[0.6875rem] font-bold tracking-[0.06em] uppercase whitespace-nowrap transition-[background-color,color]'
 const OPTION_IDLE = `${OPTION_BASE} bg-surface text-soft hover:bg-[#ebe4dc] hover:text-ink`
 const OPTION_ACTIVE = `${OPTION_BASE} bg-ink text-white`
 

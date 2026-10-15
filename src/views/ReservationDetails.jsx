@@ -41,7 +41,7 @@ export default function ReservationDetails() {
   if (!reserva) {
     return (
       <main className="flex-1 w-full max-w-page mx-auto px-(--gutter) pt-10 pb-16">
-        <h1 className="text-[30px] text-ink">No hay una reserva para mostrar.</h1>
+        <h1 className="text-[1.875rem] text-ink">No hay una reserva para mostrar.</h1>
       </main>
     )
   }
@@ -60,7 +60,7 @@ export default function ReservationDetails() {
   return (
     <main className="flex-1 w-full max-w-page mx-auto px-(--gutter) pt-10 pb-16 phone:pt-7 phone:pb-10">
       {/* Volvemos a la lista de reservas. */}
-      <Link to="/mis-reservas" className="inline-flex items-center gap-2 mb-6 p-0 bg-transparent border-0 text-[11px] text-soft">
+      <Link to="/mis-reservas" className="inline-flex items-center gap-2 mb-6 p-0 bg-transparent border-0 text-[0.6875rem] text-soft">
         <span aria-hidden="true">←</span>
         Volver a mis reservas
       </Link>
@@ -68,16 +68,16 @@ export default function ReservationDetails() {
       <header className="flex flex-wrap items-end justify-between gap-4 mb-6">
         <div className="flex flex-wrap items-center gap-3">
           {/* Usamos idReserva, igual que en el backend. */}
-          <h1 className="text-[36px] leading-[1.2] text-ink phone:text-[30px]">
+          <h1 className="text-[2.25rem] leading-[1.2] text-ink phone:text-[1.875rem]">
             Reserva #{reserva.idReserva}
           </h1>
-          <span className={`inline-flex items-center gap-1.5 px-2 py-[3px] border rounded-[3px] text-[10px] font-semibold ${estadoVisual.clases}`}>
+          <span className={`inline-flex items-center gap-1.5 px-2 py-[0.1875rem] border rounded-[0.1875rem] text-[0.625rem] font-semibold ${estadoVisual.clases}`}>
             <span className="w-1.5 h-1.5 rounded-full bg-current" aria-hidden="true" />
             {estadoVisual.texto}
           </span>
         </div>
 
-        <p className="text-[11px] text-muted">
+        <p className="text-[0.6875rem] text-muted">
           Realizada el <time dateTime={reserva.fechaCreacion}>{fechaCreacionTexto}</time>
         </p>
       </header>
@@ -91,7 +91,7 @@ export default function ReservationDetails() {
               <ReservationItinerary datos={reserva} publicacion={vehiculo} mostrarMapa />
             </>
           ) : (
-            <p className="p-6 bg-card border border-border rounded-lg text-[12px] text-muted">
+            <p className="p-6 bg-card border border-border rounded-lg text-[0.75rem] text-muted">
               No se encontraron los datos del vehículo reservado.
             </p>
           )}

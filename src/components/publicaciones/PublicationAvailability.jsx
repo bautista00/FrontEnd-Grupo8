@@ -49,21 +49,21 @@ export default function PublicationAvailability({ periodos, onChange, onSelectio
 
   return <div className="grid grid-cols-2 gap-4 mt-4 phone:grid-cols-1">
     <div>
-      <div className="bg-paper border border-border rounded-[6px] p-3 phone:max-w-80">
-        <div className="flex items-center justify-between gap-2 text-[12px] capitalize">
+      <div className="bg-paper border border-border rounded-[0.375rem] p-3 phone:max-w-80">
+        <div className="flex items-center justify-between gap-2 text-[0.75rem] capitalize">
           <button type="button" className="grid place-items-center border-0 bg-transparent p-1" aria-label="Mes anterior" onClick={() => setMes(new Date(anio, numeroMes - 1, 1))}><PublicationIcon nombre="left" /></button>
           <span>{mes.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })}</span>
           <button type="button" className="grid place-items-center border-0 bg-transparent p-1" aria-label="Mes siguiente" onClick={() => setMes(new Date(anio, numeroMes + 1, 1))}><PublicationIcon nombre="right" /></button>
         </div>
-        <div className="grid grid-cols-7 gap-[3px] mt-3">
-          {['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do'].map((dia) => <span key={dia} className="text-center py-1 text-muted text-[10px]">{dia}</span>)}
+        <div className="grid grid-cols-7 gap-[0.1875rem] mt-3">
+          {['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do'].map((dia) => <span key={dia} className="text-center py-1 text-muted text-[0.625rem]">{dia}</span>)}
           {celdas.map((dia, indice) => {
-            if (!dia) return <span key={'vacio-' + indice} className="text-center py-1 text-muted text-[10px]" />
+            if (!dia) return <span key={'vacio-' + indice} className="text-center py-1 text-muted text-[0.625rem]" />
             const fecha = fechaDia(anio, numeroMes, dia)
             const elegido = inicio === fecha || periodos.some((periodo) => fecha >= periodo.desde && fecha <= periodo.hasta)
             return <button type="button" key={fecha} aria-label={fecha} aria-pressed={elegido}
               disabled={fecha < fechaHoy || fecha === inicio}
-              className={'h-8 border rounded-[4px] text-[11px] p-0 ' + (elegido ? 'bg-[#fdd79c] border-gold text-ink' : 'bg-white border-border')} onClick={() => elegirDia(dia)}>{dia}</button>
+              className={'h-8 border rounded-[0.25rem] text-[0.6875rem] p-0 ' + (elegido ? 'bg-[#fdd79c] border-gold text-ink' : 'bg-white border-border')} onClick={() => elegirDia(dia)}>{dia}</button>
           })}
         </div>
       </div>
@@ -71,9 +71,9 @@ export default function PublicationAvailability({ periodos, onChange, onSelectio
       {inicio && <button type="button" onClick={descartarSeleccion} className={textButtonStyles}>Cancelar selección</button>}
     </div>
     <div>
-      <div className="flex flex-wrap gap-2.5 text-muted text-[11px]"><span className="text-gold">● Disponible para reservar</span><span>○ No publicado</span></div>
+      <div className="flex flex-wrap gap-2.5 text-muted text-[0.6875rem]"><span className="text-gold">● Disponible para reservar</span><span>○ No publicado</span></div>
       {periodos.length === 0 && <p className={helpStyles}>Sin períodos seleccionados.</p>}
-      {periodos.map((periodo, indice) => <div key={periodo.idDisponibilidad ?? periodo.clave ?? indice} className="flex items-center gap-1.5 mt-2.5 p-2 border border-border rounded-[4px] text-[11px]">
+      {periodos.map((periodo, indice) => <div key={periodo.idDisponibilidad ?? periodo.clave ?? indice} className="flex items-center gap-1.5 mt-2.5 p-2 border border-border rounded-[0.25rem] text-[0.6875rem]">
         <PublicationIcon nombre="calendar" />
         <span className="flex-1">Del {fechaTexto(periodo.desde)} al {fechaTexto(periodo.hasta)}</span>
         <button type="button" className="grid place-items-center border-0 bg-transparent p-1" aria-label={'Quitar período del ' + fechaTexto(periodo.desde) + ' al ' + fechaTexto(periodo.hasta)}

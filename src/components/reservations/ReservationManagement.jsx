@@ -14,17 +14,17 @@ export default function ReservationManagement({ reserva, fechaActual, alCancelar
   }
 
   return (
-    <section className="mt-6 p-6 bg-card border border-border rounded-lg phone:p-[18px]" aria-labelledby="reservation-management-title">
-      <h2 id="reservation-management-title" className="font-sans text-[10px] leading-[1.5] tracking-[0.05em] uppercase text-muted">
+    <section className="mt-6 p-6 bg-card border border-border rounded-lg phone:p-[1.125rem]" aria-labelledby="reservation-management-title">
+      <h2 id="reservation-management-title" className="font-sans text-[0.625rem] leading-[1.5] tracking-[0.05em] uppercase text-muted">
         Gestión de la reserva
       </h2>
-      <p className="mt-3 text-[12px] leading-[1.7] text-muted">
+      <p className="mt-3 text-[0.75rem] leading-[1.7] text-muted">
         {mensajes[reserva.estado] || 'Esta reserva no se puede cancelar.'}
       </p>
 
       {/* Abrimos la confirmación solamente si se puede cancelar. */}
       {puedeCancelar && (
-        <button type="button" className="w-full mt-4 px-4 py-3 bg-card border border-red-200 rounded-[4px] text-[11px] text-red-700" onClick={alCancelar}>
+        <button type="button" className="w-full mt-4 px-4 py-3 bg-card border border-red-200 rounded-[0.25rem] text-[0.6875rem] text-red-700" onClick={alCancelar}>
           Cancelar reserva
         </button>
       )}

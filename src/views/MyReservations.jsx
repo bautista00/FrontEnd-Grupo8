@@ -18,10 +18,10 @@ export default function MyReservations() {
     <main className="flex-1 w-full max-w-page mx-auto px-(--gutter) pt-10 pb-16">
       {/* Cabecera de la vista. */}
       <header className="mb-6">
-        <h1 className="text-[36px] leading-[1.2] text-ink">
+        <h1 className="text-[2.25rem] leading-[1.2] text-ink">
           Mis reservas
         </h1>
-        <p className="mt-2 text-[12px] text-muted">
+        <p className="mt-2 text-[0.75rem] text-muted">
           Consultá el estado de tus alquileres, las fechas y los pagos.
         </p>
       </header>

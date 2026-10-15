@@ -22,9 +22,9 @@ export default function App() {
         <Route path="/mis-reservas" element={<MyReservations />} />
         <Route path="/mis-reservas/detalle" element={<ReservationDetails />} />
         <Route path="/mis-publicaciones" element={<MyPublications />} />
+        {/* Las key distintas hacen que React arme un formulario nuevo al pasar de crear a editar */}
         <Route path="/publicaciones/nueva" element={<PublicationForm key="crear" />} />
-        <Route path="/publicaciones/editar" element={<PublicationForm key="editar" modo="editar" />} />
-        <Route path="/publicaciones/:id/editar" element={<PublicationForm key="editar-id" modo="editar" />} />
+        <Route path="/publicaciones/:id/editar" element={<PublicationForm key="editar" modo="editar" />} />
         <Route path="*" element={
           <main className="flex-1 w-full max-w-page mx-auto px-(--gutter) py-14">
             <h1 className="text-3xl">Página no encontrada</h1>

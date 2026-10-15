@@ -56,12 +56,12 @@ export default function Home() {
       />
 
       <section id="fleet-results">
-        <div className="flex flex-col items-stretch gap-4 mb-5 min-[900px]:flex-row min-[900px]:items-center min-[900px]:justify-between">
+        <div className="flex flex-col items-stretch gap-4 mb-5 min-[56.25rem]:flex-row min-[56.25rem]:items-center min-[56.25rem]:justify-between">
           <CategoryFilter tipos={TIPOS} tipoId={tipoId} onChange={setTipoId} />
           <SortSelect value={sortBy} onChange={setSortBy} />
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-6 text-[12px] text-muted">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-6 text-[0.75rem] text-muted">
           <span>
             Mostrando <strong className="text-ink">{vehiculos.length}</strong> unidades disponibles bajo estándares de
             certificación
@@ -70,7 +70,7 @@ export default function Home() {
           {hayFiltros && (
             <button
               type="button"
-              className="inline-flex items-center gap-1 p-0 bg-transparent border-0 text-[12px] text-inherit transition-[color] hover:text-ink"
+              className="inline-flex items-center gap-1 p-0 bg-transparent border-0 text-[0.75rem] text-inherit transition-[color] hover:text-ink"
               onClick={resetFiltros}
             >
               <RotateCcwIcon size={12} />
@@ -80,7 +80,7 @@ export default function Home() {
         </div>
 
         {vehiculos.length === 0 ? (
-          <p className="py-12 text-center text-[14px] text-muted">No se encontraron vehículos para esta selección.</p>
+          <p className="py-12 text-center text-[0.875rem] text-muted">No se encontraron vehículos para esta selección.</p>
         ) : (
           <VehicleGrid items={vehiculos} />
         )}

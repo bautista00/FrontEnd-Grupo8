@@ -5,10 +5,10 @@ export default function ReservationHistory({ reservas, publicaciones }) {
   return (
     <section aria-labelledby="reservation-history-title">
       <header className="flex items-center justify-between gap-3 mb-4">
-        <h2 id="reservation-history-title" className="text-[20px] leading-[1.4] text-ink">
+        <h2 id="reservation-history-title" className="text-[1.25rem] leading-[1.4] text-ink">
           Historial de reservas
         </h2>
-        <span className="text-[10px] text-muted">
+        <span className="text-[0.625rem] text-muted">
           {reservas.length} {reservas.length === 1 ? 'reserva' : 'reservas'}
         </span>
       </header>

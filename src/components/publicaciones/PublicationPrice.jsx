@@ -14,6 +14,6 @@ export default function PublicationPrice({ valores, onChange }) {
           className={inputStyles} value={valores.descuentoPorcentaje} onChange={onChange} />
       </FormField>
     </div>
-    <p className="mt-4 bg-paper border border-border rounded-[4px] p-3 text-[12px] text-soft">El cliente ve <strong>{precio === null ? '—' : formatARS(precio)}</strong> por día.</p>
+    <p className="mt-4 bg-paper border border-border rounded-[0.25rem] p-3 text-[0.75rem] text-soft">El cliente ve <strong>{precio === null ? '—' : formatARS(precio)}</strong> por día.</p>
   </>
 }

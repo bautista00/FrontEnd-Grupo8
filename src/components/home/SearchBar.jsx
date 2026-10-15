@@ -4,11 +4,11 @@ import { btnBase, btnDark } from '../ui/buttonStyles'
 const FIELD = 'flex-1 block px-4 py-3 cursor-pointer'
 // Del segundo campo en adelante hay un separador (arriba en mobile, a la izquierda en desktop).
 const FIELD_SEPARATED = `${FIELD} border-t border-border lg:border-t-0 lg:border-l`
-const LABEL = 'block mb-1 text-[10px] font-bold tracking-[0.1em] uppercase text-muted'
+const LABEL = 'block mb-1 text-[0.625rem] font-bold tracking-[0.1em] uppercase text-muted'
 const CONTROL = 'relative flex items-center gap-2.5'
 const ICON = 'shrink-0 text-gold'
 const INPUT =
-  'w-full p-0 bg-transparent border-0 text-[13px] font-medium text-ink cursor-pointer focus:outline-none'
+  'w-full p-0 bg-transparent border-0 text-[0.8125rem] font-medium text-ink cursor-pointer focus:outline-none'
 
 export default function SearchBar({
   zonas,

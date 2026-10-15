@@ -13,7 +13,7 @@ export default function ReservationResult() {
   if (!reserva || !pago || !publicacion) {
     return (
       <main className="flex-1 w-full max-w-page mx-auto px-(--gutter) py-10">
-        <h1 className="text-[30px] text-ink">No hay una reserva para mostrar.</h1>
+        <h1 className="text-[1.875rem] text-ink">No hay una reserva para mostrar.</h1>
       </main>
     )
   }

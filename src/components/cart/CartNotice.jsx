@@ -22,12 +22,12 @@ export default function CartNotice({ segundosRestantes }) {
   }
 
   return (
-    <div className={`flex items-center justify-between gap-4 p-4 mb-6 border rounded-[6px] text-[12px] phone:flex-wrap ${clasesAviso}`}>
+    <div className={`flex items-center justify-between gap-4 p-4 mb-6 border rounded-[0.375rem] text-[0.75rem] phone:flex-wrap ${clasesAviso}`}>
       <p>{textoAviso}</p>
       {/* Al vencer mostramos el botón en lugar del contador. */}
       {estaVencido ? (
         // Se habilitará cuando conectemos la retención al backend.
-        <button type="button" className="flex shrink-0 items-center justify-center gap-2 w-auto px-3 py-[9px] bg-ink border border-ink rounded-[4px] text-[11px] text-white disabled:cursor-not-allowed phone:w-full" disabled>
+        <button type="button" className="flex shrink-0 items-center justify-center gap-2 w-auto px-3 py-[0.5625rem] bg-ink border border-ink rounded-[0.25rem] text-[0.6875rem] text-white disabled:cursor-not-allowed phone:w-full" disabled>
           Volver a retener las fechas
         </button>
       ) : (

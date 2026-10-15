@@ -175,22 +175,22 @@ export default function Cart() {
     // Navbar y Footer siguen apareciendo porque App.jsx los muestra fuera de esta vista.
     return (
       <main className="flex flex-1 items-start justify-center w-full max-w-page mx-auto px-(--gutter) pt-16 pb-16 phone:pt-7 phone:pb-10">
-        <section className="w-full max-w-[420px] px-8 py-10 bg-card border border-border rounded-lg text-center phone:px-5 phone:py-8" aria-labelledby="cart-empty-title">
+        <section className="w-full max-w-[26.25rem] px-8 py-10 bg-card border border-border rounded-lg text-center phone:px-5 phone:py-8" aria-labelledby="cart-empty-title">
           {/* Reutilizamos el mismo ícono que ya existe para el carrito en Navbar. */}
           <CartIcon size={48} className="block mx-auto mb-5 text-disabled" />
-          <h1 id="cart-empty-title" className="text-[26px] leading-[1.3] text-ink phone:text-[24px]">
+          <h1 id="cart-empty-title" className="text-[1.625rem] leading-[1.3] text-ink phone:text-[1.5rem]">
             {mensaje ? 'No pudimos cargar tu carrito' : 'Tu carrito está vacío'}
           </h1>
           {/* Un error de consulta no significa que el carrito esté vacío. */}
           {mensaje ? (
-            <p role="alert" className="mt-3 p-3 bg-red-50 border border-red-200 rounded-[4px] text-[12px] leading-[1.7] text-red-700">{mensaje}</p>
+            <p role="alert" className="mt-3 p-3 bg-red-50 border border-red-200 rounded-[0.25rem] text-[0.75rem] leading-[1.7] text-red-700">{mensaje}</p>
           ) : (
-            <p className="mt-3 text-[12px] leading-[1.7] text-muted">
+            <p className="mt-3 text-[0.75rem] leading-[1.7] text-muted">
               Cuando elijas un auto y sus fechas, lo retenemos acá por 15 minutos mientras confirmás.
             </p>
           )}
           {/* Link navega a la ruta del catálogo que ya está registrada en App.jsx. */}
-          <Link to="/" className="flex items-center justify-center gap-2 w-full mt-6 px-4 py-3 bg-ink border border-ink rounded-[4px] text-[11px] text-white">Explorar catálogo de vehículos</Link>
+          <Link to="/" className="flex items-center justify-center gap-2 w-full mt-6 px-4 py-3 bg-ink border border-ink rounded-[0.25rem] text-[0.6875rem] text-white">Explorar catálogo de vehículos</Link>
         </section>
       </main>
     )
@@ -206,10 +206,10 @@ export default function Cart() {
     <main className="flex-1 w-full max-w-page mx-auto px-(--gutter) pt-10 pb-16 phone:pt-7 phone:pb-10">
       <header className="flex items-center justify-between gap-4 mb-6 phone:flex-col phone:items-start">
         <div>
-          <h1 className="text-[36px] leading-[1.2] text-ink phone:text-[30px]">Tu carrito</h1>
-          <p className="mt-1.5 text-[12px] text-muted">Podés tener un auto por vez en el carrito.</p>
+          <h1 className="text-[2.25rem] leading-[1.2] text-ink phone:text-[1.875rem]">Tu carrito</h1>
+          <p className="mt-1.5 text-[0.75rem] text-muted">Podés tener un auto por vez en el carrito.</p>
         </div>
-        <span className="text-[10px] tracking-[0.06em] uppercase text-muted">Paso 1 de 2: revisión</span>
+        <span className="text-[0.625rem] tracking-[0.06em] uppercase text-muted">Paso 1 de 2: revisión</span>
       </header>
 
       {/* El componente decide qué aviso y contador mostrar. */}

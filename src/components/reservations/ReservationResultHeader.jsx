@@ -20,15 +20,15 @@ export default function ReservationResultHeader({ reserva, pago }) {
             <path d="m5 12 4 4L19 6" />
           </svg>
         ) : (
-          <span className="text-[26px]">!</span>
+          <span className="text-[1.625rem]">!</span>
         )}
       </div>
-      <h1 className="text-[36px] leading-[1.3] text-ink phone:text-[28px]">
+      <h1 className="text-[2.25rem] leading-[1.3] text-ink phone:text-[1.75rem]">
         {estaConfirmada ? '¡Tu reserva está confirmada!' : 'Reserva creada'}
       </h1>
-      <p className="max-w-[640px] mt-3 text-[12px] leading-[1.8] text-soft">{mensaje}</p>
+      <p className="max-w-[40rem] mt-3 text-[0.75rem] leading-[1.8] text-soft">{mensaje}</p>
 
-      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 mt-6 px-5 py-3 bg-card border border-border rounded-lg text-[11px] phone:px-4">
+      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 mt-6 px-5 py-3 bg-card border border-border rounded-lg text-[0.6875rem] phone:px-4">
         {/* Mostramos el idReserva, sin inventar otro código. */}
         <span className="text-muted">Reserva <strong className="ml-2 text-ink">#{reserva.idReserva}</strong></span>
         <span className={`inline-flex items-center gap-1.5 ${estaConfirmada ? 'text-emerald-700' : 'text-amber-700'}`}>

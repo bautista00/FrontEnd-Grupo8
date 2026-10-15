@@ -4,7 +4,7 @@ import EmptyReservations from "./EmptyReservations"
 export default function UpcomingReservations({ reservas, publicaciones, pagos }) {
   return (
     <section className="mb-12" aria-labelledby="upcoming-reservations-title">
-      <h2 id="upcoming-reservations-title" className="mb-4 text-[20px] leading-[1.4] text-ink">
+      <h2 id="upcoming-reservations-title" className="mb-4 text-[1.25rem] leading-[1.4] text-ink">
         Próximos alquileres
       </h2>
 

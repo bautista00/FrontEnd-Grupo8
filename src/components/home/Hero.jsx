@@ -5,7 +5,7 @@ export default function Hero() {
         Movilidad privada <br />
         <em className="italic text-gold-soft">sin compromisos.</em>
       </h1>
-      <p className="max-w-2xl text-[15px] leading-[1.7] text-soft sm:text-[16px]">
+      <p className="max-w-2xl text-[0.9375rem] leading-[1.7] text-soft sm:text-[1rem]">
         Alquiler directo entre propietarios seleccionados y miembros calificados. Cada unidad es
         entregada con rigurosa inspección técnica, póliza Todo Riesgo y atención concierge personal.
       </p>

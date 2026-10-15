@@ -5,7 +5,7 @@ import { btnBase, btnDark, btnSize } from '../ui/buttonStyles'
 const APP_NAME = 'Volanta'
 
 const NAV_LINK_BASE =
-  'px-3 py-2 rounded-[4px] text-[11px] font-medium tracking-[0.08em] uppercase whitespace-nowrap transition-[background-color,color] hover:text-ink'
+  'px-3 py-2 rounded-[0.25rem] text-[0.6875rem] font-medium tracking-[0.08em] uppercase whitespace-nowrap transition-[background-color,color] hover:text-ink'
 const NAV_LINK_IDLE = `${NAV_LINK_BASE} text-soft`
 const NAV_LINK_ACTIVE = `${NAV_LINK_BASE} bg-surface text-ink`
 
@@ -23,9 +23,9 @@ const NAV_LINKS = [
 export default function Navbar() {
   const { pathname } = useLocation()
   return (
-    <header className="z-10 bg-card border-b border-border min-[901px]:sticky min-[901px]:top-0">
+    <header className="z-10 bg-card border-b border-border min-[56.3125rem]:sticky min-[56.3125rem]:top-0">
       <div className="max-w-page mx-auto px-(--gutter) min-h-16 flex flex-wrap items-center gap-x-8 gap-y-2 tablet:pt-3 tablet:pb-2">
-        <Link to="/" className="font-serif text-[20px] font-medium tracking-[0.3em] uppercase tablet:flex-1">
+        <Link to="/" className="font-serif text-[1.25rem] font-medium tracking-[0.3em] uppercase tablet:flex-1">
           {APP_NAME}
         </Link>
 
@@ -52,7 +52,7 @@ export default function Navbar() {
             aria-label="Carrito"
           >
             <CartIcon size={20} />
-            {CANTIDAD_CARRITO > 0 && <span className="absolute top-0 right-0 min-w-4 h-4 px-1 rounded-full bg-gold text-white text-[10px] font-bold leading-4 text-center">{CANTIDAD_CARRITO}</span>}
+            {CANTIDAD_CARRITO > 0 && <span className="absolute top-0 right-0 min-w-4 h-4 px-1 rounded-full bg-gold text-white text-[0.625rem] font-bold leading-4 text-center">{CANTIDAD_CARRITO}</span>}
           </button>
 
           <a href="#" className={NAV_LINK_IDLE}>
