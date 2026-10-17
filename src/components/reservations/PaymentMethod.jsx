@@ -36,10 +36,10 @@ export default function PaymentMethod({ metodoPago, alCambiar }) {
           <span className="min-w-0">
             <span className="flex flex-wrap items-center justify-between gap-2">
               <span className="block text-[0.75rem] font-semibold leading-[1.6] text-ink">Efectivo al retirar el auto</span>
-              <span className="px-2 py-[0.1875rem] bg-surface rounded-[0.1875rem] text-[0.5625rem] uppercase text-soft">Requiere aprobación</span>
+              <span className="px-2 py-[0.1875rem] bg-surface rounded-[0.1875rem] text-[0.5625rem] uppercase text-soft">Confirmación automática</span>
             </span>
             <span className="block mt-1 text-[0.6875rem] leading-[1.6] text-muted">
-              Pagás el total en efectivo al retirar el auto. La reserva queda pendiente hasta que un administrador de Volanta la apruebe.
+              La reserva se confirma automáticamente. Pagás el total en efectivo al retirar el auto.
             </span>
           </span>
         </label>

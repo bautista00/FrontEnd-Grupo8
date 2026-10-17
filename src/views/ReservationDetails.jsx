@@ -1,12 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import SelectedVehicle from "../components/reservations/SelectedVehicle"
 import ReservationItinerary from "../components/reservations/ReservationItinerary"
 import ReservationPaymentSummary from "../components/reservations/ReservationPaymentSummary"
 import ReservationManagement from "../components/reservations/ReservationManagement"
 import ConfirmCancellation from '../components/reservations/ConfirmCancellation'
-import { RESERVAS, PAGOS } from "../data/reservations"
-import { VEHICULOS } from '../data/vehiculos'
 
 // Colores según los estados del backend.
 const ESTADOS_RESERVA = {
@@ -18,38 +16,173 @@ const ESTADOS_RESERVA = {
 }
 
 export default function ReservationDetails() {
+  // Guardamos los datos que recibimos del backend.
+  const [reserva, actualizarReserva] = useState(null)
+  const [vehiculo, actualizarVehiculo] = useState(null)
+  const [pago, actualizarPago] = useState(null)
+  const [mensaje, actualizarMensaje] = useState('')
+
   // Controla si aparece la confirmación de cancelación.
   const [mostrarModalCancelar, actualizarModalCancelar] = useState(false)
+  const [cancelando, actualizarCancelando] = useState(false)
+  const [mensajeCancelar, actualizarMensajeCancelar] = useState('')
 
   const abrirModalCancelar = () => {
+    actualizarMensaje('')
+    actualizarMensajeCancelar('')
     actualizarModalCancelar(true)
   }
 
   // Cerramos el modal sin modificar la reserva.
   const cerrarModalCancelar = () => {
+    if (cancelando) return
+
+    actualizarMensajeCancelar('')
     actualizarModalCancelar(false)
   }
 
   // Leemos el ID que envió el link de la tarjeta.
   const ubicacion = useLocation()
   const idReserva = ubicacion.state?.idReserva
-  // Buscamos la reserva seleccionada entre los ejemplos.
-  const reserva = RESERVAS.find((reserva) => reserva.idReserva === idReserva)
-  // Fecha fija para probar las condiciones de la maqueta.
-  const fechaActual = '2026-10-08'
 
-  if (!reserva) {
+  useEffect(() => {
+    if (!idReserva) return
+
+    const token = localStorage.getItem('jwtToken')
+
+    if (!token) {
+      actualizarMensaje('Necesitás iniciar sesión para consultar tu reserva.')
+      return
+    }
+
+    actualizarMensaje('')
+
+    const opciones = {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` },
+    }
+
+    // Primero consultamos la reserva para conocer su publicación.
+    fetch(`http://localhost:8080/reservas/${idReserva}`, opciones)
+      .then((respuesta) => {
+        if (respuesta.status === 204) {
+          throw new Error('No se encontró la reserva')
+        }
+        if (!respuesta.ok) {
+          throw new Error('No se pudo consultar la reserva')
+        }
+        return respuesta.json()
+      })
+      .then((datosReserva) => {
+        actualizarReserva(datosReserva)
+        return fetch(`http://localhost:8080/publicaciones/${datosReserva.idPublicacion}`, opciones)
+      })
+      .then((respuesta) => {
+        if (!respuesta.ok || respuesta.status === 204) {
+          throw new Error('No se pudo consultar la publicación')
+        }
+        return respuesta.json()
+      })
+      .then((datosPublicacion) => {
+        actualizarVehiculo(datosPublicacion)
+        return fetch(`http://localhost:8080/pagos/reserva/${idReserva}`, opciones)
+      })
+      .then((respuesta) => {
+        if (!respuesta.ok || respuesta.status === 204) {
+          throw new Error('No se pudo consultar el pago')
+        }
+        return respuesta.json()
+      })
+      .then((datosPago) => {
+        actualizarPago(datosPago)
+      })
+      .catch((error) => {
+        console.error('Error al cargar el detalle de la reserva:', error)
+        actualizarMensaje('No pudimos cargar todos los datos de tu reserva. Intentá nuevamente.')
+      })
+  }, [idReserva])
+
+  const cancelarReserva = () => {
+    if (cancelando) return
+
+    const token = localStorage.getItem('jwtToken')
+
+    if (!token) {
+      actualizarMensajeCancelar('Necesitás iniciar sesión para cancelar tu reserva.')
+      return
+    }
+
+    actualizarCancelando(true)
+    actualizarMensajeCancelar('')
+
+    // Consultamos qué usuario está realizando la cancelación.
+    fetch('http://localhost:8080/usuarios/me', {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then((respuesta) => {
+        if (!respuesta.ok || respuesta.status === 204) {
+          throw new Error('No se pudo consultar el usuario')
+        }
+
+        return respuesta.json()
+      })
+      .then((datosUsuario) => {
+        // Pedimos al backend que cambie el estado de la reserva.
+        return fetch(
+          `http://localhost:8080/reservas/${idReserva}/cancelar?idUsuario=${datosUsuario.idUsuario}`,
+          {
+            method: 'PUT',
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        )
+      })
+      .then((respuesta) => {
+        if (!respuesta.ok || respuesta.status === 204) {
+          throw new Error('No se pudo cancelar la reserva')
+        }
+
+        return respuesta.json()
+      })
+      .then((reservaCancelada) => {
+        // La respuesta contiene la reserva con su nuevo estado.
+        actualizarReserva(reservaCancelada)
+        actualizarModalCancelar(false)
+        actualizarMensaje('Tu reserva se canceló correctamente.')
+      })
+      .catch((error) => {
+        console.error('Error al cancelar la reserva:', error)
+        actualizarMensajeCancelar('No pudimos cancelar tu reserva. Intentá nuevamente.')
+      })
+      .finally(() => {
+        actualizarCancelando(false)
+      })
+  }
+
+  if (!idReserva || !reserva || !vehiculo || !pago) {
     return (
       <main className="flex-1 w-full max-w-page mx-auto px-(--gutter) pt-10 pb-16">
-        <h1 className="text-[1.875rem] text-ink">No hay una reserva para mostrar.</h1>
+        <Link to="/mis-reservas" className="inline-flex items-center gap-2 mb-6 text-[0.6875rem] text-soft">
+          <span aria-hidden="true">←</span>
+          Volver a mis reservas
+        </Link>
+        <h1 className="text-[1.875rem] text-ink">
+          {idReserva ? 'Detalle de tu reserva' : 'No hay una reserva para mostrar.'}
+        </h1>
+        {mensaje && (
+          <p role="alert" className="mt-4 text-[0.75rem] text-red-700">{mensaje}</p>
+        )}
       </main>
     )
   }
 
-  // Relacionamos la reserva con su publicación usando idPublicacion.
-  const vehiculo = VEHICULOS.find((vehiculo) => vehiculo.idPublicacion === reserva.idPublicacion)
-  // Cada pago se relaciona con su reserva mediante idReserva.
-  const pago = PAGOS.find((pago) => pago.idReserva === reserva.idReserva)
+  // Usamos la fecha local de hoy para evaluar si se puede cancelar.
+  const hoy = new Date()
+  const fechaActual = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`
   const estadoVisual = ESTADOS_RESERVA[reserva.estado]
   const fechaCreacionTexto = new Intl.DateTimeFormat('es-AR', {
     day: 'numeric',
@@ -82,19 +215,17 @@ export default function ReservationDetails() {
         </p>
       </header>
 
+      {mensaje && (
+        <p role="status" className="mb-4 text-[0.75rem] text-emerald-700">
+          {mensaje}
+        </p>
+      )}
+
       <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-start gap-6 tablet:grid-cols-1">
         <div className="min-w-0">
           {/* Reutilizamos el componente de Confirmar reserva. */}
-          {vehiculo ? (
-            <>
-              <SelectedVehicle vehiculo={vehiculo} titulo="Vehículo reservado" />
-              <ReservationItinerary datos={reserva} publicacion={vehiculo} mostrarMapa />
-            </>
-          ) : (
-            <p className="p-6 bg-card border border-border rounded-lg text-[0.75rem] text-muted">
-              No se encontraron los datos del vehículo reservado.
-            </p>
-          )}
+          <SelectedVehicle vehiculo={vehiculo} titulo="Vehículo reservado" />
+          <ReservationItinerary datos={reserva} publicacion={vehiculo} mostrarMapa />
         </div>
         <aside className="min-w-0">
           <ReservationPaymentSummary reserva={reserva} pago={pago} />
@@ -104,7 +235,13 @@ export default function ReservationDetails() {
 
       {/* Mostramos el modal con los datos de la reserva elegida. */}
       {mostrarModalCancelar && (
-        <ConfirmCancellation reserva={reserva} alCerrar={cerrarModalCancelar} />
+        <ConfirmCancellation
+          reserva={reserva}
+          alCerrar={cerrarModalCancelar}
+          alConfirmar={cancelarReserva}
+          cancelando={cancelando}
+          mensaje={mensajeCancelar}
+        />
       )}
     </main>
   )

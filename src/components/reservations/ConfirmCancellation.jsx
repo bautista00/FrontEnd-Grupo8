@@ -1,4 +1,4 @@
-export default function ConfirmCancellation({ reserva, alCerrar }) {
+export default function ConfirmCancellation({ reserva, alCerrar, alConfirmar, cancelando, mensaje }) {
   // Las fechas se reciben por props; usamos hora local para conservar el día.
   const formateadorFecha = new Intl.DateTimeFormat('es-AR', {
     weekday: 'long',
@@ -18,7 +18,7 @@ export default function ConfirmCancellation({ reserva, alCerrar }) {
         className="relative w-full max-w-[35rem] max-h-[calc(100dvh-2rem)] overflow-y-auto p-8 bg-card border border-border rounded-lg shadow-md phone:p-6"
       >
         {/* La cruz cierra el modal igual que Mantener reserva. */}
-        <button type="button" aria-label="Cerrar confirmación" className="absolute top-4 right-4 grid place-items-center w-8 h-8 p-0 bg-transparent border-0 text-[1.625rem] leading-none text-muted" onClick={alCerrar}>
+        <button type="button" aria-label="Cerrar confirmación" className="absolute top-4 right-4 grid place-items-center w-8 h-8 p-0 bg-transparent border-0 text-[1.625rem] leading-none text-muted" onClick={alCerrar} disabled={cancelando}>
           <span aria-hidden="true">×</span>
         </button>
 
@@ -36,12 +36,18 @@ export default function ConfirmCancellation({ reserva, alCerrar }) {
           Las fechas del {fechaInicioTexto} al {fechaFinTexto} quedan libres para otras personas. No se puede deshacer.
         </p>
 
+        {mensaje && (
+          <p role="alert" className="mt-4 text-[0.75rem] text-red-700">
+            {mensaje}
+          </p>
+        )}
+
         <div className="flex flex-wrap justify-end gap-3 mt-8 phone:flex-col">
-          <button type="button" className="px-5 py-3 bg-card border border-border rounded-[0.25rem] text-[0.75rem] text-soft" onClick={alCerrar}>
+          <button type="button" className="px-5 py-3 bg-card border border-border rounded-[0.25rem] text-[0.75rem] text-soft" onClick={alCerrar} disabled={cancelando}>
             No, mantener reserva
           </button>
-          <button type="button" className="px-5 py-3 bg-red-600 border border-red-600 rounded-[0.25rem] text-[0.75rem] text-white disabled:cursor-not-allowed" disabled>
-            Sí, cancelar reserva
+          <button type="button" className="px-5 py-3 bg-red-600 border border-red-600 rounded-[0.25rem] text-[0.75rem] text-white disabled:cursor-not-allowed" onClick={alConfirmar} disabled={cancelando}>
+            {cancelando ? 'Cancelando...' : 'Sí, cancelar reserva'}
           </button>
         </div>
       </div>

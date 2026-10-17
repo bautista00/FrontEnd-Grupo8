@@ -213,7 +213,10 @@ export default function Cart() {
       </header>
 
       {/* El componente decide qué aviso y contador mostrar. */}
-      <CartNotice segundosRestantes={segundosRestantes} />
+      <CartNotice
+        segundosRestantes={segundosRestantes}
+        idPublicacion={carrito.idPublicacion}
+      />
 
       {/* Conservamos los datos para mostrar qué carrito venció. */}
       <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-start gap-6 tablet:grid-cols-1">

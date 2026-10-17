@@ -1,5 +1,7 @@
-export default function CartNotice({ segundosRestantes }) {
-  // El tiempo llega por props; todavía es simulado.
+import { Link } from 'react-router-dom'
+
+export default function CartNotice({ segundosRestantes, idPublicacion }) {
+  // El tiempo llega por props desde el carrito.
   const tiempo = Math.max(0, segundosRestantes)
   const estaVencido = tiempo === 0
   const estaPorVencer = tiempo > 0 && tiempo <= 120
@@ -24,14 +26,14 @@ export default function CartNotice({ segundosRestantes }) {
   return (
     <div className={`flex items-center justify-between gap-4 p-4 mb-6 border rounded-[0.375rem] text-[0.75rem] phone:flex-wrap ${clasesAviso}`}>
       <p>{textoAviso}</p>
-      {/* Al vencer mostramos el botón en lugar del contador. */}
+      {/* Al vencer volvemos al detalle de la misma publicación. */}
       {estaVencido ? (
-        // Se habilitará cuando conectemos la retención al backend.
-        <button type="button" className="flex shrink-0 items-center justify-center gap-2 w-auto px-3 py-[0.5625rem] bg-ink border border-ink rounded-[0.25rem] text-[0.6875rem] text-white disabled:cursor-not-allowed phone:w-full" disabled>
-          Volver a retener las fechas
-        </button>
+        // Esta ruta se completará cuando esté disponible la vista de detalle.
+        <Link to={`/publicaciones/${idPublicacion}`} className="flex shrink-0 items-center justify-center gap-2 w-auto px-3 py-[0.5625rem] bg-ink border border-ink rounded-[0.25rem] text-[0.6875rem] text-white phone:w-full">
+          Volver a elegir fechas
+        </Link>
       ) : (
-        <span className="font-bold tabular-nums whitespace-nowrap" aria-label={`Tiempo restante de ejemplo: ${minutos} minutos y ${segundos} segundos`}>
+        <span className="font-bold tabular-nums whitespace-nowrap" aria-label={`Tiempo restante: ${minutos} minutos y ${segundos} segundos`}>
           {tiempoRestante}
         </span>
       )}

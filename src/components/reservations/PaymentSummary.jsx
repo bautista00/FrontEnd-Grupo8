@@ -34,7 +34,7 @@ export default function PaymentSummary({ carrito, metodoPago, alConfirmar }) {
       <p className="p-3 bg-paper border border-border rounded-[0.25rem] text-[0.6875rem] leading-[1.6] text-soft">
         {esMercadoPago
           ? 'Al confirmar, te llevaremos a Mercado Pago para completar el pago.'
-          : 'La reserva quedará pendiente hasta que un administrador apruebe el pago en efectivo.'}
+          : 'Al confirmar, tu reserva quedará confirmada automáticamente. Pagás el total en efectivo al retirar el auto.'}
       </p>
       <p className="mt-3 p-3 border border-border rounded-[0.25rem] text-[0.6875rem] leading-[1.6] text-soft">
         {estaVencido
