@@ -5,6 +5,9 @@ import Navbar from './components/layout/Navbar'
 import Home from './views/Home'
 import MyPublications from './views/MyPublications'
 import PublicationForm from './views/PublicationForm'
+import PublicationDetail from './views/PublicationDetail'
+import Login from './views/Login'
+import Register from './views/Register'
 import Cart from "./views/Cart"
 import ConfirmReservation from "./views/ConfirmReservation"
 import MyReservations from "./views/MyReservations"
@@ -20,12 +23,16 @@ export default function App() {
       <Navbar />
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/registro" element={<Register />} />
         <Route path="/mis-reservas" element={<MyReservations />} />
         <Route path="/mis-reservas/detalle" element={<ReservationDetails />} />
         <Route path="/mis-publicaciones" element={<MyPublications />} />
         {/* Las key distintas hacen que React arme un formulario nuevo al pasar de crear a editar */}
         <Route path="/publicaciones/nueva" element={<PublicationForm key="crear" />} />
         <Route path="/publicaciones/:id/editar" element={<PublicationForm key="editar" modo="editar" />} />
+        {/* Detalle público de una publicación, al que se llega desde el catálogo. */}
+        <Route path="/publicaciones/:id" element={<PublicationDetail />} />
         <Route path="*" element={
           <main className="flex-1 w-full max-w-page mx-auto px-(--gutter) py-14">
             <h1 className="text-3xl">Página no encontrada</h1>

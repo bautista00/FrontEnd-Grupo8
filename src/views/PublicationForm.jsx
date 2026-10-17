@@ -15,33 +15,7 @@ import PublicationMessage from '../components/publicaciones/PublicationMessage'
 import { tieneCoordenadas } from '../components/publicaciones/ubicacion'
 import { valoresIniciales, datosPublicacion, datosUbicacion, periodoDesdeApi, cambiaronDatos, cambiaronPeriodos, validarFormulario } from '../components/publicaciones/publicationFormData'
 
-const URL = 'http://localhost:8080'
-
-// GET al backend: devuelve el JSON o lanza un error si la respuesta no es OK
-function obtener(ruta, token) {
-  return fetch(URL + ruta, { headers: { Authorization: `Bearer ${token}` } })
-    .then((respuesta) => {
-      if (!respuesta.ok) throw new Error('No se pudo obtener la información del servidor.')
-      return respuesta.json()
-    })
-}
-
-// POST, PUT o DELETE al backend. Si falla, usamos el mensaje que manda el backend (si hay)
-function enviar(ruta, metodo, token, datos) {
-  return fetch(URL + ruta, {
-    method: metodo,
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: datos ? JSON.stringify(datos) : undefined,
-  }).then((respuesta) => {
-    if (!respuesta.ok) {
-      return respuesta.json()
-        .catch(() => ({}))
-        .then((error) => { throw new Error(error.message || 'No se pudo guardar. Intentá nuevamente.') })
-    }
-    // 204 = sin contenido (por ejemplo, al borrar)
-    return respuesta.status === 204 ? null : respuesta.json()
-  })
-}
+import { obtener, enviar } from '../utils/api'
 
 export default function PublicationForm({ modo = 'crear' }) {
   const { id } = useParams()

@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { formatARS, precioFinal } from '../../utils/formatters'
 import { CarIcon } from '../icons/Icons'
 import { btnBase, btnOutline, btnSize } from '../ui/buttonStyles'
@@ -8,7 +9,7 @@ const BADGE_TIPO = `${BADGE_BASE} bg-[rgba(21,17,13,0.85)] text-[0.5625rem]`
 const META_ITEM = "not-last:after:mx-1.5 not-last:after:content-['·']"
 const BADGE_DESCUENTO = `${BADGE_BASE} bg-gold text-[0.625rem]`
 
-export default function VehicleCard({ publicacion, onSelect }) {
+export default function VehicleCard({ publicacion }) {
   const descuento = Number(publicacion.descuentoPorcentaje) || 0
   const tieneDescuento = descuento > 0
 
@@ -50,13 +51,12 @@ export default function VehicleCard({ publicacion, onSelect }) {
             )}
           </div>
 
-          <button
-            type="button"
+          <Link
+            to={`/publicaciones/${publicacion.idPublicacion}`}
             className={`${btnBase} ${btnOutline} ${btnSize}`}
-            onClick={() => onSelect?.(publicacion)}
           >
             Ver detalle
-          </button>
+          </Link>
         </div>
       </div>
     </article>
