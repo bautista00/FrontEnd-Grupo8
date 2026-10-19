@@ -5,6 +5,8 @@ export const TIPOS = [
   { idTipoVehiculo: 2, nombre: 'SUV' },
   { idTipoVehiculo: 3, nombre: 'Deportivo' },
   { idTipoVehiculo: 4, nombre: 'Eléctrico' },
+  { idTipoVehiculo: 5, nombre: 'Hatchback' },
+  { idTipoVehiculo: 6, nombre: 'Pickup' },
 ]
 
 export const SORT_OPTIONS = [
@@ -119,5 +121,62 @@ export const VEHICULOS = [
     precioDia: 150000,
     descuentoPorcentaje: 0,
     fechaPublicacion: '2026-09-05',
+  },
+]
+
+const foto = (idFoto, orden) => ({ idFoto, url: ``, orden })
+
+export const MIS_VEHICULOS = [
+  {
+    idVehiculo: 1,
+    patente: 'AG114LM',
+    idTipoVehiculo: 2,
+    tipoVehiculo: 'SUV',
+    marca: 'Volkswagen',
+    modelo: 'Taos Highline',
+    anio: 2023,
+    color: 'Gris grafito',
+    cantidadAsientos: 5,
+    fotos: [foto(101, 1), foto(102, 2), foto(103, 3)],
+    publicacionActual: { idPublicacion: 104, estado: 'ACTIVA' },
+  },
+  {
+    idVehiculo: 2,
+    patente: 'AE820RT',
+    idTipoVehiculo: 5,
+    tipoVehiculo: 'Hatchback',
+    marca: 'Peugeot',
+    modelo: '208 Feline',
+    anio: 2022,
+    color: 'Gris oscuro',
+    cantidadAsientos: 5,
+    fotos: [foto(201, 1), foto(202, 2)],
+    publicacionActual: { idPublicacion: 105, estado: 'PAUSADA' },
+  },
+  {
+    idVehiculo: 3,
+    patente: 'AE419KT',
+    idTipoVehiculo: 1,
+    tipoVehiculo: 'Sedán',
+    marca: 'BMW',
+    modelo: 'Serie 3 330i',
+    anio: 2022,
+    color: 'Blanco',
+    cantidadAsientos: 5,
+    fotos: [foto(301, 1), foto(302, 2), foto(303, 3)],
+    publicacionActual: null,
+  },
+  {
+    idVehiculo: 4,
+    patente: 'AE512RT',
+    idTipoVehiculo: 6,
+    tipoVehiculo: 'Pickup',
+    marca: 'Fiat',
+    modelo: 'Toro Volcano',
+    anio: 2021,
+    color: 'Blanco',
+    cantidadAsientos: 5,
+    fotos: [],
+    publicacionActual: null,
   },
 ]

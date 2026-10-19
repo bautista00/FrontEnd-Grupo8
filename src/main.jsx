@@ -9,7 +9,9 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     <APIProvider apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY} language="es" region="AR">
       <BrowserRouter>
-        <App />
+        <VehiclesProvider>
+          <App />
+        </VehiclesProvider>
       </BrowserRouter>
     </APIProvider>
   </StrictMode>,
