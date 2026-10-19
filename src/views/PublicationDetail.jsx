@@ -26,13 +26,17 @@ export default function PublicationDetail() {
   const [mensaje, setMensaje] = useState('')
 
   useEffect(() => {
-    // 1. La publicación; con sus ids pedimos el resto
-    obtener(`/publicaciones/${id}`, token)
-      .then((datos) => Promise.all([
+    Promise.all([
+      // 1. La publicación; con sus ids pedimos vehículo y ubicación
+      obtener(`/publicaciones/${id}`, token).then((datos) => Promise.all([
+        datos,
         obtener(`/vehiculo/${datos.idVehiculo}`, token),
         obtener(`/ubicaciones/${datos.idUbicacion}`, token),
-        obtener(`/disponibilidades/publicacion/${id}`, token),
-      ]).then(([vehiculo, ubicacion, periodos]) => {
+      ])),
+      // Los períodos solo necesitan el id de la URL: se piden al mismo tiempo
+      obtener(`/disponibilidades/publicacion/${id}`, token),
+    ])
+      .then(([[datos, vehiculo, ubicacion], periodos]) => {
         // 2. Juntamos todo en un solo objeto
         setPublicacion({
           ...vehiculo,
@@ -41,7 +45,7 @@ export default function PublicationDetail() {
           periodos: periodos.map((periodo) => ({ desde: periodo.fechaInicio, hasta: periodo.fechaFin })),
         })
         setError('')
-      }))
+      })
       .catch((error) => {
         console.error('Error al cargar la publicación', error)
         setError('No pudimos cargar la publicación. Intentá nuevamente.')

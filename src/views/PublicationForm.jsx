@@ -45,21 +45,25 @@ export default function PublicationForm({ modo = 'crear' }) {
   // Se incrementa para volver a pedir la publicación al backend
   const [recargar, setRecargar] = useState(0)
 
+  // El mensaje que viene de crear ya quedó en el estado: lo sacamos del historial
+  // para que, como los demás errores, no vuelva a aparecer al recargar la página
+  useEffect(() => {
+    if (location.state) navigate(location.pathname, { replace: true, state: null })
+  }, [location.state, location.pathname, navigate])
+
   // Al editar: pedimos la publicación con su vehículo, su ubicación y sus períodos
   useEffect(() => {
     if (!editando || !token) return
 
-    // 1. El usuario logueado y la publicación
-    Promise.all([obtener('/usuarios/me', token), obtener(`/publicaciones/${id}`, token)])
-      .then(([usuario, datos]) =>
+    // 1. La publicación (el backend rechaza si no es del usuario logueado)
+    obtener(`/publicaciones/${id}`, token)
+      .then((datos) =>
         // 2. Con los ids de la publicación pedimos el resto
         Promise.all([
           obtener(`/vehiculo/${datos.idVehiculo}`, token),
           obtener(`/ubicaciones/${datos.idUbicacion}`, token),
           obtener(`/disponibilidades/publicacion/${id}`, token),
         ]).then(([vehiculo, ubicacion, periodos]) => {
-          if (vehiculo.idUsuario !== usuario.idUsuario) throw new Error('Esta publicación no pertenece a tu cuenta.')
-
           // 3. Juntamos todo en un solo objeto
           const completa = {
             ...vehiculo,
