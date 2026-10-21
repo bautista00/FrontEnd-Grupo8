@@ -1,4 +1,4 @@
-import { href, Link, NavLink, useLocation } from 'react-router-dom'
+import { Link, NavLink, useLocation } from 'react-router-dom'
 import { CartIcon } from '../icons/Icons'
 import { btnBase, btnDark, btnSize } from '../ui/buttonStyles'
 

@@ -26,3 +26,19 @@ export function enviar(ruta, metodo, token, datos, mensajeError = 'No se pudo gu
     return respuesta.status === 204 ? null : respuesta.json()
   })
 }
+
+// Para subir archivos (FormData), no se pone Content-Type: lo arma el navegador
+export function subirArchivo(ruta, metodo, token, formData, mensajeError = 'No se pudo subir el archivo.') {
+  return fetch(URL + ruta, {
+    method: metodo,
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  }).then((respuesta) => {
+    if (!respuesta.ok) {
+      return respuesta.json()
+        .catch(() => ({}))
+        .then((error) => { throw new Error(error.message || mensajeError) })
+    }
+    return respuesta.status === 204 ? null : respuesta.json()
+  })
+}

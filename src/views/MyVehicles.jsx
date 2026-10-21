@@ -43,7 +43,7 @@ export default function MyVehicles() {
           <h1 className={titleStyles}>Mis vehículos</h1>
           <p className={introStyles}>Cargá tus autos y sus fotos. Después los podés publicar desde Mis publicaciones.</p>
         </div>
-        <Link to="/mis-vehiculos/nuevo" className={btnBase + ' ' + btnDark + ' ' + btnSize}>
+        <Link to="/vehiculos/nuevo" className={btnBase + ' ' + btnDark + ' ' + btnSize}>
           <PublicationIcon nombre="plus" /> Agregar vehículo
         </Link>
       </div>
@@ -72,7 +72,7 @@ export default function MyVehicles() {
                   </p>
                 </div>
                 <div className="flex gap-3">
-                  <Link to={`/mis-vehiculos/${v.idVehiculo}/editar`} className="border border-border rounded-[0.25rem] px-3 py-2 text-[0.75rem]">Editar</Link>
+                  <Link to={`/vehiculos/${v.idVehiculo}/editar`} className="border border-border rounded-[0.25rem] px-3 py-2 text-[0.75rem]">Editar</Link>
                   <button type="button" onClick={() => eliminar(v)} className="border border-border rounded-[0.25rem] px-3 py-2 text-[0.75rem] text-red-700">Eliminar</button>
                 </div>
               </li>

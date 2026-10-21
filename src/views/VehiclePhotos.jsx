@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import PhotoDropzone from '../components/vehicles/PhotoDropzone'
+import PhotoDropzone from '../components/vehiculos/PhotoDropzone'
 import PhotoTile from '../components/vehiculos/PhotoTile'
 import { btnBase, btnDark, btnOutline, btnSize } from '../components/ui/buttonStyles'
 import { pageStyles, titleStyles, eyebrowStyles, introStyles, actionsStyles } from '../components/publicaciones/publicationStyles'

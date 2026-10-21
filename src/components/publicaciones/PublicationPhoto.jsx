@@ -47,3 +47,8 @@ export default function PublicationPhoto({ idVehiculo, alt = '', large = false }
   if (!portada) return <PublicationIcon nombre={large ? 'carLarge' : 'car'} />
   return <img src={portada} alt={alt} className="w-full h-full object-cover" />
 }
+
+// Borra la portada guardada para que se vuelva a pedir al back.
+export function olvidarPortada(idVehiculo) {
+  portadas.delete(idVehiculo)
+}

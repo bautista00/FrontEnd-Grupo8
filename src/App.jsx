@@ -14,6 +14,9 @@ import MyReservations from "./views/MyReservations"
 import ReservationDetails from "./views/ReservationDetails"
 import ReservationResult from './views/ReservationResult'
 import PaymentReturn from './views/PaymentReturn'
+import MyVehicles from './views/MyVehicles'
+import VehicleForm from './views/VehicleForm'
+import VehiclePhotos from './views/VehiclePhotos'
 
 export default function App() {
   const { pathname } = useLocation()
@@ -31,7 +34,7 @@ export default function App() {
         {/* Las key distintas hacen que React arme un formulario nuevo al pasar de crear a editar */}
         <Route path="/publicaciones/nueva" element={<PublicationForm key="crear" />} />
         <Route path="/publicaciones/:id/editar" element={<PublicationForm key="editar" modo="editar" />} />
-        {/* Detalle público de una publicación, al que se llega desde el catálogo. */}"
+        {/* Detalle público de una publicación, al que se llega desde el catálogo. */}
         <Route path="/publicaciones/:id" element={<PublicationDetail />} />
         <Route path="/mis-vehiculos" element={<MyVehicles />} />
         <Route path="/vehiculos/nuevo" element={<VehicleForm key="crear" />} />
