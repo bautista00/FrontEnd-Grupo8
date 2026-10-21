@@ -1,16 +1,23 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { pageStyles, titleStyles, eyebrowStyles } from '../components/publicaciones/publicationStyles'
+import { pageStyles, titleStyles, eyebrowStyles, introStyles, helpStyles, actionsStyles } from '../components/publicaciones/publicationStyles'
 import PublicationMessage from '../components/publicaciones/PublicationMessage'
-import { olvidarPortada } from '../components/publicaciones/PublicationPhoto'
 import InputField from '../components/ui/InputField'
 import FormField, { inputStyles } from '../components/ui/FormField'
-import { btnBase, btnDark, btnSize } from '../components/ui/buttonStyles'
-import { obtener, enviar, subirArchivo } from '../utils/api'
+import { btnBase, btnDark, btnOutline, btnSize } from '../components/ui/buttonStyles'
+import { obtener, enviar } from '../utils/api'
+import { ANIO_ACTUAL, ASIENTOS_POR_DEFECTO, normalizarPatente, validarVehiculo, valoresAVehiculo } from '../utils/vehiculos'
 
-const VACIO = { patente: '', marca: '', modelo: '', anio: '', color: '', cantidadAsientos: '', idTipoVehiculo: '' }
+const VACIO = {
+  patente: '', idTipoVehiculo: '', marca: '', modelo: '',
+  anio: String(ANIO_ACTUAL), color: '', cantidadAsientos: String(ASIENTOS_POR_DEFECTO),
+}
 
-// Alta y edición de un vehículo + sus fotos (/vehiculo y /imagen-vehiculo)
+const PASOS = ['Datos', 'Fotos', 'Publicación']
+
+// Muestra el error de un campo debajo del input
+const aviso = (mensaje) => mensaje && <span role="alert" className="text-error">{mensaje}</span>
+
 export default function VehicleForm({ modo = 'crear' }) {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -19,70 +26,82 @@ export default function VehicleForm({ modo = 'crear' }) {
 
   const [valores, setValores] = useState(VACIO)
   const [tipos, setTipos] = useState([])
-  const [fotos, setFotos] = useState([]) // [{ id, orden, file }] ya guardadas
-  const [nuevas, setNuevas] = useState([]) // archivos elegidos, todavía sin subir
-  const [error, setError] = useState('')
+  const [otros, setOtros] = useState([]) // resto de la flota, para detectar patentes repetidas
+  const [errores, setErrores] = useState({})
+  const [errorGeneral, setErrorGeneral] = useState('')
+  const [cargando, setCargando] = useState(true)
   const [guardando, setGuardando] = useState(false)
 
   useEffect(() => {
-    obtener('/tipo-vehiculo').then(setTipos).catch((e) => console.error('Error al cargar tipos', e))
-    if (!editando) return
-    Promise.all([obtener(`/vehiculo/${id}`, token), obtener(`/imagen-vehiculo/por-vehiculo/${id}`)])
-      .then(([v, imagenes]) => {
-        setValores({
-          patente: v.patente, marca: v.marca, modelo: v.modelo, anio: String(v.anio), color: v.color,
-          cantidadAsientos: String(v.cantidadAsientos), idTipoVehiculo: v.idTipoVehiculo ? String(v.idTipoVehiculo) : '',
-        })
-        setFotos([...imagenes].sort((a, b) => a.orden - b.orden))
-      })
-      .catch(() => setError('No pudimos cargar el vehículo.'))
+    if (!token) return
+    let vigente = true
+    async function cargar() {
+      try {
+        const [listaTipos, flota, vehiculo] = await Promise.all([
+          obtener('/tipo-vehiculo'),
+          obtener('/vehiculo/mios?size=100', token).catch(() => null),
+          editando ? obtener(`/vehiculo/${id}`, token) : null,
+        ])
+        if (!vigente) return
+        setTipos(listaTipos)
+        setOtros((flota?.content ?? []).filter((v) => String(v.idVehiculo) !== String(id)))
+        if (vehiculo) {
+          const tipo = listaTipos.find((t) => t.idTipoVehiculo === vehiculo.idTipoVehiculo)
+            ?? listaTipos.find((t) => t.nombre === vehiculo.tipoVehiculo)
+          setValores({
+            patente: vehiculo.patente, marca: vehiculo.marca, modelo: vehiculo.modelo,
+            anio: String(vehiculo.anio), color: vehiculo.color,
+            cantidadAsientos: String(vehiculo.cantidadAsientos),
+            idTipoVehiculo: tipo ? String(tipo.idTipoVehiculo) : '',
+          })
+        } else {
+          setValores((actuales) => ({ ...actuales, idTipoVehiculo: String(listaTipos[0]?.idTipoVehiculo ?? '') }))
+        }
+      } catch (e) {
+        console.error('Error al cargar el formulario de vehículo', e)
+        if (vigente) setErrorGeneral(editando ? 'No pudimos cargar el vehículo.' : 'No pudimos cargar los tipos de vehículo.')
+      } finally {
+        if (vigente) setCargando(false)
+      }
+    }
+    cargar()
+    return () => { vigente = false }
   }, [id, editando, token])
 
   function cambiar(event) {
-    setValores({ ...valores, [event.target.name]: event.target.value })
-  }
-
-  function borrarFoto(foto) {
-    enviar(`/imagen-vehiculo/${foto.id}`, 'DELETE', token)
-      .then(() => { setFotos(fotos.filter((f) => f.id !== foto.id)); olvidarPortada(Number(id)) })
-      .catch((e) => setError(e.message))
+    const { name, value } = event.target
+    setValores({ ...valores, [name]: name === 'patente' ? normalizarPatente(value) : value })
+    if (errores[name]) setErrores({ ...errores, [name]: undefined })
   }
 
   async function guardar(event) {
     event.preventDefault()
+    const encontrados = validarVehiculo(valores, otros)
+    // Los tipos válidos son los del backend, no la lista de ejemplo
+    if (tipos.some((t) => String(t.idTipoVehiculo) === String(valores.idTipoVehiculo))) delete encontrados.idTipoVehiculo
+    else encontrados.idTipoVehiculo = 'Elegí un tipo de vehículo'
+    setErrores(encontrados)
+    if (Object.keys(encontrados).length > 0) return
+
     setGuardando(true)
-    setError('')
+    setErrorGeneral('')
     try {
-      // El back pide el idUsuario del dueño: lo sacamos de la sesión
       const usuario = await obtener('/usuarios/me', token)
       const datos = {
-        patente: valores.patente.trim().toUpperCase(),
-        marca: valores.marca.trim(),
-        modelo: valores.modelo.trim(),
-        anio: Number(valores.anio),
-        color: valores.color.trim(),
-        cantidadAsientos: Number(valores.cantidadAsientos),
+        ...valoresAVehiculo(valores),
+        idTipoVehiculo: Number(valores.idTipoVehiculo),
         idUsuario: usuario.idUsuario,
-        idTipoVehiculo: valores.idTipoVehiculo ? Number(valores.idTipoVehiculo) : null,
       }
-      const vehiculo = editando
-        ? await enviar(`/vehiculo/${id}`, 'PUT', token, datos)
-        : await enviar('/vehiculo', 'POST', token, datos)
-
-      // Fotos nuevas: una por pedido; el "orden" sigue a las que ya existen
-      let orden = fotos.reduce((max, f) => Math.max(max, f.orden), 0)
-      for (const archivo of nuevas) {
-        const form = new FormData()
-        form.append('file', archivo)
-        form.append('idVehiculo', vehiculo.idVehiculo)
-        form.append('orden', ++orden)
-        await subirArchivo('/imagen-vehiculo', 'POST', token, form)
+      if (editando) {
+        await enviar(`/vehiculo/${id}`, 'PUT', token, datos)
+        navigate('/mis-vehiculos')
+      } else {
+        const vehiculo = await enviar('/vehiculo', 'POST', token, datos)
+        navigate(`/vehiculos/${vehiculo.idVehiculo}/fotos`) // paso 2 del alta
       }
-      olvidarPortada(vehiculo.idVehiculo)
-      navigate('/mis-vehiculos')
     } catch (e) {
       console.error('Error al guardar vehículo', e)
-      setError(e.message)
+      setErrorGeneral(e.message)
       setGuardando(false)
     }
   }
@@ -91,46 +110,69 @@ export default function VehicleForm({ modo = 'crear' }) {
     return <main className={pageStyles + ' pb-20'}><PublicationMessage>Iniciá sesión para administrar tus vehículos.</PublicationMessage></main>
   }
 
+  if (cargando) {
+    return <main className={pageStyles + ' pb-20'}><PublicationMessage>Cargando…</PublicationMessage></main>
+  }
+
+  if (errorGeneral && (editando ? !valores.patente : tipos.length === 0)) {
+    return (
+      <main className={pageStyles + ' pb-20'}>
+        <PublicationMessage error>{errorGeneral}</PublicationMessage>
+        <Link to="/mis-vehiculos" className="inline-block mt-5 text-gold">Volver a mis vehículos</Link>
+      </main>
+    )
+  }
+
   return (
     <main className={pageStyles + ' pb-20'}>
-      <Link to="/mis-vehiculos" className="text-[0.75rem] text-soft hover:underline">← Mis vehículos</Link>
-      <p className={eyebrowStyles + ' mt-4'}>Panel de propietario</p>
-      <h1 className={titleStyles}>{editando ? 'Editar vehículo' : 'Agregar vehículo'}</h1>
+      <div className="max-w-3xl mx-auto">
+        <Link to="/mis-vehiculos" className="text-[0.75rem] text-soft hover:underline">← Volver a mis vehículos</Link>
 
-      <form onSubmit={guardar} className="grid gap-4 max-w-xl mt-6">
-        <InputField id="patente" label="Patente" maxLength={6} required value={valores.patente} onChange={cambiar} />
-        <InputField id="marca" label="Marca" maxLength={50} required value={valores.marca} onChange={cambiar} />
-        <InputField id="modelo" label="Modelo" maxLength={50} required value={valores.modelo} onChange={cambiar} />
-        <InputField id="anio" type="number" label="Año" min={1900} max={2026} required value={valores.anio} onChange={cambiar} />
-        <InputField id="color" label="Color" maxLength={30} required value={valores.color} onChange={cambiar} />
-        <InputField id="cantidadAsientos" type="number" label="Cantidad de asientos" min={1} max={9} required value={valores.cantidadAsientos} onChange={cambiar} />
-        <FormField id="idTipoVehiculo" label="Tipo de vehículo">
-          <select id="idTipoVehiculo" name="idTipoVehiculo" className={inputStyles} value={valores.idTipoVehiculo} onChange={cambiar}>
-            <option value="">Sin tipo</option>
-            {tipos.map((t) => <option key={t.idTipoVehiculo} value={t.idTipoVehiculo}>{t.nombre}</option>)}
-          </select>
-        </FormField>
+        {!editando && (
+          <ol className={eyebrowStyles + ' flex gap-2 mt-4 p-0 list-none'} aria-label="Pasos del alta">
+            {PASOS.map((paso, indice) => (
+              <li key={paso} aria-current={indice === 0 ? 'step' : undefined} className={indice === 0 ? 'text-ink font-semibold' : undefined}>
+                {indice > 0 && <span aria-hidden="true" className="mr-2">›</span>}
+                {indice + 1} {paso}
+              </li>
+            ))}
+          </ol>
+        )}
 
-        <FormField id="fotos" label="Fotos" hint="Se muestran en el orden en que las subas; la primera es la portada.">
-          {fotos.length > 0 && (
-            <div className="grid grid-cols-4 gap-3 mb-3">
-              {fotos.map((f) => (
-                <div key={f.id} className="relative aspect-[16/10] overflow-hidden bg-surface rounded-[0.25rem]">
-                  <img src={`data:image/jpeg;base64,${f.file}`} alt="" className="w-full h-full object-cover" />
-                  <button type="button" aria-label="Quitar foto" onClick={() => borrarFoto(f)} className="absolute top-1 right-1 px-1.5 rounded bg-ink text-white text-[0.625rem]">✕</button>
-                </div>
-              ))}
-            </div>
-          )}
-          <input id="fotos" type="file" accept="image/*" multiple className={inputStyles} onChange={(e) => setNuevas([...e.target.files])} />
-        </FormField>
+        <h1 className={titleStyles + (editando ? ' mt-4' : '')}>{editando ? 'Editar vehículo' : 'Registrar vehículo'}</h1>
+        <p className={introStyles}>
+          {editando
+            ? 'Los cambios se ven también en la publicación del vehículo.'
+            : 'Completá los datos del auto. En el paso siguiente cargás las fotos.'}
+        </p>
 
-        {error && <PublicationMessage error>{error}</PublicationMessage>}
+        <form onSubmit={guardar} noValidate className="mt-6">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-4 phone:grid-cols-1">
+            <InputField id="patente" label="Patente *" placeholder="AB123CD" maxLength={7} autoComplete="off" value={valores.patente} onChange={cambiar} hint={aviso(errores.patente)} />
+            <FormField id="idTipoVehiculo" label="Tipo de vehículo *" hint={aviso(errores.idTipoVehiculo)}>
+              <select id="idTipoVehiculo" name="idTipoVehiculo" className={inputStyles} value={valores.idTipoVehiculo} onChange={cambiar}>
+                {tipos.map((t) => <option key={t.idTipoVehiculo} value={t.idTipoVehiculo}>{t.nombre}</option>)}
+              </select>
+            </FormField>
+            <InputField id="marca" label="Marca *" placeholder="Ej. Toyota" maxLength={50} value={valores.marca} onChange={cambiar} hint={aviso(errores.marca)} />
+            <InputField id="modelo" label="Modelo y versión *" placeholder="Ej. Corolla XEI 2.0" maxLength={50} value={valores.modelo} onChange={cambiar} hint={aviso(errores.modelo)} />
+            <InputField id="anio" type="number" label="Año *" value={valores.anio} onChange={cambiar} hint={aviso(errores.anio)} />
+            <InputField id="color" label="Color *" placeholder="Ej. Gris plata" maxLength={30} value={valores.color} onChange={cambiar} hint={aviso(errores.color)} />
+            <InputField id="cantidadAsientos" type="number" label="Cantidad de asientos *" value={valores.cantidadAsientos} onChange={cambiar} hint={aviso(errores.cantidadAsientos)} />
+          </div>
 
-        <button type="submit" disabled={guardando} className={btnBase + ' ' + btnDark + ' ' + btnSize + ' mt-2'}>
-          {guardando ? 'Guardando…' : 'Guardar vehículo'}
-        </button>
-      </form>
+          <p className={helpStyles}>La patente no se muestra en el catálogo.</p>
+
+          {errorGeneral && <div className="mt-4"><PublicationMessage error>{errorGeneral}</PublicationMessage></div>}
+
+          <div className={actionsStyles + ' justify-end mt-8'}>
+            <Link to="/mis-vehiculos" className={btnBase + ' ' + btnOutline + ' ' + btnSize}>Cancelar</Link>
+            <button type="submit" disabled={guardando} className={btnBase + ' ' + btnDark + ' ' + btnSize}>
+              {guardando ? 'Guardando…' : editando ? 'Guardar cambios' : 'Continuar a las fotos'}
+            </button>
+          </div>
+        </form>
+      </div>
     </main>
   )
 }
