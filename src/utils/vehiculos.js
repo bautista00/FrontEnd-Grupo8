@@ -1,3 +1,4 @@
+import  { obtener, enviar, subirArchivo } from './api.js'
 import { TIPOS } from '../data/vehiculos'
 
 // Patentes argentinas: formato nuevo (AB123CD) y formato anterior (ABC123).
@@ -121,5 +122,89 @@ export const portadaDe = (vehiculo) => {
 export const tieneFotos = (vehiculo) => vehiculo.fotos.length > 0
 export const puedePublicar = (vehiculo) => tieneFotos(vehiculo)
 export const nombreVehiculo = (vehiculo) => `${vehiculo.marca} ${vehiculo.modelo} (${vehiculo.anio})`
-
 export const resumenVehiculo = (vehiculo) => `${nombreVehiculo(vehiculo)} - ${vehiculo.cantidadAsientos} asientos - ${vehiculo.color}`
+
+export const VEHICULOS_POR_PAGINA = 9
+// Arma lo que necesita MyVehicleCard. El backend no manda las fotos ni la publicación
+// dentro del vehículo, así que se piden aparte y se unen por idVehiculo.
+export async function cargarMisVehiculos(token, pagina) {
+  const [vehiculos, activas, pausadas] = await Promise.all([
+    obtener(`/vehiculo/mios?page=${pagina}&size=${VEHICULOS_POR_PAGINA}`, token),
+    obtener('/publicaciones/mias?estado=ACTIVA&size=100', token),
+    obtener('/publicaciones/mias?estado=PAUSADA&size=100', token),
+  ])
+
+  // Un vehículo tiene a lo sumo una publicación activa o pausada.
+  // Se cargan primero las pausadas para que la activa gane si hubiera dos.
+  const publicaciones = new Map()
+  ;[...pausadas.content, ...activas.content].forEach((publicacion) => {
+    publicaciones.set(publicacion.idVehiculo, {
+      idPublicacion: publicacion.idPublicacion,
+      estado: publicacion.estado,
+    })
+  })
+
+  const content = await Promise.all(vehiculos.content.map(async (vehiculo) => {
+    // El backend ya las devuelve ordenadas por "orden"; la primera es la portada.
+    const imagenes = await obtener(`/imagen-vehiculo/por-vehiculo/${vehiculo.idVehiculo}`)
+    return {
+      ...vehiculo,
+      fotos: imagenes.map((imagen) => ({
+        idFoto: imagen.id,
+        orden: imagen.orden,
+        url: `data:image/jpeg;base64,${imagen.file}`,
+      })),
+      publicacionActual: publicaciones.get(vehiculo.idVehiculo) ?? null,
+    }
+  }))
+
+  return { ...vehiculos, content }
+}
+
+// Fotos guardadas de un vehículo, con la forma que usan PhotoTile y las funciones de arriba.
+export async function fotosDeVehiculo(idVehiculo) {
+  const imagenes = await obtener(`/imagen-vehiculo/por-vehiculo/${idVehiculo}`)
+  return imagenes.map((imagen) => ({
+    idFoto: imagen.id,
+    orden: imagen.orden,
+    url: `data:image/jpeg;base64,${imagen.file}`,
+  }))
+}
+
+// Publicación ACTIVA o PAUSADA del vehículo (o null). Define si se ofrece "Guardar y crear publicación".
+export async function publicacionActualDe(token, idVehiculo) {
+  const [activas, pausadas] = await Promise.all([
+    obtener('/publicaciones/mias?estado=ACTIVA&size=100', token),
+    obtener('/publicaciones/mias?estado=PAUSADA&size=100', token),
+  ])
+  return [...activas.content, ...pausadas.content]
+    .find((publicacion) => publicacion.idVehiculo === Number(idVehiculo)) ?? null
+}
+
+// Lleva al backend las diferencias entre las fotos guardadas (`originales`) y las de la pantalla (`actuales`):
+// borra las quitadas, sube las nuevas y actualiza el orden de las que cambiaron de lugar.
+export async function sincronizarFotos(token, idVehiculo, originales, actuales) {
+  const idsActuales = new Set(actuales.map((foto) => foto.idFoto))
+
+  for (const foto of originales) {
+    if (!idsActuales.has(foto.idFoto)) {
+      await enviar(`/imagen-vehiculo/${foto.idFoto}`, 'DELETE', token, null, 'No se pudo borrar una foto.')
+    }
+  }
+
+  for (const foto of actuales) {
+    if (foto.archivo) {
+      const form = new FormData()
+      form.append('file', foto.archivo)
+      form.append('idVehiculo', idVehiculo)
+      form.append('orden', foto.orden)
+      await subirArchivo('/imagen-vehiculo', 'POST', token, form, 'No se pudo subir una foto.')
+    } else {
+      const original = originales.find((otra) => otra.idFoto === foto.idFoto)
+      if (original && original.orden !== foto.orden) {
+        // El backend lee "orden" como parámetro, por eso va en la URL
+        await enviar(`/imagen-vehiculo/${foto.idFoto}?orden=${foto.orden}`, 'PUT', token, null, 'No se pudo cambiar el orden de las fotos.')
+      }
+    }
+  }
+}

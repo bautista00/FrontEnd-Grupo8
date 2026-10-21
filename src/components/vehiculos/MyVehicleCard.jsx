@@ -50,8 +50,8 @@ export default function MyVehicleCard({ vehiculo }) {
           {publicacion
             ? <Link to={`/publicaciones/${publicacion.idPublicacion}/editar`} className={btnBase + ' ' + btnDark + ' ' + btnSize + ' w-full'}>Gestionar publicación</Link>
             : puedePublicar(vehiculo)
-              ? <Link to="/publicaciones/nueva" className={btnBase + ' ' + btnDark + ' ' + btnSize + ' w-full'}>Crear publicación</Link>
-              : <button type="button" disabled title="Cargá al menos una foto para poder publicar" className={btnBase + ' ' + btnDark + ' ' + btnSize + ' w-full'}>Crear publicación</button>}
+              ? <Link to="/publicaciones/nueva" state={{ idVehiculo: vehiculo.idVehiculo }} className={btnBase + ' ' + btnDark + ' ' + btnSize + ' w-full'}>Crear publicación</Link>
+              : <button className={btnBase + ' ' + btnDark + ' ' + btnSize + ' w-full'} disabled>Crear publicación</button>}
         </div>
       </div>
     </article>

@@ -1,44 +1,39 @@
-const URL = 'http://localhost:8080'
+export const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
 
-// GET al backend: devuelve el JSON o lanza un error si la respuesta no es OK.
-// El token se manda solo si hay sesión.
-export function obtener(ruta, token) {
-  return fetch(URL + ruta, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
-    .then((respuesta) => {
-      if (!respuesta.ok) throw new Error('No se pudo obtener la información del servidor.')
-      return respuesta.json()
-    })
+// El backend responde los errores como { "mensaje": "..." }.
+// Si no hay cuerpo (por ejemplo un 401 del filtro JWT), usamos el mensaje por defecto.
+async function errorDe(respuesta, mensajeError) {
+  const cuerpo = await respuesta.json().catch(() => ({}))
+  return new Error(cuerpo.mensaje || cuerpo.message || mensajeError)
 }
 
-// POST, PUT o DELETE al backend. Si falla, usamos el mensaje que manda el backend (si hay)
-export function enviar(ruta, metodo, token, datos, mensajeError = 'No se pudo guardar. Intentá nuevamente.') {
-  return fetch(URL + ruta, {
+// GET: devuelve el JSON. El token se manda solo si hay sesión.
+export async function obtener(ruta, token) {
+  const respuesta = await fetch(API_URL + ruta, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  })
+  if (!respuesta.ok) throw await errorDe(respuesta, 'No se pudo obtener la información del servidor.')
+  return respuesta.json()
+}
+
+// POST, PUT o DELETE con JSON.
+export async function enviar(ruta, metodo, token, datos, mensajeError = 'No se pudo guardar. Intentá nuevamente.') {
+  const respuesta = await fetch(API_URL + ruta, {
     method: metodo,
     headers: { ...(token && { Authorization: `Bearer ${token}` }), 'Content-Type': 'application/json' },
     body: datos ? JSON.stringify(datos) : undefined,
-  }).then((respuesta) => {
-    if (!respuesta.ok) {
-      return respuesta.json()
-        .catch(() => ({}))
-        .then((error) => { throw new Error(error.message || mensajeError) })
-    }
-    // 204 = sin contenido (por ejemplo, al borrar)
-    return respuesta.status === 204 ? null : respuesta.json()
   })
+  if (!respuesta.ok) throw await errorDe(respuesta, mensajeError)
+  return respuesta.status === 204 ? null : respuesta.json()
 }
 
-// Para subir archivos (FormData), no se pone Content-Type: lo arma el navegador
-export function subirArchivo(ruta, metodo, token, formData, mensajeError = 'No se pudo subir el archivo.') {
-  return fetch(URL + ruta, {
+// Subida de archivos (FormData). No se pone Content-Type: lo arma el navegador.
+export async function subirArchivo(ruta, metodo, token, formData, mensajeError = 'No se pudo subir el archivo.') {
+  const respuesta = await fetch(API_URL + ruta, {
     method: metodo,
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: formData,
-  }).then((respuesta) => {
-    if (!respuesta.ok) {
-      return respuesta.json()
-        .catch(() => ({}))
-        .then((error) => { throw new Error(error.message || mensajeError) })
-    }
-    return respuesta.status === 204 ? null : respuesta.json()
   })
+  if (!respuesta.ok) throw await errorDe(respuesta, mensajeError)
+  return respuesta.status === 204 ? null : respuesta.json()
 }
