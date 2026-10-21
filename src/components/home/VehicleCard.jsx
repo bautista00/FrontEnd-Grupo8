@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { formatARS, precioFinal } from '../../utils/formatters'
-import { CarIcon } from '../icons/Icons'
+import PublicationPhoto from '../publicaciones/PublicationPhoto'
 import { btnBase, btnOutline, btnSize } from '../ui/buttonStyles'
 
 const BADGE_BASE =
@@ -17,7 +17,7 @@ export default function VehicleCard({ publicacion }) {
     <article className="flex flex-col overflow-hidden bg-card border border-border rounded-lg transition-shadow hover:shadow-md">
       <div className="relative aspect-[16/10] overflow-hidden bg-surface">
         <div className="grid place-items-center w-full h-full text-disabled">
-          <CarIcon size={40} />
+          <PublicationPhoto idVehiculo={publicacion.idVehiculo} alt={`${publicacion.marca} ${publicacion.modelo}`} large />
         </div>
 
         {tieneDescuento ? (
