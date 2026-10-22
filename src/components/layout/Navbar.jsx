@@ -53,12 +53,12 @@ export default function Navbar({ carrito }) {
             {cantidadCarrito > 0 && <span className="absolute top-0 right-0 min-w-4 h-4 px-1 rounded-full bg-gold text-white text-[0.625rem] font-bold leading-4 text-center">{cantidadCarrito}</span>}
           </Link>
 
-          <a href="#" className={NAV_LINK_IDLE}>
+          <Link to="/login" className={NAV_LINK_IDLE}>
             Iniciar sesión
-          </a>
-          <a href="#" className={`${btnBase} ${btnDark} ${btnSize} phone:px-2.5 phone:py-2`}>
+          </Link>
+          <Link to="/registro" className={`${btnBase} ${btnDark} ${btnSize} phone:px-2.5 phone:py-2`}>
             Registrarse
-          </a>
+          </Link>
         </div>
       </div>
     </header>

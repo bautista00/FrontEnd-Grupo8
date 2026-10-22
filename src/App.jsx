@@ -52,7 +52,15 @@ export default function App() {
         <Route path="/publicaciones/nueva" element={<PublicationForm key="crear" />} />
         <Route path="/publicaciones/:id/editar" element={<PublicationForm key="editar" modo="editar" />} />
         {/* Detalle público de una publicación, al que se llega desde el catálogo. */}
-        <Route path="/publicaciones/:id" element={<PublicationDetail />} />
+        <Route
+          path="/publicaciones/:id"
+          element={
+            <PublicationDetail
+              actualizarCarrito={actualizarCarrito}
+              actualizarCarritoConsultado={actualizarCarritoConsultado}
+            />
+          }
+        />
         <Route path="/mis-vehiculos" element={<MyVehicles />} />
         <Route path="/vehiculos/nuevo" element={<VehicleForm key="crear" />} />
         <Route path="/vehiculos/:id/editar" element={<VehicleForm key="editar" modo="editar" />} />
