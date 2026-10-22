@@ -9,9 +9,6 @@ const NAV_LINK_BASE =
 const NAV_LINK_IDLE = `${NAV_LINK_BASE} text-soft`
 const NAV_LINK_ACTIVE = `${NAV_LINK_BASE} bg-surface text-ink`
 
-// Valor fijo de ejemplo: todavía no hay carrito real.
-const CANTIDAD_CARRITO = 1
-
 // Los destinos que aún no existen se muestran deshabilitados.
 const NAV_LINKS = [
   { label: 'Explorar', href: '/' },
@@ -20,8 +17,9 @@ const NAV_LINKS = [
   { label: 'Mis vehículos', href: '/mis-vehiculos' },
 ]
 
-export default function Navbar() {
+export default function Navbar({ carrito }) {
   const { pathname } = useLocation()
+  const cantidadCarrito = carrito ? 1 : 0
   return (
     <header className="z-10 bg-card border-b border-border min-[56.3125rem]:sticky min-[56.3125rem]:top-0">
       <div className="max-w-page mx-auto px-(--gutter) min-h-16 flex flex-wrap items-center gap-x-8 gap-y-2 tablet:pt-3 tablet:pb-2">
@@ -46,14 +44,14 @@ export default function Navbar() {
         </nav>
 
         <div className="flex items-center gap-4 phone:gap-2">
-          <button
-            type="button"
+          <Link
+            to="/carrito"
             className="relative grid place-items-center size-9 p-0 bg-transparent border-0 text-ink"
             aria-label="Carrito"
           >
             <CartIcon size={20} />
-            {CANTIDAD_CARRITO > 0 && <span className="absolute top-0 right-0 min-w-4 h-4 px-1 rounded-full bg-gold text-white text-[0.625rem] font-bold leading-4 text-center">{CANTIDAD_CARRITO}</span>}
-          </button>
+            {cantidadCarrito > 0 && <span className="absolute top-0 right-0 min-w-4 h-4 px-1 rounded-full bg-gold text-white text-[0.625rem] font-bold leading-4 text-center">{cantidadCarrito}</span>}
+          </Link>
 
           <a href="#" className={NAV_LINK_IDLE}>
             Iniciar sesión

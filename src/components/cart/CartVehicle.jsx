@@ -14,6 +14,16 @@ export default function CartVehicle({
   // Abrimos y cerramos la edición dentro de esta misma card.
   const [mostrarEditor, actualizarMostrarEditor] = useState(false)
 
+  // Conservamos el editor abierto si el backend rechaza las fechas.
+  const guardarYCerrar = (fechaInicio, fechaFin) => {
+    return alGuardarFechas(fechaInicio, fechaFin)
+      .then((guardado) => {
+        if (guardado) {
+          actualizarMostrarEditor(false)
+        }
+      })
+  }
+
   // Recibimos el carrito como prop y extraemos la publicación para acceder al auto.
   const vehiculo = carrito.publicacion
 
@@ -38,7 +48,7 @@ export default function CartVehicle({
           <CartDateEditor
             carrito={carrito}
             periodos={periodos}
-            alGuardar={alGuardarFechas}
+            alGuardar={guardarYCerrar}
             alCancelar={() => actualizarMostrarEditor(false)}
             guardando={guardandoFechas}
             mensaje={mensajeFechas}

@@ -22,10 +22,14 @@ export default function Cart({
   // El carrito vacío es un aviso normal que llega desde el backend.
   const [mensajeVacio, actualizarMensajeVacio] = useState('')
 
+  // Controlan el guardado de fechas y los errores que mostrará el editor.
+  const [guardandoFechas, actualizarGuardandoFechas] = useState(false)
+  const [mensajeFechas, actualizarMensajeFechas] = useState('')
+
   //direccion del backend para consultar el carrito del usuario
   const URL = 'http://localhost:8080/carritos/mio'
 
-  // Consultamos el carrito y su publicación solo si todavía no conocemos sus datos.
+  // Consultamos el carrito, su publicación y sus períodos solo si no conocemos sus datos.
   useEffect(() => {
     if (carritoConsultado) return
 
@@ -64,34 +68,66 @@ export default function Cart({
 
         actualizarMensajeVacio('')
 
-        // 2. Consultamos la publicación que está en ese carrito.
-        return fetch(
-          `http://localhost:8080/publicaciones/${datosCarrito.idPublicacion}`,
-          {
-            method: 'GET',
-            headers: {
-              Authorization: `Bearer ${token}`
+        // 2. La publicación y sus períodos se pueden consultar al mismo tiempo.
+        return Promise.all([
+          fetch(
+            `http://localhost:8080/publicaciones/${datosCarrito.idPublicacion}`,
+            {
+              method: 'GET',
+              headers: {
+                Authorization: `Bearer ${token}`
+              }
             }
-          }
-        )
-          .then((respuestaPublicacion) => {
-            if (!respuestaPublicacion.ok) {
-              return respuestaPublicacion.json()
-                .catch(() => ({}))
-                .then((datosError) => {
-                  return Promise.reject(new Error(
-                    datosError.mensaje || 'No se pudo consultar la publicación'
-                  ))
-                })
-            }
+          )
+            .then((respuestaPublicacion) => {
+              if (!respuestaPublicacion.ok) {
+                return respuestaPublicacion.json()
+                  .catch(() => ({}))
+                  .then((datosError) => {
+                    return Promise.reject(new Error(
+                      datosError.mensaje || 'No se pudo consultar la publicación'
+                    ))
+                  })
+              }
 
-            return respuestaPublicacion.json()
-          })
-          .then((publicacion) => {
-            // 3. Juntamos el carrito y la publicación.
+              return respuestaPublicacion.json()
+            }),
+          fetch(
+            `http://localhost:8080/disponibilidades/publicacion/${datosCarrito.idPublicacion}`,
+            {
+              method: 'GET',
+              headers: {
+                Authorization: `Bearer ${token}`
+              }
+            }
+          )
+            .then((respuestaPeriodos) => {
+              if (!respuestaPeriodos.ok) {
+                return respuestaPeriodos.json()
+                  .catch(() => ({}))
+                  .then((datosError) => {
+                    return Promise.reject(new Error(
+                      datosError.mensaje || 'No se pudieron consultar los períodos disponibles.'
+                    ))
+                  })
+              }
+
+              return respuestaPeriodos.json()
+            })
+        ])
+          .then(([publicacion, datosPeriodos]) => {
+            // 3. Conservamos los períodos en el formato que recibe el calendario.
+            const periodos = datosPeriodos.map((periodo) => ({
+              desde: periodo.fechaInicio,
+              hasta: periodo.fechaFin
+            }))
+
             return {
               ...datosCarrito,
-              publicacion: publicacion
+              publicacion: {
+                ...publicacion,
+                periodos
+              }
             }
           })
       })
@@ -207,6 +243,70 @@ export default function Cart({
       })
   }
 
+  const guardarFechas = (fechaInicio, fechaFin) => {
+    if (carrito === null || guardandoFechas) {
+      return Promise.resolve(false)
+    }
+
+    const token = localStorage.getItem('jwtToken')
+
+    if (!token) {
+      actualizarMensajeFechas(
+        'Necesitás iniciar sesión para modificar las fechas.'
+      )
+      return Promise.resolve(false)
+    }
+
+    actualizarGuardandoFechas(true)
+    actualizarMensajeFechas('')
+
+    return fetch(
+      `http://localhost:8080/carritos/${carrito.idCarrito}/fechas`,
+      {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ fechaInicio, fechaFin })
+      }
+    )
+      .then((respuesta) => {
+        if (!respuesta.ok) {
+          return respuesta.json()
+            .catch(() => ({}))
+            .then((datosError) => {
+              return Promise.reject(new Error(
+                datosError.mensaje || 'No se pudieron modificar las fechas.'
+              ))
+            })
+        }
+
+        return respuesta.json()
+      })
+      .then((datosCarrito) => {
+        // Guardamos la respuesta y conservamos la publicación ya cargada.
+        actualizarCarrito({
+          ...datosCarrito,
+          publicacion: carrito.publicacion
+        })
+
+        return true
+      })
+      .catch((error) => {
+        actualizarMensajeFechas(
+          error instanceof TypeError
+            ? 'No pudimos conectar con el servidor. Intentá nuevamente.'
+            : error.message || 'No se pudieron modificar las fechas.'
+        )
+
+        return false
+      })
+      .finally(() => {
+        actualizarGuardandoFechas(false)
+      })
+  }
+
   // null significa que no hay un carrito. Comprobamos esto antes de acceder a sus datos.
   // El aviso de carrito vacío se guarda separado de los errores.
   if (carrito === null) {
@@ -262,7 +362,13 @@ export default function Cart({
 
       {/* Conservamos los datos para mostrar qué carrito venció. */}
       <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-start gap-6 tablet:grid-cols-1">
-        <CartVehicle carrito={{ ...carrito, segundosRestantes }} alQuitar={abrirModalQuitar} />
+        <CartVehicle
+          carrito={{ ...carrito, segundosRestantes }}
+          alQuitar={abrirModalQuitar}
+          alGuardarFechas={guardarFechas}
+          guardandoFechas={guardandoFechas}
+          mensajeFechas={mensajeFechas}
+        />
         {/* Pasamos estaVencido como prop para que el resumen adapte su botón. */}
         <CartSummary carrito={carrito} estaVencido={estaVencido} />
       </div>

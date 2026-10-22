@@ -40,7 +40,7 @@ export default function App() {
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }) }, [pathname])
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />
+      <Navbar carrito={carrito} />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login reiniciarCarrito={reiniciarCarrito} />} />
