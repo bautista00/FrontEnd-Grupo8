@@ -26,6 +26,9 @@ export default function ConfirmReservation({ vaciarCarrito }) {
   // Guarda la respuesta del backend cuando se crea la reserva.
   const [confirmacion, actualizarConfirmacion] = useState(null)
 
+  // Bloquea nuevos envíos hasta terminar la confirmación y el checkout.
+  const [confirmando, actualizarConfirmando] = useState(false)
+
   // Guarda el mensaje que después mostraremos en pantalla.
   const [mensaje, actualizarMensaje] = useState('')
 
@@ -47,8 +50,9 @@ export default function ConfirmReservation({ vaciarCarrito }) {
   }, [fechaExpiracion])
 
   const confirmarReserva = () => {
-    // Evitamos confirmar si no hay carrito o ya creamos la reserva.
-    if (carrito === null || confirmacion !== null) return
+    // Evitamos repetir el envío o confirmar un carrito vencido.
+    if (carrito === null || confirmando || confirmacion !== null) return
+    if (new Date(carrito.fechaExpiracion).getTime() <= Date.now()) return
 
     const token = localStorage.getItem('jwtToken')
 
@@ -57,6 +61,7 @@ export default function ConfirmReservation({ vaciarCarrito }) {
       return
     }
 
+    actualizarConfirmando(true)
     actualizarMensaje('')
 
     // Distinguimos si falló la creación o el inicio del pago.
@@ -141,6 +146,9 @@ export default function ConfirmReservation({ vaciarCarrito }) {
             : mensajeError
         )
       })
+      .finally(() => {
+        actualizarConfirmando(false)
+      })
   }
 
   // Evitamos leer datos cuando no hay carrito.
@@ -169,7 +177,11 @@ export default function ConfirmReservation({ vaciarCarrito }) {
           {/* Cada componente recibe los datos que necesita. */}
           <SelectedVehicle vehiculo={carrito.publicacion} />
           <ReservationItinerary datos={carrito} publicacion={carrito.publicacion} />
-          <PaymentMethod metodoPago={metodoPago} alCambiar={actualizarMetodoPago} />
+          <PaymentMethod
+            metodoPago={metodoPago}
+            alCambiar={actualizarMetodoPago}
+            bloqueado={confirmando || confirmacion !== null}
+          />
 
           {mensaje && (
             <p className="mt-4 p-3 bg-amber-50 border border-border rounded-[0.25rem] text-[0.6875rem] leading-[1.6] text-amber-700">{mensaje}</p>
@@ -183,6 +195,8 @@ export default function ConfirmReservation({ vaciarCarrito }) {
           carrito={carrito}
           metodoPago={metodoPago}
           alConfirmar={confirmarReserva}
+          confirmando={confirmando}
+          reservaCreada={confirmacion !== null}
         />
       </div>
     </main>

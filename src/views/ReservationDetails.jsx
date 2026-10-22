@@ -100,7 +100,7 @@ export default function ReservationDetails() {
       })
   }
 
-  if (!idReserva || !reserva || !vehiculo || !pago) {
+  if (!idReserva || !reserva || !vehiculo) {
     return (
       <main className="flex-1 w-full max-w-page mx-auto px-(--gutter) pt-10 pb-16">
         <Link to="/mis-reservas" className="inline-flex items-center gap-2 mb-6 text-[0.6875rem] text-soft">

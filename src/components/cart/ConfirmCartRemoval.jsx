@@ -1,6 +1,6 @@
 import { formatearFecha } from '../../utils/formatters'
 
-export default function ConfirmCartRemoval({ carrito, alCerrar, alConfirmar, mensaje }) {
+export default function ConfirmCartRemoval({ carrito, alCerrar, alConfirmar, mensaje, quitando = false }) {
   // El nombre y las fechas llegan desde el carrito.
   const vehiculo = carrito.publicacion
   const fechaInicioTexto = formatearFecha(carrito.fechaInicio)
@@ -16,7 +16,7 @@ export default function ConfirmCartRemoval({ carrito, alCerrar, alConfirmar, men
         className="relative w-full max-w-[35rem] max-h-[calc(100dvh-2rem)] overflow-y-auto p-8 bg-card border border-border rounded-lg shadow-md phone:p-6"
       >
         {/* La cruz cierra el modal igual que Mantener. */}
-        <button type="button" aria-label="Cerrar confirmación" className="absolute top-4 right-4 grid place-items-center w-8 h-8 p-0 bg-transparent border-0 text-[1.625rem] leading-none text-muted" onClick={alCerrar}>
+        <button type="button" aria-label="Cerrar confirmación" className="absolute top-4 right-4 grid place-items-center w-8 h-8 p-0 bg-transparent border-0 text-[1.625rem] leading-none text-muted disabled:cursor-not-allowed" onClick={alCerrar} disabled={quitando}>
           <span aria-hidden="true">×</span>
         </button>
 
@@ -33,12 +33,12 @@ export default function ConfirmCartRemoval({ carrito, alCerrar, alConfirmar, men
         )}
 
         <div className="flex flex-wrap justify-end gap-3 mt-8 phone:flex-col">
-          <button type="button" className="px-5 py-3 bg-card border border-border rounded-[0.25rem] text-[0.75rem] text-soft disabled:cursor-not-allowed" onClick={alCerrar}>
+          <button type="button" className="px-5 py-3 bg-card border border-border rounded-[0.25rem] text-[0.75rem] text-soft disabled:cursor-not-allowed" onClick={alCerrar} disabled={quitando}>
             Mantener
           </button>
           {/* Ejecuta la función quitarCarrito que recibimos desde Cart. */}
-          <button type="button" className="px-5 py-3 bg-red-600 border border-red-600 rounded-[0.25rem] text-[0.75rem] text-white" onClick={alConfirmar}>
-            Quitar del carrito
+          <button type="button" className="px-5 py-3 bg-red-600 border border-red-600 rounded-[0.25rem] text-[0.75rem] text-white disabled:cursor-not-allowed disabled:opacity-65" onClick={alConfirmar} disabled={quitando}>
+            {quitando ? 'Quitando...' : 'Quitar del carrito'}
           </button>
         </div>
       </div>

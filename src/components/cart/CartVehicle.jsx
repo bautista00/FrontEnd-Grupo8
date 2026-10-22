@@ -9,6 +9,7 @@ export default function CartVehicle({
   periodos = carrito.publicacion.periodos ?? [],
   alGuardarFechas,
   guardandoFechas = false,
+  quitando = false,
   mensajeFechas = '',
 }) {
   // Abrimos y cerramos la edición dentro de esta misma card.
@@ -77,11 +78,11 @@ export default function CartVehicle({
 
         <div className="flex justify-between gap-4 mt-4 pt-3 border-t border-border">
           {!mostrarEditor && (
-            <button type="button" className="p-0 bg-transparent border-0 text-[0.6875rem] text-muted underline disabled:cursor-not-allowed" onClick={() => actualizarMostrarEditor(true)} disabled={carrito.segundosRestantes === 0}>
+            <button type="button" className="p-0 bg-transparent border-0 text-[0.6875rem] text-muted underline disabled:cursor-not-allowed" onClick={() => actualizarMostrarEditor(true)} disabled={carrito.segundosRestantes === 0 || quitando}>
               Cambiar fechas
             </button>
           )}
-          <button type="button" className="ml-auto p-0 bg-transparent border-0 text-[0.6875rem] text-muted underline disabled:cursor-not-allowed" onClick={alQuitar} disabled={guardandoFechas}>Quitar</button>
+          <button type="button" className="ml-auto p-0 bg-transparent border-0 text-[0.6875rem] text-muted underline disabled:cursor-not-allowed" onClick={alQuitar} disabled={guardandoFechas || quitando}>Quitar</button>
         </div>
       </div>
     </section>

@@ -80,11 +80,13 @@ export default function UpcomingReservationCard({ reserva, publicacion, pago }) 
               <span className="ml-1 text-[0.625rem] text-muted">ARS</span>
             </p>
             {/* El método viene de pago.metodo, no de la reserva. */}
-            {pago && (
-              <p className="mt-2 text-[0.6875rem] leading-[1.6] text-soft">
-                {pago.metodo === 'EFECTIVO' ? 'Pago en efectivo' : 'Pago con Mercado Pago'}
-              </p>
-            )}
+            <p className="mt-2 text-[0.6875rem] leading-[1.6] text-soft">
+              {!pago
+                ? 'Sin pago registrado'
+                : pago.metodo === 'EFECTIVO'
+                  ? 'Pago en efectivo'
+                  : 'Pago con Mercado Pago'}
+            </p>
           </div>
 
           {/* Enviamos los datos de esta reserva a la vista de detalle. */}

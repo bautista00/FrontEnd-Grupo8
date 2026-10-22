@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { formatARS as formatearPrecio } from '../../utils/formatters'
 
-export default function PaymentSummary({ carrito, metodoPago, alConfirmar }) {
+export default function PaymentSummary({ carrito, metodoPago, alConfirmar, confirmando = false, reservaCreada = false }) {
   // La selección llega desde la vista, igual que a PaymentMethod.
   const esMercadoPago = metodoPago === 'MERCADO_PAGO'
   const segundos = Math.max(0, carrito.segundosRestantes)
@@ -43,12 +43,16 @@ export default function PaymentSummary({ carrito, metodoPago, alConfirmar }) {
       </p>
 
       {/* El clic ejecuta la función de la vista con el método elegido. */}
-      <button type="button" onClick={alConfirmar} className="w-full mt-4 px-4 py-3 bg-ink border-0 rounded-[0.25rem] text-[0.6875rem] leading-[1.6] text-card disabled:cursor-not-allowed disabled:opacity-65" disabled={estaVencido}>
-        {estaVencido
-          ? 'Volvé a retener las fechas'
-          : esMercadoPago
-            ? 'Confirmar e ir a Mercado Pago'
-            : 'Confirmar reserva en efectivo'}
+      <button type="button" onClick={alConfirmar} className="w-full mt-4 px-4 py-3 bg-ink border-0 rounded-[0.25rem] text-[0.6875rem] leading-[1.6] text-card disabled:cursor-not-allowed disabled:opacity-65" disabled={estaVencido || confirmando || reservaCreada}>
+        {confirmando
+          ? 'Confirmando...'
+          : reservaCreada
+            ? 'Reserva creada'
+            : estaVencido
+              ? 'Volvé a retener las fechas'
+              : esMercadoPago
+                ? 'Confirmar e ir a Mercado Pago'
+                : 'Confirmar reserva en efectivo'}
       </button>
       <Link to="/carrito" className="block mt-3 text-center text-[0.6875rem] text-muted hover:underline">Volver al carrito</Link>
 

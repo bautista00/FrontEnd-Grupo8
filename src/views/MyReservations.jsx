@@ -32,28 +32,8 @@ export default function MyReservations() {
       }
     }
 
-    // 1. Consultamos quién es el usuario de esta sesión.
-    fetch('http://localhost:8080/usuarios/me', opciones)
-      .then((respuesta) => {
-        if (!respuesta.ok) {
-          return respuesta.json()
-            .catch(() => ({}))
-            .then((datosError) => {
-              return Promise.reject(new Error(
-                datosError.mensaje || 'No se pudo consultar el usuario.'
-              ))
-            })
-        }
-
-        return respuesta.json()
-      })
-      .then((datosUsuario) => {
-        // 2. Usamos su ID para consultar sus reservas.
-        return fetch(
-          `http://localhost:8080/reservas/usuario/${datosUsuario.idUsuario}`,
-          opciones
-        )
-      })
+    // El backend identifica al usuario por el token y devuelve sus reservas.
+    fetch('http://localhost:8080/reservas/mias', opciones)
       .then((respuesta) => {
         if (!respuesta.ok) {
           return respuesta.json()
@@ -71,67 +51,84 @@ export default function MyReservations() {
         // El backend devuelve una página: la lista está en content.
         const listaReservas = datosReservas.content
 
-        // Esperamos los datos relacionados de todas las reservas.
-        return Promise.all(
-          listaReservas.map((reserva) => {
-            // Consultamos la publicación de esta reserva.
-            return fetch(
-              `http://localhost:8080/publicaciones/${reserva.idPublicacion}`,
-              opciones
-            )
-              .then((respuesta) => {
-                // Una respuesta 204 no tiene un mensaje ni un cuerpo JSON.
-                if (respuesta.status === 204) {
-                  return Promise.reject(new Error('No se pudo consultar la publicación.'))
-                }
+        // Una misma publicación puede aparecer en varias reservas.
+        const idsPublicaciones = [
+          ...new Set(listaReservas.map((reserva) => reserva.idPublicacion))
+        ]
 
-                if (!respuesta.ok) {
-                  return respuesta.json()
-                    .catch(() => ({}))
-                    .then((datosError) => {
-                      return Promise.reject(new Error(
-                        datosError.mensaje || 'No se pudo consultar la publicación.'
-                      ))
-                    })
-                }
+        const pedidosPublicaciones = idsPublicaciones.map((idPublicacion) => {
+          // Consultamos cada publicación una sola vez.
+          return fetch(
+            `http://localhost:8080/publicaciones/${idPublicacion}`,
+            opciones
+          )
+            .then((respuesta) => {
+              // Una respuesta 204 no tiene un mensaje ni un cuerpo JSON.
+              if (respuesta.status === 204) {
+                return Promise.reject(new Error('No se pudo consultar la publicación.'))
+              }
 
+              if (!respuesta.ok) {
                 return respuesta.json()
-              })
-              .then((publicacion) => {
-                // Consultamos el pago de esta misma reserva.
-                return fetch(
-                  `http://localhost:8080/pagos/reserva/${reserva.idReserva}`,
-                  opciones
-                )
-                  .then((respuesta) => {
-                    if (respuesta.status === 204) {
-                      return Promise.reject(new Error('No se pudo consultar el pago.'))
-                    }
-
-                    if (!respuesta.ok) {
-                      return respuesta.json()
-                        .catch(() => ({}))
-                        .then((datosError) => {
-                          return Promise.reject(new Error(
-                            datosError.mensaje || 'No se pudo consultar el pago.'
-                          ))
-                        })
-                    }
-
-                    return respuesta.json()
+                  .catch(() => ({}))
+                  .then((datosError) => {
+                    return Promise.reject(new Error(
+                      datosError.mensaje || 'No se pudo consultar la publicación.'
+                    ))
                   })
-                  .then((pago) => {
-                    return { reserva, publicacion, pago }
+              }
+
+              return respuesta.json()
+            })
+        })
+
+        // Cada reserva conserva su propio pago, sin esperar a las publicaciones.
+        const pedidosPagos = listaReservas.map((reserva) => {
+          return fetch(
+            `http://localhost:8080/pagos/reserva/${reserva.idReserva}`,
+            opciones
+          )
+            .then((respuesta) => {
+              // Una reserva sin pago no impide mostrar las demás.
+              if (respuesta.status === 404) {
+                return null
+              }
+
+              if (respuesta.status === 204) {
+                return Promise.reject(new Error('No se pudo consultar el pago.'))
+              }
+
+              if (!respuesta.ok) {
+                return respuesta.json()
+                  .catch(() => ({}))
+                  .then((datosError) => {
+                    return Promise.reject(new Error(
+                      datosError.mensaje || 'No se pudo consultar el pago.'
+                    ))
                   })
-              })
+              }
+
+              return respuesta.json()
+            })
+        })
+
+        return Promise.all([
+          Promise.all(pedidosPublicaciones),
+          Promise.all(pedidosPagos)
+        ])
+          .then(([publicacionesRecibidas, pagosRecibidos]) => {
+            return {
+              reservas: listaReservas,
+              publicaciones: publicacionesRecibidas,
+              pagos: pagosRecibidos
+            }
           })
-        )
       })
       .then((datosCompletos) => {
         // Guardamos las tres listas para pasarlas a los componentes.
-        actualizarReservas(datosCompletos.map((datos) => datos.reserva))
-        actualizarPublicaciones(datosCompletos.map((datos) => datos.publicacion))
-        actualizarPagos(datosCompletos.map((datos) => datos.pago))
+        actualizarReservas(datosCompletos.reservas)
+        actualizarPublicaciones(datosCompletos.publicaciones)
+        actualizarPagos(datosCompletos.pagos.filter((pago) => pago !== null))
       })
       .catch((error) => {
         console.error('Error al cargar las reservas:', error)

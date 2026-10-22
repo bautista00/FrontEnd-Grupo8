@@ -22,6 +22,9 @@ export default function Cart({
   // El carrito vacío es un aviso normal que llega desde el backend.
   const [mensajeVacio, actualizarMensajeVacio] = useState('')
 
+  // Impide repetir la eliminación mientras esperamos al backend.
+  const [quitando, actualizarQuitando] = useState(false)
+
   // Controlan el guardado de fechas y los errores que mostrará el editor.
   const [guardandoFechas, actualizarGuardandoFechas] = useState(false)
   const [mensajeFechas, actualizarMensajeFechas] = useState('')
@@ -190,17 +193,21 @@ export default function Cart({
   }, [fechaExpiracion, actualizarCarrito])
   
   const abrirModalQuitar =()=>{
+    if (quitando || guardandoFechas) return
+
     actualizarMensaje('')
     actualizarModalQuitar(true)
   }
 
   const cerrarModalQuitar = () => {
+    if (quitando) return
+
     actualizarMensaje('')
     actualizarModalQuitar(false)
   }
 
   const quitarCarrito = () => {
-    if (carrito === null) return
+    if (carrito === null || quitando || guardandoFechas) return
 
     const token = localStorage.getItem('jwtToken')
     if (!token) {
@@ -208,6 +215,7 @@ export default function Cart({
       return
     }
 
+    actualizarQuitando(true)
     actualizarMensaje('')
 
     // Pedimos al backend que elimine este carrito.
@@ -241,10 +249,13 @@ export default function Cart({
             : error.message || 'No pudimos quitar el vehículo. Intentá nuevamente.'
         )
       })
+      .finally(() => {
+        actualizarQuitando(false)
+      })
   }
 
   const guardarFechas = (fechaInicio, fechaFin) => {
-    if (carrito === null || guardandoFechas) {
+    if (carrito === null || guardandoFechas || quitando) {
       return Promise.resolve(false)
     }
 
@@ -367,10 +378,15 @@ export default function Cart({
           alQuitar={abrirModalQuitar}
           alGuardarFechas={guardarFechas}
           guardandoFechas={guardandoFechas}
+          quitando={quitando}
           mensajeFechas={mensajeFechas}
         />
         {/* Pasamos estaVencido como prop para que el resumen adapte su botón. */}
-        <CartSummary carrito={carrito} estaVencido={estaVencido} />
+        <CartSummary
+          carrito={carrito}
+          estaVencido={estaVencido}
+          bloqueado={guardandoFechas || quitando}
+        />
       </div>
 
       {/* Aparece cuando mostrarModalQuitar es true. */}
@@ -380,6 +396,7 @@ export default function Cart({
             carrito={carrito}
             alCerrar={cerrarModalQuitar}
             alConfirmar={quitarCarrito}
+            quitando={quitando}
             mensaje={mensaje}
           />
         )}
