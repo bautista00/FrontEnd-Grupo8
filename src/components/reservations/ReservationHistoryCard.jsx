@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { CarIcon } from '../icons/Icons'
 import { formatARS as formatearPrecio, formatearFecha } from '../../utils/formatters'
 
-export default function ReservationHistoryCard({ reserva, publicacion }) {
+export default function ReservationHistoryCard({ reserva, publicacion, pago }) {
   // Canceladas y rechazadas se distinguen de las finalizadas.
   const clasesEstado = ['CANCELADA', 'RECHAZADA'].includes(reserva.estado)
     ? 'bg-red-50 border-red-200 text-red-700'
@@ -40,10 +40,10 @@ export default function ReservationHistoryCard({ reserva, publicacion }) {
           <p className="text-[0.5625rem] uppercase text-muted">Total</p>
           <strong className="text-[0.8125rem] text-ink">{formatearPrecio(reserva.precioTotal)}</strong>
         </div>
-        {/* Enviamos el ID de esta reserva a la vista de detalle. */}
+        {/* Enviamos los datos de esta reserva a la vista de detalle. */}
         <Link
           to="/mis-reservas/detalle"
-          state={{ idReserva: reserva.idReserva }}
+          state={{ reserva, publicacion, pago }}
           className="inline-flex items-center justify-center px-3 py-2 bg-transparent border border-border rounded-[0.1875rem] text-[0.625rem] text-soft"
         >
           Ver detalle

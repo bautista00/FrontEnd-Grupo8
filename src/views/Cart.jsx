@@ -6,21 +6,29 @@ import CartVehicle from "../components/cart/CartVehicle"
 import { useState,useEffect } from 'react'   
 import ConfirmCartRemoval from '../components/cart/ConfirmCartRemoval'
 
-export default function Cart() {
+export default function Cart({
+  carrito,
+  actualizarCarrito,
+  carritoConsultado,
+  actualizarCarritoConsultado
+}) {
   //Controla si aparece el modal para quietar la publicacion del carrito. 
   const [mostrarModalQuitar, actualizarModalQuitar]=useState(false)
 
-  //Guarda el carrito desde el back, empieza en null porq todavia no recibimos nada
-  const [carrito,actualizarCarrito] = useState(null)
-
+  // El carrito y la función para actualizarlo llegan desde App por props.
   // Guarda los errores que mostramos en pantalla.
   const [mensaje, actualizarMensaje] = useState('')
+
+  // El carrito vacío es un aviso normal que llega desde el backend.
+  const [mensajeVacio, actualizarMensajeVacio] = useState('')
 
   //direccion del backend para consultar el carrito del usuario
   const URL = 'http://localhost:8080/carritos/mio'
 
-  // Al entrar a la vista, consulta el carrito y su publicación.
+  // Consultamos el carrito y su publicación solo si todavía no conocemos sus datos.
   useEffect(() => {
+    if (carritoConsultado) return
+
     // Nombre provisional: coordinar esta clave con el login.
     const token = localStorage.getItem('jwtToken')
 
@@ -35,18 +43,26 @@ export default function Cart() {
       }
     })
       .then((respuesta) => {
-        // 204 significa que el carrito está vacío.
-        if (respuesta.status === 204) return null
-
         if (!respuesta.ok) {
-          throw new Error('No se pudo consultar el carrito')
+          return respuesta.json()
+            .catch(() => ({}))
+            .then((datosError) => {
+              return Promise.reject(new Error(
+                datosError.mensaje || 'No se pudo consultar el carrito'
+              ))
+            })
         }
 
         return respuesta.json()
       })
       .then((datosCarrito) => {
-        // Si está vacío, no necesitamos consultar una publicación.
-        if (datosCarrito === null) return null
+        // El backend devuelve 200 con un mensaje cuando no hay carrito.
+        if (datosCarrito.mensaje && !datosCarrito.idCarrito) {
+          actualizarMensajeVacio(datosCarrito.mensaje)
+          return null
+        }
+
+        actualizarMensajeVacio('')
 
         // 2. Consultamos la publicación que está en ese carrito.
         return fetch(
@@ -60,7 +76,13 @@ export default function Cart() {
         )
           .then((respuestaPublicacion) => {
             if (!respuestaPublicacion.ok) {
-              throw new Error('No se pudo consultar la publicación')
+              return respuestaPublicacion.json()
+                .catch(() => ({}))
+                .then((datosError) => {
+                  return Promise.reject(new Error(
+                    datosError.mensaje || 'No se pudo consultar la publicación'
+                  ))
+                })
             }
 
             return respuestaPublicacion.json()
@@ -76,6 +98,7 @@ export default function Cart() {
       .then((carritoCompleto) => {
         if (carritoCompleto === null) {
           actualizarCarrito(null)
+          actualizarCarritoConsultado(true)
           return
         }
 
@@ -89,13 +112,18 @@ export default function Cart() {
 
         // 4. Guardamos el carrito junto al tiempo calculado en el frontend.
         actualizarCarrito({ ...carritoCompleto, segundosRestantes })
+        actualizarCarritoConsultado(true)
       })
       .catch((error) => {
         // Maneja los errores de cualquiera de las consultas.
         console.error('Error al cargar el carrito:', error)
-        actualizarMensaje('No pudimos cargar tu carrito. Intentá nuevamente más tarde.')
+        actualizarMensaje(
+          error instanceof TypeError
+            ? 'No pudimos conectar con el servidor. Intentá nuevamente.'
+            : error.message || 'No pudimos cargar tu carrito. Intentá nuevamente más tarde.'
+        )
       })
-  }, [])
+  }, [carritoConsultado, actualizarCarrito, actualizarCarritoConsultado])
 
   // Obtenemos el vencimiento cuando ya existe un carrito.
   const fechaExpiracion = carrito ? carrito.fechaExpiracion : null
@@ -123,7 +151,7 @@ export default function Cart() {
 
     // Detenemos el intervalo al salir o cambiar el vencimiento.
     return () => clearInterval(intervalo)
-  }, [fechaExpiracion])
+  }, [fechaExpiracion, actualizarCarrito])
   
   const abrirModalQuitar =()=>{
     actualizarMensaje('')
@@ -155,21 +183,32 @@ export default function Cart() {
     })
       .then((respuesta) => {
         if (!respuesta.ok) {
-          throw new Error('No se pudo quitar el carrito')
+          return respuesta.json()
+            .catch(() => ({}))
+            .then((datosError) => {
+              return Promise.reject(new Error(
+                datosError.mensaje || 'No se pudo quitar el carrito'
+              ))
+            })
         }
 
         // El backend confirmó: vaciamos el estado y cerramos el modal.
         actualizarCarrito(null)
+        actualizarMensajeVacio('')
         actualizarModalQuitar(false)
       })
       .catch((error) => {
         console.error('Error al quitar el carrito:', error)
-        actualizarMensaje('No pudimos quitar el vehículo. Intentá nuevamente.')
+        actualizarMensaje(
+          error instanceof TypeError
+            ? 'No pudimos conectar con el servidor. Intentá nuevamente.'
+            : error.message || 'No pudimos quitar el vehículo. Intentá nuevamente.'
+        )
       })
   }
 
   // null significa que no hay un carrito. Comprobamos esto antes de acceder a sus datos.
-  // Una respuesta 204 se representa como null en el frontend.
+  // El aviso de carrito vacío se guarda separado de los errores.
   if (carrito === null) {
     // Este return termina la función: no se calculan tiempos ni se muestran las tarjetas.
     // Navbar y Footer siguen apareciendo porque App.jsx los muestra fuera de esta vista.
@@ -179,7 +218,7 @@ export default function Cart() {
           {/* Reutilizamos el mismo ícono que ya existe para el carrito en Navbar. */}
           <CartIcon size={48} className="block mx-auto mb-5 text-disabled" />
           <h1 id="cart-empty-title" className="text-[1.625rem] leading-[1.3] text-ink phone:text-[1.5rem]">
-            {mensaje ? 'No pudimos cargar tu carrito' : 'Tu carrito está vacío'}
+            {mensaje ? 'No pudimos cargar tu carrito' : mensajeVacio || 'Tu carrito está vacío'}
           </h1>
           {/* Un error de consulta no significa que el carrito esté vacío. */}
           {mensaje ? (
@@ -196,8 +235,11 @@ export default function Cart() {
     )
   }
 
-  // El segundo efecto mantiene actualizado el tiempo restante.
-  const segundosRestantes = carrito.segundosRestantes
+  // También calculamos el tiempo al entrar con el carrito recibido desde Detalle.
+  const segundosRestantes = Math.max(
+    0,
+    Math.ceil((new Date(carrito.fechaExpiracion).getTime() - Date.now()) / 1000)
+  )
 
   // El resumen también necesita saber si el carrito venció.
   const estaVencido = segundosRestantes === 0
@@ -220,7 +262,7 @@ export default function Cart() {
 
       {/* Conservamos los datos para mostrar qué carrito venció. */}
       <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-start gap-6 tablet:grid-cols-1">
-        <CartVehicle carrito={carrito} alQuitar={abrirModalQuitar}  />
+        <CartVehicle carrito={{ ...carrito, segundosRestantes }} alQuitar={abrirModalQuitar} />
         {/* Pasamos estaVencido como prop para que el resumen adapte su botón. */}
         <CartSummary carrito={carrito} estaVencido={estaVencido} />
       </div>

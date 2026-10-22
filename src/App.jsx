@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, Route, Routes, useLocation } from 'react-router-dom'
 import Footer from './components/layout/Footer'
 import Navbar from './components/layout/Navbar'
@@ -19,6 +19,23 @@ import VehicleForm from './views/VehicleForm'
 import VehiclePhotos from './views/VehiclePhotos'
 
 export default function App() {
+  // Conserva el carrito mientras navegamos entre las vistas.
+  const [carrito, actualizarCarrito] = useState(null)
+  // Distingue un carrito todavía no consultado de uno que ya sabemos que está vacío.
+  const [carritoConsultado, actualizarCarritoConsultado] = useState(false)
+
+  // El backend elimina el carrito cuando crea la reserva; actualizamos su copia local.
+  const vaciarCarrito = () => {
+    actualizarCarrito(null)
+    actualizarCarritoConsultado(true)
+  }
+
+  // Una nueva sesión necesita recuperar su propio carrito cuando corresponda.
+  const reiniciarCarrito = () => {
+    actualizarCarrito(null)
+    actualizarCarritoConsultado(false)
+  }
+
   const { pathname } = useLocation()
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }) }, [pathname])
   return (
@@ -26,8 +43,8 @@ export default function App() {
       <Navbar />
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/registro" element={<Register />} />
+        <Route path="/login" element={<Login reiniciarCarrito={reiniciarCarrito} />} />
+        <Route path="/registro" element={<Register reiniciarCarrito={reiniciarCarrito} />} />
         <Route path="/mis-reservas" element={<MyReservations />} />
         <Route path="/mis-reservas/detalle" element={<ReservationDetails />} />
         <Route path="/mis-publicaciones" element={<MyPublications />} />
@@ -46,9 +63,22 @@ export default function App() {
             <Link to="/" className="inline-block mt-5 text-gold">Volver al inicio</Link>
           </main>
         } />
-        <Route path="/carrito" element={<Cart />} />
+        <Route
+          path="/carrito"
+          element={
+            <Cart
+              carrito={carrito}
+              actualizarCarrito={actualizarCarrito}
+              carritoConsultado={carritoConsultado}
+              actualizarCarritoConsultado={actualizarCarritoConsultado}
+            />
+          }
+        />
         {/* Esta ruta muestra la segunda pantalla del flujo de reserva. */}
-        <Route path="/carrito/confirmar" element={<ConfirmReservation />} />
+        <Route
+          path="/carrito/confirmar"
+          element={<ConfirmReservation vaciarCarrito={vaciarCarrito} />}
+        />
         {/* Resultado al crear la reserva; sus datos todavía son de ejemplo. */}
         <Route path="/reservas/resultado" element={<ReservationResult />} />
         {/* Mercado Pago vuelve al backend y el backend redirige acá con el estado del pago. */}
