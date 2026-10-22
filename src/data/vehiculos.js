@@ -5,6 +5,8 @@ export const TIPOS = [
   { idTipoVehiculo: 2, nombre: 'SUV' },
   { idTipoVehiculo: 3, nombre: 'Deportivo' },
   { idTipoVehiculo: 4, nombre: 'Eléctrico' },
+  { idTipoVehiculo: 5, nombre: 'Hatchback' },
+  { idTipoVehiculo: 6, nombre: 'Pickup' },
 ]
 
 export const SORT_OPTIONS = [

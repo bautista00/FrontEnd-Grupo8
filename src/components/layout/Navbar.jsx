@@ -17,7 +17,7 @@ const NAV_LINKS = [
   { label: 'Explorar', href: '/' },
   { label: 'Mis reservas',href: '/mis-reservas' },
   { label: 'Mis publicaciones', href: '/mis-publicaciones' },
-  { label: 'Mis vehículos' },
+  { label: 'Mis vehículos', href: '/mis-vehiculos' },
 ]
 
 export default function Navbar() {
@@ -38,7 +38,7 @@ export default function Navbar() {
               key={link.label}
               to={link.href}
               end={link.href === '/'}
-              className={({ isActive }) => isActive || (link.href === '/mis-publicaciones' && (pathname === '/publicaciones/nueva' || pathname.endsWith('/editar'))) ? NAV_LINK_ACTIVE : NAV_LINK_IDLE}
+              className={({ isActive }) => isActive || (link.href === '/mis-publicaciones' && pathname.startsWith('/publicaciones/')) ? NAV_LINK_ACTIVE : NAV_LINK_IDLE}
             >
               {link.label}
             </NavLink>
@@ -55,12 +55,12 @@ export default function Navbar() {
             {CANTIDAD_CARRITO > 0 && <span className="absolute top-0 right-0 min-w-4 h-4 px-1 rounded-full bg-gold text-white text-[0.625rem] font-bold leading-4 text-center">{CANTIDAD_CARRITO}</span>}
           </button>
 
-          <Link to="/login" className={NAV_LINK_IDLE}>
+          <a href="#" className={NAV_LINK_IDLE}>
             Iniciar sesión
-          </Link>
-          <Link to="/registro" className={`${btnBase} ${btnDark} ${btnSize} phone:px-2.5 phone:py-2`}>
+          </a>
+          <a href="#" className={`${btnBase} ${btnDark} ${btnSize} phone:px-2.5 phone:py-2`}>
             Registrarse
-          </Link>
+          </a>
         </div>
       </div>
     </header>

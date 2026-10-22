@@ -14,6 +14,9 @@ import MyReservations from "./views/MyReservations"
 import ReservationDetails from "./views/ReservationDetails"
 import ReservationResult from './views/ReservationResult'
 import PaymentReturn from './views/PaymentReturn'
+import MyVehicles from './views/MyVehicles'
+import VehicleForm from './views/VehicleForm'
+import VehiclePhotos from './views/VehiclePhotos'
 
 export default function App() {
   // Conserva el carrito mientras navegamos entre las vistas.
@@ -49,15 +52,11 @@ export default function App() {
         <Route path="/publicaciones/nueva" element={<PublicationForm key="crear" />} />
         <Route path="/publicaciones/:id/editar" element={<PublicationForm key="editar" modo="editar" />} />
         {/* Detalle público de una publicación, al que se llega desde el catálogo. */}
-        <Route
-          path="/publicaciones/:id"
-          element={
-            <PublicationDetail
-              actualizarCarrito={actualizarCarrito}
-              actualizarCarritoConsultado={actualizarCarritoConsultado}
-            />
-          }
-        />
+        <Route path="/publicaciones/:id" element={<PublicationDetail />} />
+        <Route path="/mis-vehiculos" element={<MyVehicles />} />
+        <Route path="/vehiculos/nuevo" element={<VehicleForm key="crear" />} />
+        <Route path="/vehiculos/:id/editar" element={<VehicleForm key="editar" modo="editar" />} />
+        <Route path="/vehiculos/:id/fotos" element={<VehiclePhotos />} />
         <Route path="*" element={
           <main className="flex-1 w-full max-w-page mx-auto px-(--gutter) py-14">
             <h1 className="text-3xl">Página no encontrada</h1>

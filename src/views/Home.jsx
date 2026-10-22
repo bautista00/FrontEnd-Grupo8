@@ -1,11 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import CategoryFilter from '../components/home/CategoryFilter'
 import Hero from '../components/home/Hero'
 import SearchBar from '../components/home/SearchBar'
 import SortSelect from '../components/home/SortSelect'
 import VehicleGrid from '../components/home/VehicleGrid'
 import { RotateCcwIcon } from '../components/icons/Icons'
-import { TIPOS, VEHICULOS } from '../data/vehiculos'
+import PublicationMessage from '../components/publicaciones/PublicationMessage'
+import { obtener } from '../utils/api'
 import { precioFinal } from '../utils/formatters'
 
 const sorters = {
@@ -15,16 +16,43 @@ const sorters = {
   'year-desc': (a, b) => b.anio - a.anio,
 }
 
-const zonas = [...new Set(VEHICULOS.map((v) => v.zona))].sort()
-
 export default function Home() {
+  // Publicaciones activas y tipos de vehículo que vienen del backend
+  const [publicaciones, setPublicaciones] = useState(null)
+  const [tipos, setTipos] = useState([])
+  const [error, setError] = useState('')
+  const [recargar, setRecargar] = useState(0)
+
+  useEffect(() => {
+    // El backend devuelve una página ({ content, ... }); pedimos 100 y filtramos/ordenamos acá
+    Promise.all([
+      obtener('/publicaciones?page=0&size=100'),
+      obtener('/tipo-vehiculo'),
+    ])
+      .then(([pagina, listaTipos]) => {
+        setPublicaciones(pagina.content)
+        setTipos(listaTipos)
+        setError('')
+      })
+      .catch((error) => {
+        console.error('Error al cargar el catálogo', error)
+        setError('No pudimos cargar el catálogo. Intentá nuevamente.')
+      })
+  }, [recargar])
+
+  // Las zonas disponibles salen de las publicaciones cargadas
+  const zonas = useMemo(
+    () => [...new Set((publicaciones ?? []).map((p) => p.zona).filter(Boolean))].sort(),
+    [publicaciones],
+  )
+
   const [zona, setZona] = useState('all')
   const [tipoId, setTipoId] = useState('all')
   const [sortBy, setSortBy] = useState('recommended')
   const [fechaRetiro, setFechaRetiro] = useState('')
   const [fechaDevolucion, setFechaDevolucion] = useState('')
 
-  const vehiculos = VEHICULOS.filter((v) => zona === 'all' || v.zona === zona)
+  const vehiculos = (publicaciones ?? []).filter((v) => zona === 'all' || v.zona === zona)
     .filter((v) => tipoId === 'all' || v.idTipoVehiculo === Number(tipoId))
     .sort(sorters[sortBy])
 
@@ -57,7 +85,7 @@ export default function Home() {
 
       <section id="fleet-results">
         <div className="flex flex-col items-stretch gap-4 mb-5 min-[56.25rem]:flex-row min-[56.25rem]:items-center min-[56.25rem]:justify-between">
-          <CategoryFilter tipos={TIPOS} tipoId={tipoId} onChange={setTipoId} />
+          <CategoryFilter tipos={tipos} tipoId={tipoId} onChange={setTipoId} />
           <SortSelect value={sortBy} onChange={setSortBy} />
         </div>
 
@@ -79,7 +107,11 @@ export default function Home() {
           )}
         </div>
 
-        {vehiculos.length === 0 ? (
+        {error ? (
+          <PublicationMessage error onRetry={() => setRecargar(recargar + 1)}>{error}</PublicationMessage>
+        ) : !publicaciones ? (
+          <PublicationMessage>Cargando vehículos…</PublicationMessage>
+        ) : vehiculos.length === 0 ? (
           <p className="py-12 text-center text-[0.875rem] text-muted">No se encontraron vehículos para esta selección.</p>
         ) : (
           <VehicleGrid items={vehiculos} />
