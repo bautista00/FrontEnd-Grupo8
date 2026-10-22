@@ -5,7 +5,7 @@ import PaymentMethod from "../components/reservations/PaymentMethod"
 import PaymentSummary from "../components/reservations/PaymentSummary"
 import SelectedVehicle from "../components/reservations/SelectedVehicle"
 
-export default function ConfirmReservation() {
+export default function ConfirmReservation({ vaciarCarrito }) {
   // Recibimos el carrito enviado por CartSummary.
   const ubicacion = useLocation()
   const navegar = useNavigate()
@@ -59,6 +59,9 @@ export default function ConfirmReservation() {
 
     actualizarMensaje('')
 
+    // Distinguimos si falló la creación o el inicio del pago.
+    let reservaCreada = false
+
     fetch(
       `http://localhost:8080/carritos/${carrito.idCarrito}/confirmar`,
       {
@@ -73,14 +76,23 @@ export default function ConfirmReservation() {
     )
       .then((respuesta) => {
         if (!respuesta.ok) {
-          throw new Error('No se pudo crear la reserva')
+          return respuesta.json()
+            .catch(() => ({}))
+            .then((datosError) => {
+              return Promise.reject(new Error(
+                datosError.mensaje || 'No se pudo crear la reserva.'
+              ))
+            })
         }
 
         return respuesta.json()
       })
       .then((datosConfirmacion) => {
+        reservaCreada = true
         // Guardamos los identificadores y estados que devuelve el backend.
         actualizarConfirmacion(datosConfirmacion)
+        // La reserva ya existe: el carrito compartido queda vacío para ambos métodos.
+        vaciarCarrito()
 
         if (metodoPago === 'EFECTIVO') {
           // Navegamos solamente después de crear la reserva correctamente.
@@ -100,7 +112,13 @@ export default function ConfirmReservation() {
         )
           .then((respuesta) => {
             if (!respuesta.ok) {
-              throw new Error('No se pudo iniciar el pago')
+              return respuesta.json()
+                .catch(() => ({}))
+                .then((datosError) => {
+                  return Promise.reject(new Error(
+                    datosError.mensaje || 'No se pudo iniciar el pago.'
+                  ))
+                })
             }
 
             return respuesta.json()
@@ -112,11 +130,15 @@ export default function ConfirmReservation() {
       })
       .catch((error) => {
         console.error('Error al confirmar la reserva:', error)
+        const mensajeError = error instanceof TypeError
+          ? 'No pudimos conectar con el servidor. Intentá nuevamente.'
+          : error.message || 'No se pudo completar la operación.'
+
         // Si falló el checkout, la reserva ya existe: no pedimos reintentar.
         actualizarMensaje(
-          error.message === 'No se pudo iniciar el pago'
-            ? 'La reserva se creó, pero no pudimos abrir Mercado Pago. Revisala en Mis reservas.'
-            : 'No pudimos crear la reserva. Intentá nuevamente.'
+          reservaCreada
+            ? `La reserva se creó. ${mensajeError} Podés revisarla en Mis reservas.`
+            : mensajeError
         )
       })
   }

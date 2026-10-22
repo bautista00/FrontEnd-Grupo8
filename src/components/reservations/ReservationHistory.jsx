@@ -1,7 +1,7 @@
 import ReservationHistoryCard from "./ReservationHistoryCard"
 import EmptyReservations from "./EmptyReservations"
 
-export default function ReservationHistory({ reservas, publicaciones }) {
+export default function ReservationHistory({ reservas, publicaciones, pagos }) {
   return (
     <section aria-labelledby="reservation-history-title">
       <header className="flex items-center justify-between gap-3 mb-4">
@@ -17,12 +17,14 @@ export default function ReservationHistory({ reservas, publicaciones }) {
         {/* Repetimos la tarjeta para cada reserva del historial. */}
         {reservas.map((reserva) => {
           const publicacion = publicaciones.find((publicacion) => publicacion.idPublicacion === reserva.idPublicacion)
+          const pago = pagos.find((pago) => pago.idReserva === reserva.idReserva)
 
           return (
             <ReservationHistoryCard
               key={reserva.idReserva}
               reserva={reserva}
               publicacion={publicacion}
+              pago={pago}
             />
           )
         })}

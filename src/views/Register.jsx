@@ -28,7 +28,7 @@ function validar(valores) {
   return ''
 }
 
-export default function Register() {
+export default function Register({ reiniciarCarrito }) {
   const navigate = useNavigate()
   const [valores, setValores] = useState(VALORES_INICIALES)
   const [error, setError] = useState('')
@@ -63,6 +63,8 @@ export default function Register() {
       .then((respuesta) => {
         // El resto de las vistas leen el token con esta clave
         localStorage.setItem('jwtToken', respuesta.token)
+        // La cuenta nueva no reutiliza el carrito guardado de otra sesión.
+        reiniciarCarrito()
         navigate('/')
       })
       .catch((error) => {

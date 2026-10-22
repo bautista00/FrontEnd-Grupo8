@@ -9,7 +9,7 @@ import PasswordField from '../components/ui/PasswordField'
 import { btnBase, btnDark } from '../components/ui/buttonStyles'
 import { enviar } from '../utils/api'
 
-export default function Login() {
+export default function Login({ reiniciarCarrito }) {
   const navigate = useNavigate()
   const [valores, setValores] = useState({ email: '', password: '' })
   const [error, setError] = useState('')
@@ -30,6 +30,8 @@ export default function Login() {
       .then((respuesta) => {
         // El resto de las vistas leen el token con esta clave
         localStorage.setItem('jwtToken', respuesta.token)
+        // Descartamos el carrito de la sesión anterior antes de navegar.
+        reiniciarCarrito()
         navigate('/')
       })
       .catch((error) => {

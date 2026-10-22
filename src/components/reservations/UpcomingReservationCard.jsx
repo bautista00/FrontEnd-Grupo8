@@ -87,10 +87,10 @@ export default function UpcomingReservationCard({ reserva, publicacion, pago }) 
             )}
           </div>
 
-          {/* Enviamos el ID de esta reserva a la vista de detalle. */}
+          {/* Enviamos los datos de esta reserva a la vista de detalle. */}
           <Link
             to="/mis-reservas/detalle"
-            state={{ idReserva: reserva.idReserva }}
+            state={{ reserva, publicacion, pago }}
             className="flex items-center justify-center w-full px-4 py-3 bg-ink border-0 rounded-[0.25rem] text-[0.6875rem] text-white"
           >
             Ver detalle de reserva

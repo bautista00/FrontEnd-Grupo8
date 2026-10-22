@@ -11,7 +11,7 @@ import DetailSpecs from '../components/detalle/DetailSpecs'
 import { obtener, enviar } from '../utils/api'
 import { formatFechaPublicacion } from '../utils/publicaciones'
 
-export default function PublicationDetail() {
+export default function PublicationDetail({ actualizarCarrito, actualizarCarritoConsultado }) {
   const { id } = useParams()
   const navigate = useNavigate()
   const token = localStorage.getItem('jwtToken')
@@ -61,8 +61,13 @@ export default function PublicationDetail() {
     setAgregando(true)
     setMensaje('')
     // Si el backend explica el problema (por ejemplo, fechas ocupadas), se muestra ese mensaje
-    enviar('/carritos', 'POST', token, { idPublicacion: Number(id), fechaInicio, fechaFin }, 'No pudimos agregar el vehículo al carrito. Intentá nuevamente.')
-      .then(() => navigate('/carrito'))
+    enviar(`/carritos/publicaciones/${id}`, 'POST', token, { fechaInicio, fechaFin }, 'No pudimos agregar el vehículo al carrito. Intentá nuevamente.')
+      .then((datosCarrito) => {
+        // Guardamos en App la respuesta del backend y la publicación ya cargada.
+        actualizarCarrito({ ...datosCarrito, publicacion })
+        actualizarCarritoConsultado(true)
+        navigate('/carrito')
+      })
       .catch((error) => {
         console.error('Error al agregar al carrito', error)
         setMensaje(error.message)

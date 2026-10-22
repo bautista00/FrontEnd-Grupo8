@@ -36,7 +36,13 @@ export default function MyReservations() {
     fetch('http://localhost:8080/usuarios/me', opciones)
       .then((respuesta) => {
         if (!respuesta.ok) {
-          throw new Error('No se pudo consultar el usuario')
+          return respuesta.json()
+            .catch(() => ({}))
+            .then((datosError) => {
+              return Promise.reject(new Error(
+                datosError.mensaje || 'No se pudo consultar el usuario.'
+              ))
+            })
         }
 
         return respuesta.json()
@@ -50,7 +56,13 @@ export default function MyReservations() {
       })
       .then((respuesta) => {
         if (!respuesta.ok) {
-          throw new Error('No se pudieron consultar las reservas')
+          return respuesta.json()
+            .catch(() => ({}))
+            .then((datosError) => {
+              return Promise.reject(new Error(
+                datosError.mensaje || 'No se pudieron consultar las reservas.'
+              ))
+            })
         }
 
         return respuesta.json()
@@ -68,8 +80,19 @@ export default function MyReservations() {
               opciones
             )
               .then((respuesta) => {
-                if (!respuesta.ok || respuesta.status === 204) {
-                  throw new Error('No se pudo consultar la publicación')
+                // Una respuesta 204 no tiene un mensaje ni un cuerpo JSON.
+                if (respuesta.status === 204) {
+                  return Promise.reject(new Error('No se pudo consultar la publicación.'))
+                }
+
+                if (!respuesta.ok) {
+                  return respuesta.json()
+                    .catch(() => ({}))
+                    .then((datosError) => {
+                      return Promise.reject(new Error(
+                        datosError.mensaje || 'No se pudo consultar la publicación.'
+                      ))
+                    })
                 }
 
                 return respuesta.json()
@@ -81,8 +104,18 @@ export default function MyReservations() {
                   opciones
                 )
                   .then((respuesta) => {
-                    if (!respuesta.ok || respuesta.status === 204) {
-                      throw new Error('No se pudo consultar el pago')
+                    if (respuesta.status === 204) {
+                      return Promise.reject(new Error('No se pudo consultar el pago.'))
+                    }
+
+                    if (!respuesta.ok) {
+                      return respuesta.json()
+                        .catch(() => ({}))
+                        .then((datosError) => {
+                          return Promise.reject(new Error(
+                            datosError.mensaje || 'No se pudo consultar el pago.'
+                          ))
+                        })
                     }
 
                     return respuesta.json()
@@ -102,7 +135,11 @@ export default function MyReservations() {
       })
       .catch((error) => {
         console.error('Error al cargar las reservas:', error)
-        actualizarMensaje('No pudimos cargar tus reservas y sus datos. Intentá nuevamente.')
+        actualizarMensaje(
+          error instanceof TypeError
+            ? 'No pudimos conectar con el servidor. Intentá nuevamente.'
+            : error.message || 'No pudimos cargar tus reservas.'
+        )
       })
   }, [])
 
@@ -144,7 +181,7 @@ export default function MyReservations() {
 
           {/* Todas e Historial muestran las reservas anteriores. */}
           {(filtroSeleccionado === 'todas' || filtroSeleccionado === 'historial') && (
-            <ReservationHistory reservas={reservasHistorial} publicaciones={publicaciones} />
+            <ReservationHistory reservas={reservasHistorial} publicaciones={publicaciones} pagos={pagos} />
           )}
         </>
       ))}

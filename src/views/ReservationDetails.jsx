@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import SelectedVehicle from "../components/reservations/SelectedVehicle"
 import ReservationItinerary from "../components/reservations/ReservationItinerary"
@@ -16,10 +16,14 @@ const ESTADOS_RESERVA = {
 }
 
 export default function ReservationDetails() {
-  // Guardamos los datos que recibimos del backend.
-  const [reserva, actualizarReserva] = useState(null)
-  const [vehiculo, actualizarVehiculo] = useState(null)
-  const [pago, actualizarPago] = useState(null)
+  // Recibimos los datos enviados desde la tarjeta de Mis reservas.
+  const ubicacion = useLocation()
+
+  // La reserva puede cambiar cuando el backend confirma su cancelación.
+  const [reserva, actualizarReserva] = useState(ubicacion.state?.reserva ?? null)
+  const vehiculo = ubicacion.state?.publicacion
+  const pago = ubicacion.state?.pago
+  const idReserva = reserva?.idReserva
   const [mensaje, actualizarMensaje] = useState('')
 
   // Controla si aparece la confirmación de cancelación.
@@ -41,67 +45,6 @@ export default function ReservationDetails() {
     actualizarModalCancelar(false)
   }
 
-  // Leemos el ID que envió el link de la tarjeta.
-  const ubicacion = useLocation()
-  const idReserva = ubicacion.state?.idReserva
-
-  useEffect(() => {
-    if (!idReserva) return
-
-    const token = localStorage.getItem('jwtToken')
-
-    if (!token) {
-      actualizarMensaje('Necesitás iniciar sesión para consultar tu reserva.')
-      return
-    }
-
-    actualizarMensaje('')
-
-    const opciones = {
-      method: 'GET',
-      headers: { Authorization: `Bearer ${token}` },
-    }
-
-    // Primero consultamos la reserva para conocer su publicación.
-    fetch(`http://localhost:8080/reservas/${idReserva}`, opciones)
-      .then((respuesta) => {
-        if (respuesta.status === 204) {
-          throw new Error('No se encontró la reserva')
-        }
-        if (!respuesta.ok) {
-          throw new Error('No se pudo consultar la reserva')
-        }
-        return respuesta.json()
-      })
-      .then((datosReserva) => {
-        actualizarReserva(datosReserva)
-        return fetch(`http://localhost:8080/publicaciones/${datosReserva.idPublicacion}`, opciones)
-      })
-      .then((respuesta) => {
-        if (!respuesta.ok || respuesta.status === 204) {
-          throw new Error('No se pudo consultar la publicación')
-        }
-        return respuesta.json()
-      })
-      .then((datosPublicacion) => {
-        actualizarVehiculo(datosPublicacion)
-        return fetch(`http://localhost:8080/pagos/reserva/${idReserva}`, opciones)
-      })
-      .then((respuesta) => {
-        if (!respuesta.ok || respuesta.status === 204) {
-          throw new Error('No se pudo consultar el pago')
-        }
-        return respuesta.json()
-      })
-      .then((datosPago) => {
-        actualizarPago(datosPago)
-      })
-      .catch((error) => {
-        console.error('Error al cargar el detalle de la reserva:', error)
-        actualizarMensaje('No pudimos cargar todos los datos de tu reserva. Intentá nuevamente.')
-      })
-  }, [idReserva])
-
   const cancelarReserva = () => {
     if (cancelando) return
 
@@ -115,35 +58,25 @@ export default function ReservationDetails() {
     actualizarCancelando(true)
     actualizarMensajeCancelar('')
 
-    // Consultamos qué usuario está realizando la cancelación.
-    fetch('http://localhost:8080/usuarios/me', {
-      method: 'GET',
+    // El backend identifica al usuario por el token y valida la cancelación.
+    fetch(`http://localhost:8080/reservas/${idReserva}/cancelar`, {
+      method: 'PUT',
       headers: {
         Authorization: `Bearer ${token}`,
       },
     })
       .then((respuesta) => {
-        if (!respuesta.ok || respuesta.status === 204) {
-          throw new Error('No se pudo consultar el usuario')
+        if (respuesta.status === 204) {
+          return Promise.reject(new Error('No se pudo cancelar la reserva.'))
         }
-
-        return respuesta.json()
-      })
-      .then((datosUsuario) => {
-        // Pedimos al backend que cambie el estado de la reserva.
-        return fetch(
-          `http://localhost:8080/reservas/${idReserva}/cancelar?idUsuario=${datosUsuario.idUsuario}`,
-          {
-            method: 'PUT',
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        )
-      })
-      .then((respuesta) => {
-        if (!respuesta.ok || respuesta.status === 204) {
-          throw new Error('No se pudo cancelar la reserva')
+        if (!respuesta.ok) {
+          return respuesta.json()
+            .catch(() => ({}))
+            .then((datosError) => {
+              return Promise.reject(new Error(
+                datosError.mensaje || 'No se pudo cancelar la reserva.'
+              ))
+            })
         }
 
         return respuesta.json()
@@ -156,7 +89,11 @@ export default function ReservationDetails() {
       })
       .catch((error) => {
         console.error('Error al cancelar la reserva:', error)
-        actualizarMensajeCancelar('No pudimos cancelar tu reserva. Intentá nuevamente.')
+        actualizarMensajeCancelar(
+          error instanceof TypeError
+            ? 'No pudimos conectar con el servidor. Intentá nuevamente.'
+            : error.message || 'No pudimos cancelar tu reserva.'
+        )
       })
       .finally(() => {
         actualizarCancelando(false)

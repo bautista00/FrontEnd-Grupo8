@@ -39,11 +39,17 @@ export default function ReservationResult() {
     fetch(`http://localhost:8080/reservas/${idReserva}`, opciones)
       .then((respuesta) => {
         if (respuesta.status === 204) {
-          throw new Error('No se encontró la reserva')
+          return Promise.reject(new Error('No se encontró la reserva.'))
         }
 
         if (!respuesta.ok) {
-          throw new Error('No se pudo consultar la reserva')
+          return respuesta.json()
+            .catch(() => ({}))
+            .then((datosError) => {
+              return Promise.reject(new Error(
+                datosError.mensaje || 'No se pudo consultar la reserva.'
+              ))
+            })
         }
 
         return respuesta.json()
@@ -59,8 +65,18 @@ export default function ReservationResult() {
         )
       })
       .then((respuesta) => {
-        if (!respuesta.ok || respuesta.status === 204) {
-          throw new Error('No se pudo consultar la publicación')
+        if (respuesta.status === 204) {
+          return Promise.reject(new Error('No se pudo consultar la publicación.'))
+        }
+
+        if (!respuesta.ok) {
+          return respuesta.json()
+            .catch(() => ({}))
+            .then((datosError) => {
+              return Promise.reject(new Error(
+                datosError.mensaje || 'No se pudo consultar la publicación.'
+              ))
+            })
         }
 
         return respuesta.json()
@@ -75,8 +91,18 @@ export default function ReservationResult() {
         )
       })
       .then((respuesta) => {
-        if (!respuesta.ok || respuesta.status === 204) {
-          throw new Error('No se pudo consultar el pago')
+        if (respuesta.status === 204) {
+          return Promise.reject(new Error('No se pudo consultar el pago.'))
+        }
+
+        if (!respuesta.ok) {
+          return respuesta.json()
+            .catch(() => ({}))
+            .then((datosError) => {
+              return Promise.reject(new Error(
+                datosError.mensaje || 'No se pudo consultar el pago.'
+              ))
+            })
         }
 
         return respuesta.json()
@@ -87,7 +113,11 @@ export default function ReservationResult() {
       .catch((error) => {
         // La consola ayuda a revisar el error; el mensaje informa al usuario.
         console.error('Error al cargar el resultado de la reserva:', error)
-        actualizarMensaje('No pudimos cargar todos los datos de tu reserva. Intentá nuevamente.')
+        actualizarMensaje(
+          error instanceof TypeError
+            ? 'No pudimos conectar con el servidor. Intentá nuevamente.'
+            : error.message || 'No pudimos cargar tu reserva.'
+        )
       })
   }, [idReserva])
 
