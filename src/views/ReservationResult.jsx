@@ -5,19 +5,21 @@ import ReservedVehicleSummary from '../components/reservations/ReservedVehicleSu
 import PickupInstructions from '../components/reservations/PickupInstructions'
 
 export default function ReservationResult() {
-  // Recibimos el ID enviado desde ConfirmReservation.
+  // Recibimos los datos enviados desde ConfirmReservation.
   const ubicacion = useLocation()
-  const idReserva = ubicacion.state?.idReserva
+  const carrito = ubicacion.state?.carrito
+  const confirmacion = ubicacion.state?.confirmacion
+  const metodoPago = ubicacion.state?.metodoPago
 
-  // Guardamos los datos que recibiremos del backend.
-  const [reserva, actualizarReserva] = useState(null)
-  const [pago, actualizarPago] = useState(null)
+  const idReserva = confirmacion?.idReserva
+  const idPublicacion = carrito?.idPublicacion
+
+  // Solo consultaremos la publicación después de confirmar.
   const [publicacion, actualizarPublicacion] = useState(null)
   const [mensaje, actualizarMensaje] = useState('')
 
   useEffect(() => {
-    // Sin identificador, no sabemos qué reserva consultar.
-    if (!idReserva) return
+    if (!idReserva || !idPublicacion) return
 
     const token = localStorage.getItem('jwtToken')
     if (!token) {
@@ -27,43 +29,13 @@ export default function ReservationResult() {
 
     actualizarMensaje('')
 
-    // Las tres consultas usan el mismo método y token.
-    const opciones = {
+    // Obtenemos la ubicación que el backend autoriza tras confirmar.
+    fetch(`http://localhost:8080/publicaciones/${idPublicacion}`, {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${token}`
       }
-    }
-
-    // 1. Consultamos la reserva.
-    fetch(`http://localhost:8080/reservas/${idReserva}`, opciones)
-      .then((respuesta) => {
-        if (respuesta.status === 204) {
-          return Promise.reject(new Error('No se encontró la reserva.'))
-        }
-
-        if (!respuesta.ok) {
-          return respuesta.json()
-            .catch(() => ({}))
-            .then((datosError) => {
-              return Promise.reject(new Error(
-                datosError.mensaje || 'No se pudo consultar la reserva.'
-              ))
-            })
-        }
-
-        return respuesta.json()
-      })
-      .then((datosReserva) => {
-        // Guardamos la reserva recibida del backend.
-        actualizarReserva(datosReserva)
-
-        // 2. Usamos el idPublicacion recibido en la reserva.
-        return fetch(
-          `http://localhost:8080/publicaciones/${datosReserva.idPublicacion}`,
-          opciones
-        )
-      })
+    })
       .then((respuesta) => {
         if (respuesta.status === 204) {
           return Promise.reject(new Error('No se pudo consultar la publicación.'))
@@ -83,45 +55,19 @@ export default function ReservationResult() {
       })
       .then((datosPublicacion) => {
         actualizarPublicacion(datosPublicacion)
-
-        // 3. Consultamos el pago asociado a esta reserva.
-        return fetch(
-          `http://localhost:8080/pagos/reserva/${idReserva}`,
-          opciones
-        )
-      })
-      .then((respuesta) => {
-        if (respuesta.status === 204) {
-          return Promise.reject(new Error('No se pudo consultar el pago.'))
-        }
-
-        if (!respuesta.ok) {
-          return respuesta.json()
-            .catch(() => ({}))
-            .then((datosError) => {
-              return Promise.reject(new Error(
-                datosError.mensaje || 'No se pudo consultar el pago.'
-              ))
-            })
-        }
-
-        return respuesta.json()
-      })
-      .then((datosPago) => {
-        actualizarPago(datosPago)
       })
       .catch((error) => {
-        // La consola ayuda a revisar el error; el mensaje informa al usuario.
-        console.error('Error al cargar el resultado de la reserva:', error)
+        console.error('Error al cargar la publicación:', error)
         actualizarMensaje(
           error instanceof TypeError
             ? 'No pudimos conectar con el servidor. Intentá nuevamente.'
-            : error.message || 'No pudimos cargar tu reserva.'
+            : error.message || 'No pudimos cargar la publicación.'
         )
       })
-  }, [idReserva])
+  }, [idReserva, idPublicacion])
 
-  if (!reserva || !pago || !publicacion) {
+  // Comprobamos los datos antes de usarlos.
+  if (!carrito || !confirmacion || !metodoPago || !publicacion) {
     return (
       <main className="flex-1 w-full max-w-page mx-auto px-(--gutter) py-10">
         <h1 className="text-[1.875rem] text-ink">
@@ -134,6 +80,27 @@ export default function ReservationResult() {
         )}
       </main>
     )
+  }
+
+  // Combinamos las fechas y precios con el estado confirmado por el backend.
+  const reserva = {
+    idReserva: confirmacion.idReserva,
+    idPublicacion: carrito.idPublicacion,
+    estado: confirmacion.estadoReserva,
+    fechaInicio: carrito.fechaInicio,
+    fechaFin: carrito.fechaFin,
+    cantidadDias: carrito.cantidadDias,
+    precioDiaAplicado: carrito.precioDiaAplicado,
+    precioTotal: confirmacion.monto
+  }
+
+  // El estado y el monto del pago también vienen del backend.
+  const pago = {
+    idPago: confirmacion.idPago,
+    idReserva: confirmacion.idReserva,
+    estado: confirmacion.estadoPago,
+    metodo: metodoPago,
+    monto: confirmacion.monto
   }
 
   return (

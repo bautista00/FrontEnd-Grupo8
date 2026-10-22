@@ -1,4 +1,5 @@
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
 
 // Textos para cada estado de pago que devuelve el backend.
 const MENSAJES = {
@@ -20,13 +21,100 @@ const MENSAJES = {
 }
 
 export default function PaymentReturn() {
-  // El backend nos redirige a /reservas/:idReserva?idPago=...&estadoPago=...
+  // El backend nos redirige a /reservas/:idReserva después del pago.
   const { idReserva } = useParams()
-  const [parametros] = useSearchParams()
-  const estadoPago = parametros.get('estadoPago')
 
-  // Si no llegó un estado conocido, mostramos el caso pendiente.
-  const datos = MENSAJES[estadoPago] || MENSAJES.PENDIENTE
+  const [pago, actualizarPago] = useState(null)
+  const [verificando, actualizarVerificando] = useState(true)
+  const [mensaje, actualizarMensaje] = useState('')
+
+  useEffect(() => {
+    if (!idReserva) {
+      actualizarMensaje('No pudimos identificar la reserva.')
+      actualizarVerificando(false)
+      return
+    }
+
+    const token = localStorage.getItem('jwtToken')
+
+    if (!token) {
+      actualizarMensaje('Necesitás iniciar sesión para consultar el pago.')
+      actualizarVerificando(false)
+      return
+    }
+
+    actualizarVerificando(true)
+    actualizarMensaje('')
+    actualizarPago(null)
+
+    // El resultado se obtiene del backend, no de los parámetros de la URL.
+    fetch(`http://localhost:8080/pagos/reserva/${idReserva}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+      .then((respuesta) => {
+        if (respuesta.status === 204) {
+          return Promise.reject(
+            new Error('No se recibieron los datos del pago.')
+          )
+        }
+
+        if (!respuesta.ok) {
+          return respuesta.json()
+            .catch(() => ({}))
+            .then((datosError) => {
+              return Promise.reject(new Error(
+                datosError.mensaje || 'No se pudo consultar el pago.'
+              ))
+            })
+        }
+
+        return respuesta.json()
+      })
+      .then((datosPago) => {
+        actualizarPago(datosPago)
+      })
+      .catch((error) => {
+        actualizarMensaje(
+          error instanceof TypeError
+            ? 'No pudimos conectar con el servidor. Intentá nuevamente.'
+            : error.message || 'No se pudo consultar el pago.'
+        )
+      })
+      .finally(() => {
+        actualizarVerificando(false)
+      })
+  }, [idReserva])
+
+  const estadoPago = pago?.estado
+  const datos = MENSAJES[estadoPago]
+
+  if (verificando || mensaje || !datos) {
+    return (
+      <main className="flex-1 w-full max-w-page mx-auto px-(--gutter) pt-10 pb-16">
+        <h1 className="text-[2.25rem] text-ink">
+          {verificando
+            ? 'Verificando el pago…'
+            : 'No pudimos verificar el pago'}
+        </h1>
+
+        {mensaje && (
+          <p role="alert" className="mt-4 text-[0.75rem] text-error">
+            {mensaje}
+          </p>
+        )}
+
+        <Link
+          to="/mis-reservas"
+          className="inline-block mt-6 text-soft hover:underline"
+        >
+          Ir a Mis reservas
+        </Link>
+      </main>
+    )
+  }
 
   return (
     <main className="flex-1 w-full max-w-page mx-auto px-(--gutter) pt-10 pb-16 phone:pt-7 phone:pb-10">

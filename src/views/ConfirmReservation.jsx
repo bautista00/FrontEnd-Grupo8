@@ -102,7 +102,11 @@ export default function ConfirmReservation({ vaciarCarrito }) {
         if (metodoPago === 'EFECTIVO') {
           // Navegamos solamente después de crear la reserva correctamente.
           navegar('/reservas/resultado', {
-            state: { idReserva: datosConfirmacion.idReserva }
+            state: {
+              carrito,
+              confirmacion: datosConfirmacion,
+              metodoPago
+            }
           })
           return
         }
