@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { API_URL } from '../utils/api'
 
 // Textos para cada estado de pago que devuelve el backend.
 const MENSAJES = {
@@ -48,7 +49,7 @@ export default function PaymentReturn() {
     actualizarPago(null)
 
     // El resultado se obtiene del backend, no de los parámetros de la URL.
-    fetch(`http://localhost:8080/pagos/reserva/${idReserva}`, {
+    fetch(`${API_URL}/pagos/reserva/${idReserva}`, {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${token}`

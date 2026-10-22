@@ -7,8 +7,7 @@ import PublicationMessage from '../components/publicaciones/PublicationMessage'
 import PublicationPagination from '../components/publicaciones/PublicationPagination'
 import { btnBase, btnDark, btnSize } from '../components/ui/buttonStyles'
 import { ESTADOS_PUBLICACION } from '../utils/publicaciones'
-
-const URL = 'http://localhost:8080'
+import { API_URL } from '../utils/api'
 
 // Botones para filtrar por estado: "Todas" + uno por cada estado
 const FILTROS = [
@@ -42,7 +41,7 @@ export default function MyPublications() {
     if (estado !== 'TODAS') parametros.set('estado', estado)
     if (busqueda) parametros.set('busqueda', busqueda)
 
-    fetch(`${URL}/publicaciones/mias?${parametros}`, {
+    fetch(`${API_URL}/publicaciones/mias?${parametros}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((respuesta) => {
@@ -79,7 +78,7 @@ export default function MyPublications() {
 
     setProcesando(true)
     setAviso('')
-    fetch(`${URL}/publicaciones/${publicacion.idPublicacion}${ruta}`, {
+    fetch(`${API_URL}/publicaciones/${publicacion.idPublicacion}${ruta}`, {
       method: metodo,
       headers: { Authorization: `Bearer ${token}` },
     })

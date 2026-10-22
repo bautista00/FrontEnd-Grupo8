@@ -51,7 +51,7 @@ export default function App() {
         {/* Las key distintas hacen que React arme un formulario nuevo al pasar de crear a editar */}
         <Route path="/publicaciones/nueva" element={<PublicationForm key="crear" />} />
         <Route path="/publicaciones/:id/editar" element={<PublicationForm key="editar" modo="editar" />} />
-        {/* Detalle público de una publicación, al que se llega desde el catálogo. */}
+        {/* Detalle de una publicación, al que se llega desde el catálogo. Pide iniciar sesión. */}
         <Route
           path="/publicaciones/:id"
           element={

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import PublicationIcon from './PublicationIcon'
-
-const URL = 'http://localhost:8080'
+import { API_URL } from '../../utils/api'
 
 // Portadas ya pedidas, por idVehiculo. Si dos componentes muestran el mismo auto
 // (por ejemplo, en Editar publicación) o se vuelve a la misma página, se reusa el pedido.
@@ -9,7 +8,7 @@ const portadas = new Map()
 
 function obtenerPortada(idVehiculo) {
   if (!portadas.has(idVehiculo)) {
-    const pedido = fetch(`${URL}/imagen-vehiculo/por-vehiculo/${idVehiculo}`)
+    const pedido = fetch(`${API_URL}/imagen-vehiculo/por-vehiculo/${idVehiculo}`)
       .then((respuesta) => {
         if (!respuesta.ok) throw new Error('No se pudieron cargar las fotos')
         return respuesta.json()

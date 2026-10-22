@@ -3,6 +3,7 @@ import ReservationHistory from "../components/reservations/ReservationHistory"
 import UpcomingReservations from "../components/reservations/UpcomingReservations"
 import EmptyReservations from "../components/reservations/EmptyReservations"
 import { useEffect, useState } from 'react'
+import { API_URL } from '../utils/api'
 
 
 export default function MyReservations() {
@@ -33,7 +34,7 @@ export default function MyReservations() {
     }
 
     // El backend identifica al usuario por el token y devuelve sus reservas.
-    fetch('http://localhost:8080/reservas/mias', opciones)
+    fetch(`${API_URL}/reservas/mias`, opciones)
       .then((respuesta) => {
         if (!respuesta.ok) {
           return respuesta.json()
@@ -59,7 +60,7 @@ export default function MyReservations() {
         const pedidosPublicaciones = idsPublicaciones.map((idPublicacion) => {
           // Consultamos cada publicación una sola vez.
           return fetch(
-            `http://localhost:8080/publicaciones/${idPublicacion}`,
+            `${API_URL}/publicaciones/${idPublicacion}`,
             opciones
           )
             .then((respuesta) => {
@@ -85,7 +86,7 @@ export default function MyReservations() {
         // Cada reserva conserva su propio pago, sin esperar a las publicaciones.
         const pedidosPagos = listaReservas.map((reserva) => {
           return fetch(
-            `http://localhost:8080/pagos/reserva/${reserva.idReserva}`,
+            `${API_URL}/pagos/reserva/${reserva.idReserva}`,
             opciones
           )
             .then((respuesta) => {

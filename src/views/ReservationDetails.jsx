@@ -5,6 +5,7 @@ import ReservationItinerary from "../components/reservations/ReservationItinerar
 import ReservationPaymentSummary from "../components/reservations/ReservationPaymentSummary"
 import ReservationManagement from "../components/reservations/ReservationManagement"
 import ConfirmCancellation from '../components/reservations/ConfirmCancellation'
+import { API_URL } from '../utils/api'
 
 // Colores según los estados del backend.
 const ESTADOS_RESERVA = {
@@ -59,7 +60,7 @@ export default function ReservationDetails() {
     actualizarMensajeCancelar('')
 
     // El backend identifica al usuario por el token y valida la cancelación.
-    fetch(`http://localhost:8080/reservas/${idReserva}/cancelar`, {
+    fetch(`${API_URL}/reservas/${idReserva}/cancelar`, {
       method: 'PUT',
       headers: {
         Authorization: `Bearer ${token}`,

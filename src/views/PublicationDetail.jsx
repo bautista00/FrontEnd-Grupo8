@@ -8,6 +8,7 @@ import DetailGallery from '../components/detalle/DetailGallery'
 import DetailLocation from '../components/detalle/DetailLocation'
 import DetailReservation from '../components/detalle/DetailReservation'
 import DetailSpecs from '../components/detalle/DetailSpecs'
+import { btnBase, btnDark, btnOutline, btnSize } from '../components/ui/buttonStyles'
 import { obtener, enviar } from '../utils/api'
 import { formatFechaPublicacion } from '../utils/publicaciones'
 
@@ -16,7 +17,7 @@ export default function PublicationDetail({ actualizarCarrito, actualizarCarrito
   const navigate = useNavigate()
   const token = localStorage.getItem('jwtToken')
 
-  // Publicación completa: sus datos + vehículo + ubicación + períodos publicados
+  // Publicación completa: sus datos (con la ubicación) + vehículo + períodos publicados
   const [publicacion, setPublicacion] = useState(null)
   const [error, setError] = useState('')
   const [recargar, setRecargar] = useState(0)
@@ -26,21 +27,23 @@ export default function PublicationDetail({ actualizarCarrito, actualizarCarrito
   const [mensaje, setMensaje] = useState('')
 
   useEffect(() => {
+    // Sin sesión no se pide nada: la vista muestra el aviso para iniciar sesión
+    if (!token) return
+
     Promise.all([
-      // 1. La publicación; con sus ids pedimos vehículo y ubicación
+      // 1. La publicación (ya trae la ubicación, aproximada salvo para el dueño o una reserva confirmada);
+      //    con su id de vehículo pedimos el vehículo
       obtener(`/publicaciones/${id}`, token).then((datos) => Promise.all([
         datos,
         obtener(`/vehiculo/${datos.idVehiculo}`, token),
-        obtener(`/ubicaciones/${datos.idUbicacion}`, token),
       ])),
       // Los períodos solo necesitan el id de la URL: se piden al mismo tiempo
       obtener(`/disponibilidades/publicacion/${id}`, token),
     ])
-      .then(([[datos, vehiculo, ubicacion], periodos]) => {
+      .then(([[datos, vehiculo], periodos]) => {
         // 2. Juntamos todo en un solo objeto
         setPublicacion({
           ...vehiculo,
-          ...ubicacion,
           ...datos,
           periodos: periodos.map((periodo) => ({ desde: periodo.fechaInicio, hasta: periodo.fechaFin })),
         })
@@ -53,11 +56,6 @@ export default function PublicationDetail({ actualizarCarrito, actualizarCarrito
   }, [id, token, recargar])
 
   function agregarAlCarrito(fechaInicio, fechaFin) {
-    if (!token) {
-      setMensaje('Necesitás iniciar sesión para reservar.')
-      return
-    }
-
     setAgregando(true)
     setMensaje('')
     // Si el backend explica el problema (por ejemplo, fechas ocupadas), se muestra ese mensaje
@@ -73,6 +71,19 @@ export default function PublicationDetail({ actualizarCarrito, actualizarCarrito
         setMensaje(error.message)
         setAgregando(false)
       })
+  }
+
+  if (!token) {
+    return (
+      <main className={pageStyles + ' pb-20'}>
+        <PublicationMessage>Iniciá sesión para ver el detalle de la publicación.</PublicationMessage>
+        <div className="flex flex-wrap gap-3">
+          <Link to="/login" className={btnBase + ' ' + btnDark + ' ' + btnSize}>Iniciar sesión</Link>
+          <Link to="/registro" className={btnBase + ' ' + btnOutline + ' ' + btnSize}>Registrarme</Link>
+        </div>
+        <Link to="/" className="inline-block mt-6 text-[0.75rem] text-soft hover:underline">← Volver al catálogo</Link>
+      </main>
+    )
   }
 
   if (error) {

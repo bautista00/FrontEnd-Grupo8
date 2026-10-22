@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import PublicationIcon from '../publicaciones/PublicationIcon'
-
-const URL = 'http://localhost:8080'
+import { API_URL } from '../../utils/api'
 
 // Galería del vehículo: foto grande con contador y miniaturas para cambiar de foto
 export default function DetailGallery({ idVehiculo, alt }) {
@@ -11,7 +10,7 @@ export default function DetailGallery({ idVehiculo, alt }) {
   useEffect(() => {
     if (!idVehiculo) return
 
-    fetch(`${URL}/imagen-vehiculo/por-vehiculo/${idVehiculo}`)
+    fetch(`${API_URL}/imagen-vehiculo/por-vehiculo/${idVehiculo}`)
       .then((respuesta) => {
         if (!respuesta.ok) throw new Error('No se pudieron cargar las fotos')
         return respuesta.json()

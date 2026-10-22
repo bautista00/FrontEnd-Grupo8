@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react'
 import PublicationPagination from './PublicationPagination'
 import PublicationMessage from './PublicationMessage'
 import PublicationPhoto from './PublicationPhoto'
-
-const URL = 'http://localhost:8080'
+import { API_URL } from '../../utils/api'
 
 // Lista de vehículos del usuario para elegir cuál publicar
 export default function PublicationVehicleOptions({ seleccionado, onChange }) {
@@ -15,7 +14,7 @@ export default function PublicationVehicleOptions({ seleccionado, onChange }) {
   useEffect(() => {
     const token = localStorage.getItem('jwtToken')
 
-    fetch(`${URL}/vehiculo/mios?page=${pagina}&size=10`, {
+    fetch(`${API_URL}/vehiculo/mios?page=${pagina}&size=10`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((respuesta) => {

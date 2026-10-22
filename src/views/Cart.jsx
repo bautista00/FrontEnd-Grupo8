@@ -5,6 +5,7 @@ import CartSummary from "../components/cart/CartSummary"
 import CartVehicle from "../components/cart/CartVehicle"
 import { useState,useEffect } from 'react'   
 import ConfirmCartRemoval from '../components/cart/ConfirmCartRemoval'
+import { API_URL } from '../utils/api'
 
 export default function Cart({
   carrito,
@@ -29,9 +30,6 @@ export default function Cart({
   const [guardandoFechas, actualizarGuardandoFechas] = useState(false)
   const [mensajeFechas, actualizarMensajeFechas] = useState('')
 
-  //direccion del backend para consultar el carrito del usuario
-  const URL = 'http://localhost:8080/carritos/mio'
-
   // Consultamos el carrito, su publicación y sus períodos solo si no conocemos sus datos.
   useEffect(() => {
     if (carritoConsultado) return
@@ -43,7 +41,7 @@ export default function Cart({
     if (!token) return
 
     // 1. Consultamos el carrito del usuario.
-    fetch(URL, {
+    fetch(`${API_URL}/carritos/mio`, {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${token}`
@@ -74,7 +72,7 @@ export default function Cart({
         // 2. La publicación y sus períodos se pueden consultar al mismo tiempo.
         return Promise.all([
           fetch(
-            `http://localhost:8080/publicaciones/${datosCarrito.idPublicacion}`,
+            `${API_URL}/publicaciones/${datosCarrito.idPublicacion}`,
             {
               method: 'GET',
               headers: {
@@ -96,7 +94,7 @@ export default function Cart({
               return respuestaPublicacion.json()
             }),
           fetch(
-            `http://localhost:8080/disponibilidades/publicacion/${datosCarrito.idPublicacion}`,
+            `${API_URL}/disponibilidades/publicacion/${datosCarrito.idPublicacion}`,
             {
               method: 'GET',
               headers: {
@@ -219,7 +217,7 @@ export default function Cart({
     actualizarMensaje('')
 
     // Pedimos al backend que elimine este carrito.
-    fetch(`http://localhost:8080/carritos/${carrito.idCarrito}`, {
+    fetch(`${API_URL}/carritos/${carrito.idCarrito}`, {
       method: 'DELETE',
       headers: {
         Authorization: `Bearer ${token}`
@@ -272,7 +270,7 @@ export default function Cart({
     actualizarMensajeFechas('')
 
     return fetch(
-      `http://localhost:8080/carritos/${carrito.idCarrito}/fechas`,
+      `${API_URL}/carritos/${carrito.idCarrito}/fechas`,
       {
         method: 'PUT',
         headers: {

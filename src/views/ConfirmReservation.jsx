@@ -4,6 +4,7 @@ import ReservationItinerary from "../components/reservations/ReservationItinerar
 import PaymentMethod from "../components/reservations/PaymentMethod"
 import PaymentSummary from "../components/reservations/PaymentSummary"
 import SelectedVehicle from "../components/reservations/SelectedVehicle"
+import { API_URL } from '../utils/api'
 
 export default function ConfirmReservation({ vaciarCarrito }) {
   // Recibimos el carrito enviado por CartSummary.
@@ -68,7 +69,7 @@ export default function ConfirmReservation({ vaciarCarrito }) {
     let reservaCreada = false
 
     fetch(
-      `http://localhost:8080/carritos/${carrito.idCarrito}/confirmar`,
+      `${API_URL}/carritos/${carrito.idCarrito}/confirmar`,
       {
         method: 'POST',
         headers: {
@@ -113,7 +114,7 @@ export default function ConfirmReservation({ vaciarCarrito }) {
 
         // Con Mercado Pago pedimos el checkout del pago recién creado.
         return fetch(
-          `http://localhost:8080/pagos/${datosConfirmacion.idPago}/checkout`,
+          `${API_URL}/pagos/${datosConfirmacion.idPago}/checkout`,
           {
             method: 'POST',
             headers: { Authorization: `Bearer ${token}` }

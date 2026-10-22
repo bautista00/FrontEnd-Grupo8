@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom'
 import ReservationResultHeader from '../components/reservations/ReservationResultHeader'
 import ReservedVehicleSummary from '../components/reservations/ReservedVehicleSummary'
 import PickupInstructions from '../components/reservations/PickupInstructions'
+import { API_URL } from '../utils/api'
 
 export default function ReservationResult() {
   // Recibimos los datos enviados desde ConfirmReservation.
@@ -30,7 +31,7 @@ export default function ReservationResult() {
     actualizarMensaje('')
 
     // Obtenemos la ubicación que el backend autoriza tras confirmar.
-    fetch(`http://localhost:8080/publicaciones/${idPublicacion}`, {
+    fetch(`${API_URL}/publicaciones/${idPublicacion}`, {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${token}`
