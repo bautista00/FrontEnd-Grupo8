@@ -8,7 +8,6 @@ import DetailGallery from '../components/detalle/DetailGallery'
 import DetailLocation from '../components/detalle/DetailLocation'
 import DetailReservation from '../components/detalle/DetailReservation'
 import DetailSpecs from '../components/detalle/DetailSpecs'
-import { btnBase, btnDark, btnOutline, btnSize } from '../components/ui/buttonStyles'
 import { obtener, enviar } from '../utils/api'
 import { formatFechaPublicacion } from '../utils/publicaciones'
 
@@ -27,9 +26,6 @@ export default function PublicationDetail({ actualizarCarrito, actualizarCarrito
   const [mensaje, setMensaje] = useState('')
 
   useEffect(() => {
-    // Sin sesión no se pide nada: la vista muestra el aviso para iniciar sesión
-    if (!token) return
-
     Promise.all([
       // 1. La publicación (ya trae la ubicación, aproximada salvo para el dueño o una reserva confirmada);
       //    con su id de vehículo pedimos el vehículo
@@ -56,6 +52,12 @@ export default function PublicationDetail({ actualizarCarrito, actualizarCarrito
   }, [id, token, recargar])
 
   function agregarAlCarrito(fechaInicio, fechaFin) {
+    // Sin sesión lo mandamos al login, que después lo devuelve a esta publicación
+    if (!token) {
+      navigate('/login', { state: { volverA: `/publicaciones/${id}` } })
+      return
+    }
+
     setAgregando(true)
     setMensaje('')
     // Si el backend explica el problema (por ejemplo, fechas ocupadas), se muestra ese mensaje
@@ -71,19 +73,6 @@ export default function PublicationDetail({ actualizarCarrito, actualizarCarrito
         setMensaje(error.message)
         setAgregando(false)
       })
-  }
-
-  if (!token) {
-    return (
-      <main className={pageStyles + ' pb-20'}>
-        <PublicationMessage>Iniciá sesión para ver el detalle de la publicación.</PublicationMessage>
-        <div className="flex flex-wrap gap-3">
-          <Link to="/login" className={btnBase + ' ' + btnDark + ' ' + btnSize}>Iniciar sesión</Link>
-          <Link to="/registro" className={btnBase + ' ' + btnOutline + ' ' + btnSize}>Registrarme</Link>
-        </div>
-        <Link to="/" className="inline-block mt-6 text-[0.75rem] text-soft hover:underline">← Volver al catálogo</Link>
-      </main>
-    )
   }
 
   if (error) {

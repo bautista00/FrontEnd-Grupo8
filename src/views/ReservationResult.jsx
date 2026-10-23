@@ -23,11 +23,6 @@ export default function ReservationResult() {
     if (!idReserva || !idPublicacion) return
 
     const token = localStorage.getItem('jwtToken')
-    if (!token) {
-      actualizarMensaje('Necesitás iniciar sesión para consultar tu reserva.')
-      return
-    }
-
     actualizarMensaje('')
 
     // Obtenemos la ubicación que el backend autoriza tras confirmar.

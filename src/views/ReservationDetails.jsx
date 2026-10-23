@@ -51,11 +51,6 @@ export default function ReservationDetails() {
 
     const token = localStorage.getItem('jwtToken')
 
-    if (!token) {
-      actualizarMensajeCancelar('Necesitás iniciar sesión para cancelar tu reserva.')
-      return
-    }
-
     actualizarCancelando(true)
     actualizarMensajeCancelar('')
 

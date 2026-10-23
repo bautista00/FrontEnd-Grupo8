@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, Route, Routes, useLocation } from 'react-router-dom'
+import RequireAuth from './components/auth/RequireAuth'
 import Footer from './components/layout/Footer'
 import Navbar from './components/layout/Navbar'
 import Home from './views/Home'
@@ -45,13 +46,14 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login reiniciarCarrito={reiniciarCarrito} />} />
         <Route path="/registro" element={<Register reiniciarCarrito={reiniciarCarrito} />} />
-        <Route path="/mis-reservas" element={<MyReservations />} />
-        <Route path="/mis-reservas/detalle" element={<ReservationDetails />} />
-        <Route path="/mis-publicaciones" element={<MyPublications />} />
+        {/* Las pantallas de la cuenta van dentro de RequireAuth: sin sesión mandan al login */}
+        <Route path="/mis-reservas" element={<RequireAuth><MyReservations /></RequireAuth>} />
+        <Route path="/mis-reservas/detalle" element={<RequireAuth><ReservationDetails /></RequireAuth>} />
+        <Route path="/mis-publicaciones" element={<RequireAuth><MyPublications /></RequireAuth>} />
         {/* Las key distintas hacen que React arme un formulario nuevo al pasar de crear a editar */}
-        <Route path="/publicaciones/nueva" element={<PublicationForm key="crear" />} />
-        <Route path="/publicaciones/:id/editar" element={<PublicationForm key="editar" modo="editar" />} />
-        {/* Detalle de una publicación, al que se llega desde el catálogo. Pide iniciar sesión. */}
+        <Route path="/publicaciones/nueva" element={<RequireAuth><PublicationForm key="crear" /></RequireAuth>} />
+        <Route path="/publicaciones/:id/editar" element={<RequireAuth><PublicationForm key="editar" modo="editar" /></RequireAuth>} />
+        {/* Detalle público de una publicación, al que se llega desde el catálogo. */}
         <Route
           path="/publicaciones/:id"
           element={
@@ -61,10 +63,10 @@ export default function App() {
             />
           }
         />
-        <Route path="/mis-vehiculos" element={<MyVehicles />} />
-        <Route path="/vehiculos/nuevo" element={<VehicleForm key="crear" />} />
-        <Route path="/vehiculos/:id/editar" element={<VehicleForm key="editar" modo="editar" />} />
-        <Route path="/vehiculos/:id/fotos" element={<VehiclePhotos />} />
+        <Route path="/mis-vehiculos" element={<RequireAuth><MyVehicles /></RequireAuth>} />
+        <Route path="/vehiculos/nuevo" element={<RequireAuth><VehicleForm key="crear" /></RequireAuth>} />
+        <Route path="/vehiculos/:id/editar" element={<RequireAuth><VehicleForm key="editar" modo="editar" /></RequireAuth>} />
+        <Route path="/vehiculos/:id/fotos" element={<RequireAuth><VehiclePhotos /></RequireAuth>} />
         <Route path="*" element={
           <main className="flex-1 w-full max-w-page mx-auto px-(--gutter) py-14">
             <h1 className="text-3xl">Página no encontrada</h1>
@@ -74,24 +76,26 @@ export default function App() {
         <Route
           path="/carrito"
           element={
-            <Cart
-              carrito={carrito}
-              actualizarCarrito={actualizarCarrito}
-              carritoConsultado={carritoConsultado}
-              actualizarCarritoConsultado={actualizarCarritoConsultado}
-            />
+            <RequireAuth>
+              <Cart
+                carrito={carrito}
+                actualizarCarrito={actualizarCarrito}
+                carritoConsultado={carritoConsultado}
+                actualizarCarritoConsultado={actualizarCarritoConsultado}
+              />
+            </RequireAuth>
           }
         />
         {/* Esta ruta muestra la segunda pantalla del flujo de reserva. */}
         <Route
           path="/carrito/confirmar"
-          element={<ConfirmReservation vaciarCarrito={vaciarCarrito} />}
+          element={<RequireAuth><ConfirmReservation vaciarCarrito={vaciarCarrito} /></RequireAuth>}
         />
         {/* Resultado al crear la reserva; sus datos todavía son de ejemplo. */}
-        <Route path="/reservas/resultado" element={<ReservationResult />} />
+        <Route path="/reservas/resultado" element={<RequireAuth><ReservationResult /></RequireAuth>} />
         {/* Mercado Pago vuelve al backend y el backend redirige acá con el estado del pago. */}
-        <Route path="/reservas" element={<PaymentReturn />} />
-        <Route path="/reservas/:idReserva" element={<PaymentReturn />} />
+        <Route path="/reservas" element={<RequireAuth><PaymentReturn /></RequireAuth>} />
+        <Route path="/reservas/:idReserva" element={<RequireAuth><PaymentReturn /></RequireAuth>} />
       </Routes>
       <Footer />
     </div>

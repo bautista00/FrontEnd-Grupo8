@@ -49,9 +49,7 @@ export default function MyVehicles() {
         </Link>
       </div>
 
-      {!token ? (
-        <PublicationMessage>Iniciá sesión para administrar tus vehículos.</PublicationMessage>
-      ) : error ? (
+      {error ? (
         <PublicationMessage error onRetry={reintentar}>{error}</PublicationMessage>
       ) : !datos ? (
         <PublicationMessage>Cargando tus vehículos…</PublicationMessage>

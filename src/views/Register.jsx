@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { pageStyles } from '../components/publicaciones/publicationStyles'
 import PublicationMessage from '../components/publicaciones/PublicationMessage'
 import AuthCard from '../components/auth/AuthCard'
@@ -30,6 +30,8 @@ function validar(valores) {
 
 export default function Register({ reiniciarCarrito }) {
   const navigate = useNavigate()
+  // Si viene del login con una pantalla pendiente, vuelve ahí al crear la cuenta
+  const volverA = useLocation().state?.volverA ?? '/'
   const [valores, setValores] = useState(VALORES_INICIALES)
   const [error, setError] = useState('')
   const [enviando, setEnviando] = useState(false)
@@ -65,7 +67,7 @@ export default function Register({ reiniciarCarrito }) {
         localStorage.setItem('jwtToken', respuesta.token)
         // La cuenta nueva no reutiliza el carrito guardado de otra sesión.
         reiniciarCarrito()
-        navigate('/')
+        navigate(volverA)
       })
       .catch((error) => {
         console.error('Error al crear la cuenta', error)
@@ -106,7 +108,7 @@ export default function Register({ reiniciarCarrito }) {
             {enviando ? 'Creando cuenta…' : 'Crear cuenta'}
           </button>
         </form>
-        <AuthSwitch pregunta="¿Ya tenés cuenta?" texto="Iniciá sesión" to="/login" />
+        <AuthSwitch pregunta="¿Ya tenés cuenta?" texto="Iniciá sesión" to="/login" state={{ volverA }} />
       </AuthCard>
     </main>
   )

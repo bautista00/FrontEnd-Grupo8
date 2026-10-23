@@ -147,45 +147,39 @@ export default function MyPublications() {
         </Link>
       </div>
 
-      {!token ? (
-        <PublicationMessage>Iniciá sesión para administrar tus publicaciones.</PublicationMessage>
-      ) : (
-        <>
-          <div className="flex items-center justify-between gap-4 my-6 phone:flex-col phone:items-stretch">
-            <div role="group" aria-label="Filtrar publicaciones por estado" className="flex flex-wrap gap-1 phone:gap-0">
-              {FILTROS.map((filtro) => (
-                <button
-                  key={filtro.valor}
-                  type="button"
-                  aria-pressed={estado === filtro.valor}
-                  onClick={() => cambiarFiltro(filtro.valor)}
-                  className={'border-0 rounded-[0.375rem] px-3.5 py-1.5 text-[0.75rem] phone:px-[0.5625rem] '
-                    + (estado === filtro.valor ? 'bg-ink text-white' : 'bg-transparent text-soft')}
-                >
-                  {filtro.etiqueta}
-                </button>
-              ))}
-            </div>
-            <form onSubmit={buscar} className="flex gap-2 w-80 max-w-full phone:w-full" role="search">
-              <div className="relative flex-1 min-w-0">
-                <PublicationIcon nombre="search" className="absolute top-1/2 left-3 -translate-y-1/2" />
-                <input
-                  type="search"
-                  aria-label="Buscar por marca, modelo o patente"
-                  placeholder="Marca, modelo o patente…"
-                  className="w-full bg-white border border-border rounded-[0.25rem] py-2 pr-3 pl-9 text-[0.75rem]"
-                  value={texto}
-                  onChange={(event) => setTexto(event.target.value)}
-                />
-              </div>
-              <button type="submit" className="border border-border rounded-[0.25rem] px-3 text-[0.75rem]">Buscar</button>
-            </form>
+      <div className="flex items-center justify-between gap-4 my-6 phone:flex-col phone:items-stretch">
+        <div role="group" aria-label="Filtrar publicaciones por estado" className="flex flex-wrap gap-1 phone:gap-0">
+          {FILTROS.map((filtro) => (
+            <button
+              key={filtro.valor}
+              type="button"
+              aria-pressed={estado === filtro.valor}
+              onClick={() => cambiarFiltro(filtro.valor)}
+              className={'border-0 rounded-[0.375rem] px-3.5 py-1.5 text-[0.75rem] phone:px-[0.5625rem] '
+                + (estado === filtro.valor ? 'bg-ink text-white' : 'bg-transparent text-soft')}
+            >
+              {filtro.etiqueta}
+            </button>
+          ))}
+        </div>
+        <form onSubmit={buscar} className="flex gap-2 w-80 max-w-full phone:w-full" role="search">
+          <div className="relative flex-1 min-w-0">
+            <PublicationIcon nombre="search" className="absolute top-1/2 left-3 -translate-y-1/2" />
+            <input
+              type="search"
+              aria-label="Buscar por marca, modelo o patente"
+              placeholder="Marca, modelo o patente…"
+              className="w-full bg-white border border-border rounded-[0.25rem] py-2 pr-3 pl-9 text-[0.75rem]"
+              value={texto}
+              onChange={(event) => setTexto(event.target.value)}
+            />
           </div>
+          <button type="submit" className="border border-border rounded-[0.25rem] px-3 text-[0.75rem]">Buscar</button>
+        </form>
+      </div>
 
-          {aviso && <PublicationMessage error>{aviso}</PublicationMessage>}
-          {resultados}
-        </>
-      )}
+      {aviso && <PublicationMessage error>{aviso}</PublicationMessage>}
+      {resultados}
     </main>
   )
 }

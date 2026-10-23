@@ -57,11 +57,6 @@ export default function ConfirmReservation({ vaciarCarrito }) {
 
     const token = localStorage.getItem('jwtToken')
 
-    if (!token) {
-      actualizarMensaje('Necesitás iniciar sesión para confirmar.')
-      return
-    }
-
     actualizarConfirmando(true)
     actualizarMensaje('')
 

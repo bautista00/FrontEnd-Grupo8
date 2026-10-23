@@ -233,14 +233,6 @@ export default function PublicationForm({ modo = 'crear' }) {
 
   // Pantallas antes de mostrar el formulario
   const tituloPagina = editando ? 'Editar publicación' : 'Crear publicación'
-  if (!token) {
-    return (
-      <main className={pageStyles}>
-        <h1 className={titleStyles}>{tituloPagina}</h1>
-        <PublicationMessage>Iniciá sesión para administrar tus publicaciones.</PublicationMessage>
-      </main>
-    )
-  }
   if (cargando) {
     return <main className={pageStyles}><PublicationMessage>Cargando la publicación…</PublicationMessage></main>
   }

@@ -38,12 +38,6 @@ export default function PaymentReturn() {
 
     const token = localStorage.getItem('jwtToken')
 
-    if (!token) {
-      actualizarMensaje('Necesitás iniciar sesión para consultar el pago.')
-      actualizarVerificando(false)
-      return
-    }
-
     actualizarVerificando(true)
     actualizarMensaje('')
     actualizarPago(null)

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { pageStyles } from '../components/publicaciones/publicationStyles'
 import PublicationMessage from '../components/publicaciones/PublicationMessage'
 import AuthCard from '../components/auth/AuthCard'
@@ -11,6 +11,8 @@ import { enviar } from '../utils/api'
 
 export default function Login({ reiniciarCarrito }) {
   const navigate = useNavigate()
+  // Si llegó desde otra pantalla (por ejemplo, al agregar al carrito), vuelve ahí al entrar
+  const volverA = useLocation().state?.volverA ?? '/'
   const [valores, setValores] = useState({ email: '', password: '' })
   const [error, setError] = useState('')
   const [enviando, setEnviando] = useState(false)
@@ -32,7 +34,7 @@ export default function Login({ reiniciarCarrito }) {
         localStorage.setItem('jwtToken', respuesta.token)
         // Descartamos el carrito de la sesión anterior antes de navegar.
         reiniciarCarrito()
-        navigate('/')
+        navigate(volverA)
       })
       .catch((error) => {
         console.error('Error al iniciar sesión', error)
@@ -54,7 +56,7 @@ export default function Login({ reiniciarCarrito }) {
             {enviando ? 'Ingresando…' : 'Iniciar sesión'}
           </button>
         </form>
-        <AuthSwitch pregunta="¿No tenés cuenta?" texto="Registrate" to="/registro" />
+        <AuthSwitch pregunta="¿No tenés cuenta?" texto="Registrate" to="/registro" state={{ volverA }} />
       </AuthCard>
     </main>
   )

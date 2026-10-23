@@ -18,12 +18,6 @@ export default function MyReservations() {
   useEffect(() => {
     const token = localStorage.getItem('jwtToken')
 
-    if (!token) {
-      // La redirección se agregará cuando exista la ruta del login.
-      actualizarMensaje('Necesitás iniciar sesión para ver tus reservas.')
-      return
-    }
-
     actualizarMensaje('')
 
     const opciones = {

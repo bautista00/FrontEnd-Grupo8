@@ -106,10 +106,6 @@ export default function VehicleForm({ modo = 'crear' }) {
     }
   }
 
-  if (!token) {
-    return <main className={pageStyles + ' pb-20'}><PublicationMessage>Iniciá sesión para administrar tus vehículos.</PublicationMessage></main>
-  }
-
   if (cargando) {
     return <main className={pageStyles + ' pb-20'}><PublicationMessage>Cargando…</PublicationMessage></main>
   }

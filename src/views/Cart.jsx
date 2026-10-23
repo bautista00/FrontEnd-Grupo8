@@ -208,10 +208,6 @@ export default function Cart({
     if (carrito === null || quitando || guardandoFechas) return
 
     const token = localStorage.getItem('jwtToken')
-    if (!token) {
-      actualizarMensaje('Necesitás iniciar sesión para quitar el vehículo del carrito.')
-      return
-    }
 
     actualizarQuitando(true)
     actualizarMensaje('')
@@ -258,13 +254,6 @@ export default function Cart({
     }
 
     const token = localStorage.getItem('jwtToken')
-
-    if (!token) {
-      actualizarMensajeFechas(
-        'Necesitás iniciar sesión para modificar las fechas.'
-      )
-      return Promise.resolve(false)
-    }
 
     actualizarGuardandoFechas(true)
     actualizarMensajeFechas('')

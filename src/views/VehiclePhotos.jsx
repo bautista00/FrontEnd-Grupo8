@@ -137,10 +137,6 @@ export default function VehiclePhotos() {
     return () => { vigente = false }
   }, [id, token, version])
 
-  if (!token) {
-    return <main className={pageStyles + ' pb-20'}><PublicationMessage>Iniciá sesión para administrar tus vehículos.</PublicationMessage></main>
-  }
-
   if (errorCarga) {
     return (
       <main className={pageStyles + ' pb-20'}>
