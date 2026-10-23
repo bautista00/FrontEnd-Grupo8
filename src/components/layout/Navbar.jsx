@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { CartIcon, UserIcon } from '../icons/Icons'
 import { btnBase, btnDark, btnSize } from '../ui/buttonStyles'
@@ -8,6 +9,9 @@ const NAV_LINK_BASE =
   'px-3 py-2 rounded-[0.25rem] text-[0.6875rem] font-medium tracking-[0.08em] uppercase whitespace-nowrap transition-[background-color,color] hover:text-ink'
 const NAV_LINK_IDLE = `${NAV_LINK_BASE} text-soft`
 const NAV_LINK_ACTIVE = `${NAV_LINK_BASE} bg-surface text-ink`
+
+// Opciones del menú del usuario: ocupan todo el ancho del desplegable
+const MENU_ITEM = 'block w-full text-left bg-transparent border-0 cursor-pointer'
 
 // Los destinos que aún no existen se muestran deshabilitados.
 const NAV_LINKS = [
@@ -24,8 +28,33 @@ export default function Navbar({ carrito }) {
   const conSesion = Boolean(localStorage.getItem('jwtToken'))
   const cantidadCarrito = conSesion && carrito ? 1 : 0
 
+  const [menuAbierto, actualizarMenuAbierto] = useState(false)
+  const menuRef = useRef(null)
+
+  // El desplegable se cierra al tocar afuera o con Escape
+  useEffect(() => {
+    if (!menuAbierto) return
+    function cerrarAlTocarAfuera(evento) {
+      if (!menuRef.current.contains(evento.target)) actualizarMenuAbierto(false)
+    }
+    function cerrarConEscape(evento) {
+      if (evento.key === 'Escape') actualizarMenuAbierto(false)
+    }
+    document.addEventListener('mousedown', cerrarAlTocarAfuera)
+    document.addEventListener('keydown', cerrarConEscape)
+    return () => {
+      document.removeEventListener('mousedown', cerrarAlTocarAfuera)
+      document.removeEventListener('keydown', cerrarConEscape)
+    }
+  }, [menuAbierto])
+
+  function claseLink(link, isActive) {
+    return isActive || (link.href === '/mis-publicaciones' && pathname.startsWith('/publicaciones/')) ? NAV_LINK_ACTIVE : NAV_LINK_IDLE
+  }
+
   // El carrito queda guardado en el backend: al volver a entrar, el login lo vuelve a pedir
   function cerrarSesion() {
+    actualizarMenuAbierto(false)
     localStorage.removeItem('jwtToken')
     navigate('/')
   }
@@ -37,8 +66,9 @@ export default function Navbar({ carrito }) {
           {APP_NAME}
         </Link>
 
+        {/* En el teléfono, con sesión, estos links pasan al menú del usuario */}
         <nav
-          className="flex flex-1 items-center gap-1 tablet:order-3 tablet:flex-[0_0_100%] tablet:overflow-x-auto tablet:pb-1 tablet:[scrollbar-width:none] tablet:[&::-webkit-scrollbar]:hidden"
+          className={`flex flex-1 items-center gap-1 tablet:order-3 tablet:flex-[0_0_100%] tablet:overflow-x-auto tablet:pb-1 tablet:[scrollbar-width:none] tablet:[&::-webkit-scrollbar]:hidden ${conSesion ? 'phone:hidden' : ''}`}
           aria-label="Principal"
         >
           {NAV_LINKS.map((link) => link.href ? (
@@ -46,7 +76,7 @@ export default function Navbar({ carrito }) {
               key={link.label}
               to={link.href}
               end={link.href === '/'}
-              className={({ isActive }) => isActive || (link.href === '/mis-publicaciones' && pathname.startsWith('/publicaciones/')) ? NAV_LINK_ACTIVE : NAV_LINK_IDLE}
+              className={({ isActive }) => claseLink(link, isActive)}
             >
               {link.label}
             </NavLink>
@@ -65,10 +95,48 @@ export default function Navbar({ carrito }) {
 
           {conSesion ? (
             <>
-              <span className="grid place-items-center size-9 rounded-full bg-surface text-ink" aria-label="Sesión iniciada" title="Sesión iniciada">
-                <UserIcon size={18} />
-              </span>
-              <button type="button" onClick={cerrarSesion} className={`${NAV_LINK_IDLE} bg-transparent border-0 cursor-pointer`}>
+              <div ref={menuRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => actualizarMenuAbierto(!menuAbierto)}
+                  className="grid place-items-center size-9 p-0 rounded-full border-0 bg-surface text-ink cursor-pointer transition-colors hover:bg-border"
+                  aria-label="Menú de la cuenta"
+                  aria-haspopup="menu"
+                  aria-expanded={menuAbierto}
+                >
+                  <UserIcon size={18} />
+                </button>
+
+                {menuAbierto && (
+                  <div role="menu" className="absolute right-0 top-full mt-2 w-56 p-1.5 flex flex-col gap-0.5 rounded-[0.25rem] border border-border bg-card shadow-md">
+                    {NAV_LINKS.filter((link) => link.href).map((link) => (
+                      <NavLink
+                        key={link.label}
+                        to={link.href}
+                        end={link.href === '/'}
+                        role="menuitem"
+                        onClick={() => actualizarMenuAbierto(false)}
+                        className={({ isActive }) => `${claseLink(link, isActive)} ${MENU_ITEM} hidden phone:block`}
+                      >
+                        {link.label}
+                      </NavLink>
+                    ))}
+                    <hr className="hidden phone:block my-1 border-0 border-t border-border" />
+                    <NavLink
+                      to="/perfil"
+                      role="menuitem"
+                      onClick={() => actualizarMenuAbierto(false)}
+                      className={({ isActive }) => `${isActive ? NAV_LINK_ACTIVE : NAV_LINK_IDLE} ${MENU_ITEM}`}
+                    >
+                      Mi perfil
+                    </NavLink>
+                    <button type="button" role="menuitem" onClick={cerrarSesion} className={`${NAV_LINK_IDLE} ${MENU_ITEM} hidden phone:block`}>
+                      Cerrar sesión
+                    </button>
+                  </div>
+                )}
+              </div>
+              <button type="button" onClick={cerrarSesion} className={`${NAV_LINK_IDLE} bg-transparent border-0 cursor-pointer phone:hidden`}>
                 Cerrar sesión
               </button>
             </>

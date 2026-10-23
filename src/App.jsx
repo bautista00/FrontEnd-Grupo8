@@ -18,6 +18,7 @@ import PaymentReturn from './views/PaymentReturn'
 import MyVehicles from './views/MyVehicles'
 import VehicleForm from './views/VehicleForm'
 import VehiclePhotos from './views/VehiclePhotos'
+import Profile from './views/Profile'
 
 export default function App() {
   // Conserva el carrito mientras navegamos entre las vistas.
@@ -47,6 +48,7 @@ export default function App() {
         <Route path="/login" element={<Login reiniciarCarrito={reiniciarCarrito} />} />
         <Route path="/registro" element={<Register reiniciarCarrito={reiniciarCarrito} />} />
         {/* Las pantallas de la cuenta van dentro de RequireAuth: sin sesión mandan al login */}
+        <Route path="/perfil" element={<RequireAuth><Profile /></RequireAuth>} />
         <Route path="/mis-reservas" element={<RequireAuth><MyReservations /></RequireAuth>} />
         <Route path="/mis-reservas/detalle" element={<RequireAuth><ReservationDetails /></RequireAuth>} />
         <Route path="/mis-publicaciones" element={<RequireAuth><MyPublications /></RequireAuth>} />
