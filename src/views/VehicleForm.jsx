@@ -6,12 +6,7 @@ import InputField from '../components/ui/InputField'
 import FormField, { inputStyles } from '../components/ui/FormField'
 import { btnBase, btnDark, btnOutline, btnSize } from '../components/ui/buttonStyles'
 import { obtener, enviar } from '../utils/api'
-import { ANIO_ACTUAL, ASIENTOS_POR_DEFECTO, normalizarPatente, validarVehiculo, valoresAVehiculo } from '../utils/vehiculos'
-
-const VACIO = {
-  patente: '', idTipoVehiculo: '', marca: '', modelo: '',
-  anio: String(ANIO_ACTUAL), color: '', cantidadAsientos: String(ASIENTOS_POR_DEFECTO),
-}
+import { normalizarPatente, validarVehiculo, valoresAVehiculo, valoresInicialesVehiculo } from '../utils/vehiculos'
 
 const PASOS = ['Datos', 'Fotos', 'Publicación']
 
@@ -24,9 +19,10 @@ export default function VehicleForm({ modo = 'crear' }) {
   const token = localStorage.getItem('jwtToken')
   const editando = modo === 'editar'
 
-  const [valores, setValores] = useState(VACIO)
+  const [valores, setValores] = useState(valoresInicialesVehiculo())
   const [tipos, setTipos] = useState([])
   const [otros, setOtros] = useState([]) // resto de la flota, para detectar patentes repetidas
+  const [idUsuario, setIdUsuario] = useState(null) // dueño del vehículo
   const [errores, setErrores] = useState({})
   const [errorGeneral, setErrorGeneral] = useState('')
   const [cargando, setCargando] = useState(true)
@@ -37,26 +33,19 @@ export default function VehicleForm({ modo = 'crear' }) {
     let vigente = true
     async function cargar() {
       try {
-        const [listaTipos, flota, vehiculo] = await Promise.all([
+        // El backend pide el dueño en el body y verifica que sea el usuario del token.
+        // Al editar ya viene en el vehículo; en el alta es el usuario logueado.
+        const [listaTipos, flota, vehiculo, usuario] = await Promise.all([
           obtener('/tipo-vehiculo'),
           obtener('/vehiculo/mios?size=100', token).catch(() => null),
           editando ? obtener(`/vehiculo/${id}`, token) : null,
+          editando ? null : obtener('/usuarios/me', token),
         ])
         if (!vigente) return
         setTipos(listaTipos)
         setOtros((flota?.content ?? []).filter((v) => String(v.idVehiculo) !== String(id)))
-        if (vehiculo) {
-          const tipo = listaTipos.find((t) => t.idTipoVehiculo === vehiculo.idTipoVehiculo)
-            ?? listaTipos.find((t) => t.nombre === vehiculo.tipoVehiculo)
-          setValores({
-            patente: vehiculo.patente, marca: vehiculo.marca, modelo: vehiculo.modelo,
-            anio: String(vehiculo.anio), color: vehiculo.color,
-            cantidadAsientos: String(vehiculo.cantidadAsientos),
-            idTipoVehiculo: tipo ? String(tipo.idTipoVehiculo) : '',
-          })
-        } else {
-          setValores((actuales) => ({ ...actuales, idTipoVehiculo: String(listaTipos[0]?.idTipoVehiculo ?? '') }))
-        }
+        setValores(valoresInicialesVehiculo(vehiculo, listaTipos))
+        setIdUsuario(editando ? vehiculo.idUsuario : usuario.idUsuario)
       } catch (e) {
         console.error('Error al cargar el formulario de vehículo', e)
         if (vigente) setErrorGeneral(editando ? 'No pudimos cargar el vehículo.' : 'No pudimos cargar los tipos de vehículo.')
@@ -76,22 +65,14 @@ export default function VehicleForm({ modo = 'crear' }) {
 
   async function guardar(event) {
     event.preventDefault()
-    const encontrados = validarVehiculo(valores, otros)
-    // Los tipos válidos son los del backend, no la lista de ejemplo
-    if (tipos.some((t) => String(t.idTipoVehiculo) === String(valores.idTipoVehiculo))) delete encontrados.idTipoVehiculo
-    else encontrados.idTipoVehiculo = 'Elegí un tipo de vehículo'
+    const encontrados = validarVehiculo(valores, tipos, otros)
     setErrores(encontrados)
     if (Object.keys(encontrados).length > 0) return
 
     setGuardando(true)
     setErrorGeneral('')
     try {
-      const usuario = await obtener('/usuarios/me', token)
-      const datos = {
-        ...valoresAVehiculo(valores),
-        idTipoVehiculo: Number(valores.idTipoVehiculo),
-        idUsuario: usuario.idUsuario,
-      }
+      const datos = { ...valoresAVehiculo(valores), idUsuario }
       if (editando) {
         await enviar(`/vehiculo/${id}`, 'PUT', token, datos)
         navigate('/mis-vehiculos')

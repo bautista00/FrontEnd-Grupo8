@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import PhotoDropzone from '../components/vehiculos/PhotoDropzone'
 import PhotoTile from '../components/vehiculos/PhotoTile'
@@ -21,6 +21,13 @@ function Fotos({ vehiculo, fotosIniciales, sinPublicacion, aviso, onRecargar }) 
   const [fotos, setFotos] = useState(fotosIniciales)
   const [problemas, setProblemas] = useState([])
   const [guardando, setGuardando] = useState(false)
+  // URLs de vista previa creadas en esta pantalla: se liberan al salir de ella
+  const vistasPrevias = useRef([])
+
+  useEffect(() => {
+    const urls = vistasPrevias.current
+    return () => urls.forEach((url) => URL.revokeObjectURL(url))
+  }, [])
 
   function agregar(archivos) {
     const nuevas = []
@@ -28,11 +35,22 @@ function Fotos({ vehiculo, fotosIniciales, sinPublicacion, aviso, onRecargar }) 
     archivos.forEach((archivo) => {
       const motivo = validarArchivoFoto(archivo)
       if (motivo) rechazadas.push(`${archivo.name}: ${motivo}.`)
-      // Se guarda el archivo para poder subirlo después; la url es solo para la vista previa
-      else nuevas.push({ idFoto: `nueva-${++contadorNuevas}`, url: URL.createObjectURL(archivo), archivo, orden: 0 })
+      else {
+        // Se guarda el archivo para poder subirlo después; la url es solo para la vista previa
+        const url = URL.createObjectURL(archivo)
+        vistasPrevias.current.push(url)
+        nuevas.push({ idFoto: `nueva-${++contadorNuevas}`, url, archivo, orden: 0 })
+      }
     })
     setProblemas(rechazadas)
     if (nuevas.length > 0) setFotos(agregarFotos(fotos, nuevas))
+  }
+
+  function quitar(posicion) {
+    const foto = fotos[posicion]
+    // Una foto nueva que se quita ya no necesita su vista previa
+    if (foto.archivo) URL.revokeObjectURL(foto.url)
+    setFotos(quitarFoto(fotos, posicion))
   }
 
   async function guardar(destino, state) {
@@ -78,7 +96,7 @@ function Fotos({ vehiculo, fotosIniciales, sinPublicacion, aviso, onRecargar }) 
                   indice={indice}
                   total={fotos.length}
                   onMover={(posicion, desplazamiento) => setFotos(moverFoto(fotos, posicion, desplazamiento))}
-                  onQuitar={(posicion) => setFotos(quitarFoto(fotos, posicion))}
+                  onQuitar={quitar}
                 />
               ))}
             </ul>
@@ -117,22 +135,32 @@ export default function VehiclePhotos() {
   const { id } = useParams()
   const token = localStorage.getItem('jwtToken')
   const [datos, setDatos] = useState(null)
-  const [errorCarga, setErrorCarga] = useState(false)
+  const [errorCarga, setErrorCarga] = useState('')
   const [aviso, setAviso] = useState('')
   const [version, setVersion] = useState(0)
 
   useEffect(() => {
     if (!token) return
     let vigente = true
-    Promise.all([obtener(`/vehiculo/${id}`), fotosDeVehiculo(id), publicacionActualDe(token, id)])
-      .then(([vehiculo, fotos, publicacion]) => {
+    Promise.all([
+      obtener(`/vehiculo/${id}`, token),
+      obtener('/usuarios/me', token),
+      fotosDeVehiculo(id),
+      publicacionActualDe(token, id),
+    ])
+      .then(([vehiculo, usuario, fotos, publicacion]) => {
         if (!vigente) return
+        // El backend rechaza cambios de otro usuario; acá además se evita mostrarle la pantalla
+        if (vehiculo.idUsuario !== usuario.idUsuario) {
+          setErrorCarga('Este vehículo no es tuyo')
+          return
+        }
         setDatos({ vehiculo, fotos, sinPublicacion: !publicacion, clave: version })
-        setErrorCarga(false)
+        setErrorCarga('')
       })
       .catch((e) => {
         console.error('Error al cargar fotos', e)
-        if (vigente) setErrorCarga(true)
+        if (vigente) setErrorCarga('No pudimos cargar el vehículo')
       })
     return () => { vigente = false }
   }, [id, token, version])
@@ -140,7 +168,7 @@ export default function VehiclePhotos() {
   if (errorCarga) {
     return (
       <main className={pageStyles + ' pb-20'}>
-        <h1 className={titleStyles}>No pudimos cargar el vehículo</h1>
+        <h1 className={titleStyles}>{errorCarga}</h1>
         <Link to="/mis-vehiculos" className="inline-block mt-5 text-gold">Volver a mis vehículos</Link>
       </main>
     )

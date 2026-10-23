@@ -1,5 +1,4 @@
-import  { obtener, enviar, subirArchivo } from './api.js'
-import { TIPOS } from '../data/vehiculos'
+import { obtener, enviar, subirArchivo } from './api.js'
 
 // Patentes argentinas: formato nuevo (AB123CD) y formato anterior (ABC123).
 const PATENTE_NUEVA_REGEX = /^[A-Z]{2}\d{3}[A-Z]{2}$/
@@ -24,15 +23,13 @@ export function patenteValida(valor) {
   return PATENTE_NUEVA_REGEX.test(patente) || PATENTE_ANTIGUA_REGEX.test(patente)
 }
 
-export function nombreTipo(idTipoVehiculo) {
-  return TIPOS.find((tipo) => tipo.idTipoVehiculo === Number(idTipoVehiculo))?.nombre ?? ''
-}
-
 // Los valores del formulario son siempre strings (vienen de inputs y selects).
-export function valoresInicialesVehiculo(vehiculo) {
+// `tipos` son los del backend: en el alta se preselecciona el primero para que el select no quede vacío.
+export function valoresInicialesVehiculo(vehiculo, tipos = []) {
+  const idTipoVehiculo = vehiculo ? vehiculo.idTipoVehiculo : tipos[0]?.idTipoVehiculo
   return {
     patente: vehiculo?.patente ?? '',
-    idTipoVehiculo: String(vehiculo?.idTipoVehiculo ?? TIPOS[0].idTipoVehiculo),
+    idTipoVehiculo: String(idTipoVehiculo ?? ''),
     marca: vehiculo?.marca ?? '',
     modelo: vehiculo?.modelo ?? '',
     anio: String(vehiculo?.anio ?? ANIO_ACTUAL),
@@ -41,8 +38,9 @@ export function valoresInicialesVehiculo(vehiculo) {
   }
 }
 
+// `tipos`: los tipos de vehículo del backend.
 // `otrosVehiculos`: el resto de la flota, para detectar patentes repetidas.
-export function validarVehiculo(valores, otrosVehiculos = []) {
+export function validarVehiculo(valores, tipos, otrosVehiculos = []) {
   const errores = {}
 
   if (!valores.patente.trim()) errores.patente = 'La patente es obligatoria'
@@ -51,8 +49,8 @@ export function validarVehiculo(valores, otrosVehiculos = []) {
     errores.patente = 'Ya registraste un vehículo con esa patente'
   }
 
-  if (!TIPOS.some((tipo) => String(tipo.idTipoVehiculo) === String(valores.idTipoVehiculo))) {
-    errores.idTipoVehiculo = 'El tipo de vehículo no es válido'
+  if (!tipos.some((tipo) => String(tipo.idTipoVehiculo) === valores.idTipoVehiculo)) {
+    errores.idTipoVehiculo = 'Elegí un tipo de vehículo'
   }
 
   if (!valores.marca.trim()) errores.marca = 'La marca es obligatoria'
@@ -121,47 +119,9 @@ export const portadaDe = (vehiculo) => {
 
 export const tieneFotos = (vehiculo) => vehiculo.fotos.length > 0
 export const puedePublicar = (vehiculo) => tieneFotos(vehiculo)
-export const nombreVehiculo = (vehiculo) => `${vehiculo.marca} ${vehiculo.modelo} (${vehiculo.anio})`
-export const resumenVehiculo = (vehiculo) => `${nombreVehiculo(vehiculo)} - ${vehiculo.cantidadAsientos} asientos - ${vehiculo.color}`
-
-export const VEHICULOS_POR_PAGINA = 9
-// Arma lo que necesita MyVehicleCard. El backend no manda las fotos ni la publicación
-// dentro del vehículo, así que se piden aparte y se unen por idVehiculo.
-export async function cargarMisVehiculos(token, pagina) {
-  const [vehiculos, activas, pausadas] = await Promise.all([
-    obtener(`/vehiculo/mios?page=${pagina}&size=${VEHICULOS_POR_PAGINA}`, token),
-    obtener('/publicaciones/mias?estado=ACTIVA&size=100', token),
-    obtener('/publicaciones/mias?estado=PAUSADA&size=100', token),
-  ])
-
-  // Un vehículo tiene a lo sumo una publicación activa o pausada.
-  // Se cargan primero las pausadas para que la activa gane si hubiera dos.
-  const publicaciones = new Map()
-  ;[...pausadas.content, ...activas.content].forEach((publicacion) => {
-    publicaciones.set(publicacion.idVehiculo, {
-      idPublicacion: publicacion.idPublicacion,
-      estado: publicacion.estado,
-    })
-  })
-
-  const content = await Promise.all(vehiculos.content.map(async (vehiculo) => {
-    // El backend ya las devuelve ordenadas por "orden"; la primera es la portada.
-    const imagenes = await obtener(`/imagen-vehiculo/por-vehiculo/${vehiculo.idVehiculo}`)
-    return {
-      ...vehiculo,
-      fotos: imagenes.map((imagen) => ({
-        idFoto: imagen.id,
-        orden: imagen.orden,
-        url: `data:image/jpeg;base64,${imagen.file}`,
-      })),
-      publicacionActual: publicaciones.get(vehiculo.idVehiculo) ?? null,
-    }
-  }))
-
-  return { ...vehiculos, content }
-}
 
 // Fotos guardadas de un vehículo, con la forma que usan PhotoTile y las funciones de arriba.
+// El backend ya las devuelve ordenadas por "orden"; la primera es la portada.
 export async function fotosDeVehiculo(idVehiculo) {
   const imagenes = await obtener(`/imagen-vehiculo/por-vehiculo/${idVehiculo}`)
   return imagenes.map((imagen) => ({
@@ -171,14 +131,37 @@ export async function fotosDeVehiculo(idVehiculo) {
   }))
 }
 
+// Publicaciones ACTIVAS o PAUSADAS del usuario. Un vehículo tiene a lo sumo una.
+// Se piden todas en un solo pedido y se descartan las desactivadas.
+async function publicacionesVigentes(token) {
+  const publicaciones = await obtener('/publicaciones/mias?size=100', token)
+  return publicaciones.content.filter((publicacion) => publicacion.estado !== 'DESACTIVADA')
+}
+
+const publicacionDe = (publicaciones, idVehiculo) =>
+  publicaciones.find((publicacion) => publicacion.idVehiculo === Number(idVehiculo)) ?? null
+
 // Publicación ACTIVA o PAUSADA del vehículo (o null). Define si se ofrece "Guardar y crear publicación".
 export async function publicacionActualDe(token, idVehiculo) {
-  const [activas, pausadas] = await Promise.all([
-    obtener('/publicaciones/mias?estado=ACTIVA&size=100', token),
-    obtener('/publicaciones/mias?estado=PAUSADA&size=100', token),
+  return publicacionDe(await publicacionesVigentes(token), idVehiculo)
+}
+
+export const VEHICULOS_POR_PAGINA = 9
+// Arma lo que necesita MyVehicleCard. El backend no manda las fotos ni la publicación
+// dentro del vehículo, así que se piden aparte y se unen por idVehiculo.
+export async function cargarMisVehiculos(token, pagina) {
+  const [vehiculos, publicaciones] = await Promise.all([
+    obtener(`/vehiculo/mios?page=${pagina}&size=${VEHICULOS_POR_PAGINA}`, token),
+    publicacionesVigentes(token),
   ])
-  return [...activas.content, ...pausadas.content]
-    .find((publicacion) => publicacion.idVehiculo === Number(idVehiculo)) ?? null
+
+  const content = await Promise.all(vehiculos.content.map(async (vehiculo) => ({
+    ...vehiculo,
+    fotos: await fotosDeVehiculo(vehiculo.idVehiculo),
+    publicacionActual: publicacionDe(publicaciones, vehiculo.idVehiculo),
+  })))
+
+  return { ...vehiculos, content }
 }
 
 // Lleva al backend las diferencias entre las fotos guardadas (`originales`) y las de la pantalla (`actuales`):

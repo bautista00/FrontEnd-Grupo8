@@ -1,4 +1,4 @@
-import { SORT_OPTIONS } from '../../data/vehiculos'
+import { SORT_OPTIONS } from '../../utils/catalogo'
 
 export default function SortSelect({ value, onChange }) {
   return (
