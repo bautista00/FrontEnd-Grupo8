@@ -17,12 +17,11 @@ export default function CartVehicle({
 
   // Conservamos el editor abierto si el backend rechaza las fechas.
   const guardarYCerrar = (fechaInicio, fechaFin) => {
-    return alGuardarFechas(fechaInicio, fechaFin)
-      .then((guardado) => {
-        if (guardado) {
-          actualizarMostrarEditor(false)
-        }
-      })
+    alGuardarFechas(
+      fechaInicio,
+      fechaFin,
+      () => actualizarMostrarEditor(false)
+    )
   }
 
   // Recibimos el carrito como prop y extraemos la publicación para acceder al auto.

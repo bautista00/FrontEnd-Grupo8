@@ -29,6 +29,8 @@ export default function ConfirmReservation({ vaciarCarrito }) {
 
   // Bloquea nuevos envíos hasta terminar la confirmación y el checkout.
   const [confirmando, actualizarConfirmando] = useState(false)
+  // Conserva la acción que el usuario confirmó para enviarla desde el efecto.
+  const [datosParaConfirmar, actualizarDatosParaConfirmar] = useState(null)
 
   // Guarda el mensaje que después mostraremos en pantalla.
   const [mensaje, actualizarMensaje] = useState('')
@@ -55,10 +57,21 @@ export default function ConfirmReservation({ vaciarCarrito }) {
     if (carrito === null || confirmando || confirmacion !== null) return
     if (new Date(carrito.fechaExpiracion).getTime() <= Date.now()) return
 
-    const token = localStorage.getItem('jwtToken')
-
     actualizarConfirmando(true)
     actualizarMensaje('')
+
+    actualizarDatosParaConfirmar({
+      carrito,
+      metodoPago,
+      vaciarCarrito
+    })
+  }
+
+  useEffect(() => {
+    if (datosParaConfirmar === null) return
+
+    const { carrito, metodoPago, vaciarCarrito } = datosParaConfirmar
+    const token = localStorage.getItem('jwtToken')
 
     // Distinguimos si falló la creación o el inicio del pago.
     let reservaCreada = false
@@ -148,8 +161,9 @@ export default function ConfirmReservation({ vaciarCarrito }) {
       })
       .finally(() => {
         actualizarConfirmando(false)
+        actualizarDatosParaConfirmar(null)
       })
-  }
+  }, [datosParaConfirmar, navegar])
 
   // Evitamos leer datos cuando no hay carrito.
   if (carrito === null) {

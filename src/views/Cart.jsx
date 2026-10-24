@@ -25,10 +25,13 @@ export default function Cart({
 
   // Impide repetir la eliminación mientras esperamos al backend.
   const [quitando, actualizarQuitando] = useState(false)
+  const [idCarritoParaQuitar, actualizarIdCarritoParaQuitar] = useState(null)
 
   // Controlan el guardado de fechas y los errores que mostrará el editor.
   const [guardandoFechas, actualizarGuardandoFechas] = useState(false)
   const [mensajeFechas, actualizarMensajeFechas] = useState('')
+  // Guarda las fechas que el usuario confirmó para enviar.
+  const [fechasParaGuardar, actualizarFechasParaGuardar] = useState(null)
 
   // Consultamos el carrito, su publicación y sus períodos solo si no conocemos sus datos.
   useEffect(() => {
@@ -207,13 +210,19 @@ export default function Cart({
   const quitarCarrito = () => {
     if (carrito === null || quitando || guardandoFechas) return
 
-    const token = localStorage.getItem('jwtToken')
-
     actualizarQuitando(true)
     actualizarMensaje('')
 
-    // Pedimos al backend que elimine este carrito.
-    fetch(`${API_URL}/carritos/${carrito.idCarrito}`, {
+    // Registra la eliminación confirmada para que la ejecute el efecto.
+    actualizarIdCarritoParaQuitar(carrito.idCarrito)
+  }
+
+  useEffect(() => {
+    if (idCarritoParaQuitar === null) return
+
+    const token = localStorage.getItem('jwtToken')
+
+    fetch(`${API_URL}/carritos/${idCarritoParaQuitar}`, {
       method: 'DELETE',
       headers: {
         Authorization: `Bearer ${token}`
@@ -245,21 +254,39 @@ export default function Cart({
       })
       .finally(() => {
         actualizarQuitando(false)
+        actualizarIdCarritoParaQuitar(null)
       })
-  }
+  }, [idCarritoParaQuitar, actualizarCarrito])
 
-  const guardarFechas = (fechaInicio, fechaFin) => {
-    if (carrito === null || guardandoFechas || quitando) {
-      return Promise.resolve(false)
-    }
-
-    const token = localStorage.getItem('jwtToken')
+  const guardarFechas = (fechaInicio, fechaFin, alGuardarCorrectamente) => {
+    if (carrito === null || guardandoFechas || quitando) return
 
     actualizarGuardandoFechas(true)
     actualizarMensajeFechas('')
 
-    return fetch(
-      `${API_URL}/carritos/${carrito.idCarrito}/fechas`,
+    actualizarFechasParaGuardar({
+      idCarrito: carrito.idCarrito,
+      fechaInicio,
+      fechaFin,
+      publicacion: carrito.publicacion,
+      alGuardarCorrectamente
+    })
+  }
+
+  useEffect(() => {
+    if (fechasParaGuardar === null) return
+
+    const token = localStorage.getItem('jwtToken')
+    const {
+      idCarrito,
+      fechaInicio,
+      fechaFin,
+      publicacion,
+      alGuardarCorrectamente
+    } = fechasParaGuardar
+
+    fetch(
+      `${API_URL}/carritos/${idCarrito}/fechas`,
       {
         method: 'PUT',
         headers: {
@@ -286,10 +313,10 @@ export default function Cart({
         // Guardamos la respuesta y conservamos la publicación ya cargada.
         actualizarCarrito({
           ...datosCarrito,
-          publicacion: carrito.publicacion
+          publicacion
         })
 
-        return true
+        alGuardarCorrectamente()
       })
       .catch((error) => {
         actualizarMensajeFechas(
@@ -297,13 +324,12 @@ export default function Cart({
             ? 'No pudimos conectar con el servidor. Intentá nuevamente.'
             : error.message || 'No se pudieron modificar las fechas.'
         )
-
-        return false
       })
       .finally(() => {
         actualizarGuardandoFechas(false)
+        actualizarFechasParaGuardar(null)
       })
-  }
+  }, [fechasParaGuardar, actualizarCarrito])
 
   // null significa que no hay un carrito. Comprobamos esto antes de acceder a sus datos.
   // El aviso de carrito vacío se guarda separado de los errores.

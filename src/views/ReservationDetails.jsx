@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import SelectedVehicle from "../components/reservations/shared/SelectedVehicle"
 import ReservationItinerary from "../components/reservations/shared/ReservationItinerary"
@@ -31,6 +31,7 @@ export default function ReservationDetails() {
   const [mostrarModalCancelar, actualizarModalCancelar] = useState(false)
   const [cancelando, actualizarCancelando] = useState(false)
   const [mensajeCancelar, actualizarMensajeCancelar] = useState('')
+  const [idReservaParaCancelar, actualizarIdReservaParaCancelar] = useState(null)
 
   const abrirModalCancelar = () => {
     actualizarMensaje('')
@@ -49,13 +50,19 @@ export default function ReservationDetails() {
   const cancelarReserva = () => {
     if (cancelando) return
 
-    const token = localStorage.getItem('jwtToken')
-
     actualizarCancelando(true)
     actualizarMensajeCancelar('')
 
+    actualizarIdReservaParaCancelar(idReserva)
+  }
+
+  useEffect(() => {
+    if (idReservaParaCancelar === null) return
+
+    const token = localStorage.getItem('jwtToken')
+
     // El backend identifica al usuario por el token y valida la cancelación.
-    fetch(`${API_URL}/reservas/${idReserva}/cancelar`, {
+    fetch(`${API_URL}/reservas/${idReservaParaCancelar}/cancelar`, {
       method: 'PUT',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -93,8 +100,9 @@ export default function ReservationDetails() {
       })
       .finally(() => {
         actualizarCancelando(false)
+        actualizarIdReservaParaCancelar(null)
       })
-  }
+  }, [idReservaParaCancelar])
 
   if (!idReserva || !reserva || !vehiculo) {
     return (
