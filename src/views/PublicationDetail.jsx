@@ -24,6 +24,7 @@ export default function PublicationDetail({ actualizarCarrito, actualizarCarrito
   // Estado del botón "Agregar al carrito"
   const [agregando, setAgregando] = useState(false)
   const [mensaje, setMensaje] = useState('')
+  const [datosParaAgregar, setDatosParaAgregar] = useState(null)
 
   useEffect(() => {
     Promise.all([
@@ -52,6 +53,8 @@ export default function PublicationDetail({ actualizarCarrito, actualizarCarrito
   }, [id, token, recargar])
 
   function agregarAlCarrito(fechaInicio, fechaFin) {
+    if (agregando) return
+
     // Sin sesión lo mandamos al login, que después lo devuelve a esta publicación
     if (!token) {
       navigate('/login', { state: { volverA: `/publicaciones/${id}` } })
@@ -60,8 +63,30 @@ export default function PublicationDetail({ actualizarCarrito, actualizarCarrito
 
     setAgregando(true)
     setMensaje('')
+
+    // Registra la selección confirmada para enviarla desde el efecto.
+    setDatosParaAgregar({
+      idPublicacion: id,
+      fechaInicio,
+      fechaFin,
+      publicacion,
+      token
+    })
+  }
+
+  useEffect(() => {
+    if (datosParaAgregar === null) return
+
+    const {
+      idPublicacion,
+      fechaInicio,
+      fechaFin,
+      publicacion,
+      token
+    } = datosParaAgregar
+
     // Si el backend explica el problema (por ejemplo, fechas ocupadas), se muestra ese mensaje
-    enviar(`/carritos/publicaciones/${id}`, 'POST', token, { fechaInicio, fechaFin }, 'No pudimos agregar el vehículo al carrito. Intentá nuevamente.')
+    enviar(`/carritos/publicaciones/${idPublicacion}`, 'POST', token, { fechaInicio, fechaFin }, 'No pudimos agregar el vehículo al carrito. Intentá nuevamente.')
       .then((datosCarrito) => {
         // Guardamos en App la respuesta del backend y la publicación ya cargada.
         actualizarCarrito({ ...datosCarrito, publicacion })
@@ -71,9 +96,12 @@ export default function PublicationDetail({ actualizarCarrito, actualizarCarrito
       .catch((error) => {
         console.error('Error al agregar al carrito', error)
         setMensaje(error.message)
-        setAgregando(false)
       })
-  }
+      .finally(() => {
+        setAgregando(false)
+        setDatosParaAgregar(null)
+      })
+  }, [datosParaAgregar, actualizarCarrito, actualizarCarritoConsultado, navigate])
 
   if (error) {
     return (
