@@ -1,4 +1,13 @@
-export default function ReservationManagement({ reserva, fechaActual, alCancelar }) {
+export default function ReservationManagement({
+  reserva,
+  fechaActual,
+  alCancelar,
+  puedeContinuarPago,
+  alContinuarPago,
+  continuandoPago,
+  cancelando,
+  mensajePago
+}) {
   // La confirmada se puede cancelar solo antes del día de retiro.
   const puedeCancelar = reserva.estado === 'PENDIENTE'
     || (reserva.estado === 'CONFIRMADA' && reserva.fechaInicio > fechaActual)
@@ -22,9 +31,26 @@ export default function ReservationManagement({ reserva, fechaActual, alCancelar
         {mensajes[reserva.estado] || 'Esta reserva no se puede cancelar.'}
       </p>
 
+      {puedeContinuarPago && (
+        <button
+          type="button"
+          onClick={alContinuarPago}
+          disabled={continuandoPago || cancelando}
+          className="w-full mt-4 px-4 py-3 bg-ink text-white rounded-[0.25rem] text-[0.6875rem] disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {continuandoPago ? 'Abriendo Mercado Pago...' : 'Continuar pago'}
+        </button>
+      )}
+
+      {mensajePago && (
+        <p role="alert" className="mt-3 text-[0.75rem] text-red-700">
+          {mensajePago}
+        </p>
+      )}
+
       {/* Abrimos la confirmación solamente si se puede cancelar. */}
       {puedeCancelar && (
-        <button type="button" className="w-full mt-4 px-4 py-3 bg-card border border-red-200 rounded-[0.25rem] text-[0.6875rem] text-red-700" onClick={alCancelar}>
+        <button type="button" className="w-full mt-4 px-4 py-3 bg-card border border-red-200 rounded-[0.25rem] text-[0.6875rem] text-red-700 disabled:opacity-50 disabled:cursor-not-allowed" onClick={alCancelar} disabled={continuandoPago || cancelando}>
           Cancelar reserva
         </button>
       )}

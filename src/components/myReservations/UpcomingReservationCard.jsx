@@ -21,6 +21,11 @@ export default function UpcomingReservationCard({ reserva, publicacion, pago }) 
     year: 'numeric',
   }).format(new Date(reserva.fechaCreacion))
 
+  const tienePagoPendiente =
+    reserva.estado === 'PENDIENTE' &&
+    pago?.metodo === 'MERCADO_PAGO' &&
+    pago?.estado === 'PENDIENTE'
+
   return (
     <article className="min-w-0 p-6 bg-card border border-border rounded-lg phone:p-4" aria-labelledby={`reservation-${reserva.idReserva}-vehicle`}>
       <header className="flex flex-wrap items-center justify-between gap-3 mb-5">
@@ -87,6 +92,11 @@ export default function UpcomingReservationCard({ reserva, publicacion, pago }) 
                   ? 'Pago en efectivo'
                   : 'Pago con Mercado Pago'}
             </p>
+            {tienePagoPendiente && (
+              <p className="mt-2 text-[0.6875rem] leading-[1.6] text-amber-700">
+                Tenés un pago pendiente de Mercado Pago. Entrá al detalle para continuar.
+              </p>
+            )}
           </div>
 
           {/* Enviamos los datos de esta reserva a la vista de detalle. */}

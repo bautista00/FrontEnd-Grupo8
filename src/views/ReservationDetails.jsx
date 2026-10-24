@@ -36,7 +36,73 @@ function ReservationDetailsContent({ ubicacion }) {
   const [mensajeCancelar, actualizarMensajeCancelar] = useState('')
   const [datosParaCancelar, actualizarDatosParaCancelar] = useState(null)
 
+  // El pago ya llega desde Mis reservas; guardamos solo la acción de continuarlo.
+  const [idPagoParaContinuar, actualizarIdPagoParaContinuar] = useState(null)
+  const [continuandoPago, actualizarContinuandoPago] = useState(false)
+  const [mensajePago, actualizarMensajePago] = useState('')
+
+  const puedeContinuarPago =
+    reserva?.estado === 'PENDIENTE' &&
+    pago?.metodo === 'MERCADO_PAGO' &&
+    pago?.estado === 'PENDIENTE'
+
+  const continuarPago = () => {
+    if (
+      !puedeContinuarPago ||
+      continuandoPago ||
+      cancelando ||
+      mostrarModalCancelar
+    ) return
+
+    actualizarContinuandoPago(true)
+    actualizarMensajePago('')
+    actualizarIdPagoParaContinuar(pago.idPago)
+  }
+
+  useEffect(() => {
+    if (idPagoParaContinuar === null) return
+
+    const token = localStorage.getItem('jwtToken')
+
+    fetch(`${API_URL}/pagos/${idPagoParaContinuar}/checkout`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+      .then((respuesta) => {
+        if (!respuesta.ok) {
+          return respuesta.json()
+            .catch(() => ({}))
+            .then((datosError) => {
+              return Promise.reject(new Error(
+                datosError.mensaje || 'No se pudo continuar el pago.'
+              ))
+            })
+        }
+
+        return respuesta.json()
+      })
+      .then((checkout) => {
+        // Abrimos el checkout del pago existente.
+        window.location.href = checkout.initPoint
+      })
+      .catch((error) => {
+        actualizarMensajePago(
+          error instanceof TypeError
+            ? 'No pudimos conectar con el servidor. Intentá nuevamente.'
+            : error.message || 'No se pudo continuar el pago.'
+        )
+      })
+      .finally(() => {
+        actualizarContinuandoPago(false)
+        actualizarIdPagoParaContinuar(null)
+      })
+  }, [idPagoParaContinuar])
+
   const abrirModalCancelar = () => {
+    if (cancelando || continuandoPago) return
+
     actualizarMensaje('')
     actualizarMensajeCancelar('')
     actualizarModalCancelar(true)
@@ -51,7 +117,7 @@ function ReservationDetailsContent({ ubicacion }) {
   }
 
   const cancelarReserva = () => {
-    if (cancelando) return
+    if (cancelando || continuandoPago) return
 
     actualizarCancelando(true)
     actualizarMensajeCancelar('')
@@ -178,7 +244,16 @@ function ReservationDetailsContent({ ubicacion }) {
         </div>
         <aside className="min-w-0">
           <ReservationPaymentSummary reserva={reserva} pago={pago} />
-          <ReservationManagement reserva={reserva} fechaActual={fechaActual} alCancelar={abrirModalCancelar} />
+          <ReservationManagement
+            reserva={reserva}
+            fechaActual={fechaActual}
+            alCancelar={abrirModalCancelar}
+            puedeContinuarPago={puedeContinuarPago}
+            alContinuarPago={continuarPago}
+            continuandoPago={continuandoPago}
+            cancelando={cancelando}
+            mensajePago={mensajePago}
+          />
         </aside>
       </div>
 
