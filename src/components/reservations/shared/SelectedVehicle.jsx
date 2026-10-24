@@ -1,4 +1,4 @@
-import { CarIcon, MapPinIcon } from '../icons/Icons'
+import { CarIcon, MapPinIcon } from '../../icons/Icons'
 
 // La vista elige el vehículo y el título del bloque.
 export default function SelectedVehicle({ vehiculo, titulo = 'Vehículo seleccionado' }) {

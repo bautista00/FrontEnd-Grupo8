@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import ReservationResultHeader from '../components/reservations/ReservationResultHeader'
-import ReservedVehicleSummary from '../components/reservations/ReservedVehicleSummary'
-import PickupInstructions from '../components/reservations/PickupInstructions'
+import ReservationResultHeader from '../components/reservationResult/ReservationResultHeader'
+import ReservedVehicleSummary from '../components/reservationResult/ReservedVehicleSummary'
+import PickupInstructions from '../components/reservationResult/PickupInstructions'
 import { API_URL } from '../utils/api'
 
 export default function ReservationResult() {

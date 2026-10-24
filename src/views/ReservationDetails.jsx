@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import SelectedVehicle from "../components/reservations/SelectedVehicle"
-import ReservationItinerary from "../components/reservations/ReservationItinerary"
-import ReservationPaymentSummary from "../components/reservations/ReservationPaymentSummary"
-import ReservationManagement from "../components/reservations/ReservationManagement"
-import ConfirmCancellation from '../components/reservations/ConfirmCancellation'
+import SelectedVehicle from "../components/reservations/shared/SelectedVehicle"
+import ReservationItinerary from "../components/reservations/shared/ReservationItinerary"
+import ReservationPaymentSummary from "../components/reservationDetails/ReservationPaymentSummary"
+import ReservationManagement from "../components/reservationDetails/ReservationManagement"
+import ConfirmCancellation from '../components/reservationDetails/ConfirmCancellation'
 import { API_URL } from '../utils/api'
 
 // Colores según los estados del backend.

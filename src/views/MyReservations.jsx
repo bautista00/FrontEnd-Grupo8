@@ -1,7 +1,7 @@
-import ReservationFilters from "../components/reservations/ReservationFilters"
-import ReservationHistory from "../components/reservations/ReservationHistory"
-import UpcomingReservations from "../components/reservations/UpcomingReservations"
-import EmptyReservations from "../components/reservations/EmptyReservations"
+import ReservationFilters from "../components/myReservations/ReservationFilters"
+import ReservationHistory from "../components/myReservations/ReservationHistory"
+import UpcomingReservations from "../components/myReservations/UpcomingReservations"
+import EmptyReservations from "../components/myReservations/EmptyReservations"
 import { useEffect, useState } from 'react'
 import { API_URL } from '../utils/api'
 

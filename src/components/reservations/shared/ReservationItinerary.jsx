@@ -1,6 +1,6 @@
-import { CalendarIcon, MapPinIcon } from '../icons/Icons'
-import { formatearFecha } from '../../utils/formatters'
-import MapaPublicacion from '../publicaciones/MapaPublicacion'
+import { CalendarIcon, MapPinIcon } from '../../icons/Icons'
+import { formatearFecha } from '../../../utils/formatters'
+import MapaPublicacion from '../../publicaciones/MapaPublicacion'
 
 // Carrito y reserva comparten los campos de fechas y duración.
 export default function ReservationItinerary({ datos, publicacion, mostrarMapa = false }) {

@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import ReservationItinerary from "../components/reservations/ReservationItinerary"
-import PaymentMethod from "../components/reservations/PaymentMethod"
-import PaymentSummary from "../components/reservations/PaymentSummary"
-import SelectedVehicle from "../components/reservations/SelectedVehicle"
+import ReservationItinerary from "../components/reservations/shared/ReservationItinerary"
+import PaymentMethod from "../components/confirmReservation/PaymentMethod"
+import PaymentSummary from "../components/confirmReservation/PaymentSummary"
+import SelectedVehicle from "../components/reservations/shared/SelectedVehicle"
 import { API_URL } from '../utils/api'
 
 export default function ConfirmReservation({ vaciarCarrito }) {
