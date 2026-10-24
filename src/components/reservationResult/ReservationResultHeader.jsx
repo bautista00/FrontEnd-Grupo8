@@ -1,9 +1,13 @@
+/**
+ * Muestra el estado de la reserva y el mensaje correspondiente a su método de pago.
+ */
+
 export default function ReservationResultHeader({ reserva, pago }) {
   const estaConfirmada = reserva.estado === 'CONFIRMADA'
   const esEfectivo = pago.metodo === 'EFECTIVO'
   const pagoAprobado = pago.estado === 'APROBADO'
 
-  // Efectivo aprobado no significa que la plataforma haya verificado el cobro.
+  // En efectivo se paga al retirar; la plataforma no verifica aquí que el dinero se haya cobrado.
   const mensaje = !estaConfirmada
     ? 'La reserva quedó pendiente. Podés consultar su estado en Mis reservas.'
     : esEfectivo
@@ -29,7 +33,6 @@ export default function ReservationResultHeader({ reserva, pago }) {
       <p className="max-w-[40rem] mt-3 text-[0.75rem] leading-[1.8] text-soft">{mensaje}</p>
 
       <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 mt-6 px-5 py-3 bg-card border border-border rounded-lg text-[0.6875rem] phone:px-4">
-        {/* Mostramos el idReserva, sin inventar otro código. */}
         <span className="text-muted">Reserva <strong className="ml-2 text-ink">#{reserva.idReserva}</strong></span>
         <span className={`inline-flex items-center gap-1.5 ${estaConfirmada ? 'text-emerald-700' : 'text-amber-700'}`}>
           <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />

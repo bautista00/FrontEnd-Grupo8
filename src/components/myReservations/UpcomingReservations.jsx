@@ -1,3 +1,7 @@
+/**
+ * Relaciona las próximas reservas con sus publicaciones y pagos y renderiza sus tarjetas.
+ */
+
 import UpcomingReservationCard from "./UpcomingReservationCard"
 import EmptyReservations from "./EmptyReservations"
 
@@ -9,7 +13,6 @@ export default function UpcomingReservations({ reservas, publicaciones, pagos })
       </h2>
 
       <div className="grid gap-4">
-        {/* Una tarjeta por reserva, con sus datos relacionados por ID. */}
         {reservas.map((reserva) => {
           const publicacion = publicaciones.find((publicacion) => publicacion.idPublicacion === reserva.idPublicacion)
           const pago = pagos.find((pago) => pago.idReserva === reserva.idReserva)

@@ -1,3 +1,8 @@
+/**
+ * Muestra las acciones disponibles para la reserva y los errores al continuar el pago.
+ * Los botones llaman a las funciones recibidas del detalle.
+ */
+
 export default function ReservationManagement({
   reserva,
   fechaActual,
@@ -8,7 +13,6 @@ export default function ReservationManagement({
   cancelando,
   mensajePago
 }) {
-  // La confirmada se puede cancelar solo antes del día de retiro.
   const puedeCancelar = reserva.estado === 'PENDIENTE'
     || (reserva.estado === 'CONFIRMADA' && reserva.fechaInicio > fechaActual)
 
@@ -48,7 +52,6 @@ export default function ReservationManagement({
         </p>
       )}
 
-      {/* Abrimos la confirmación solamente si se puede cancelar. */}
       {puedeCancelar && (
         <button type="button" className="w-full mt-4 px-4 py-3 bg-card border border-red-200 rounded-[0.25rem] text-[0.6875rem] text-red-700 disabled:opacity-50 disabled:cursor-not-allowed" onClick={alCancelar} disabled={continuandoPago || cancelando}>
           Cancelar reserva

@@ -1,8 +1,12 @@
+/**
+ * Muestra fechas, duración y punto de entrega de un carrito o una reserva.
+ * Se reutiliza en confirmación y detalle; recibe los datos y la opción de mostrar el mapa.
+ */
+
 import { CalendarIcon, MapPinIcon } from '../../icons/Icons'
 import { formatearFecha } from '../../../utils/formatters'
 import MapaPublicacion from '../../publicaciones/MapaPublicacion'
 
-// Carrito y reserva comparten los campos de fechas y duración.
 export default function ReservationItinerary({ datos, publicacion, mostrarMapa = false }) {
   const horaRetiro = publicacion.horaRetiroDevolucion
   const mostrarDireccion = ['CONFIRMADA', 'FINALIZADA'].includes(datos.estado) && publicacion.direccion
@@ -22,7 +26,6 @@ export default function ReservationItinerary({ datos, publicacion, mostrarMapa =
           <dt className="mb-2 text-[0.5625rem] uppercase text-muted">Retiro</dt>
           <dd className="m-0 text-[0.75rem] leading-[1.6] text-ink">
             <time dateTime={datos.fechaInicio}>{formatearFecha(datos.fechaInicio)}</time>
-            {/* El horario viene de la publicación. */}
             {horaRetiro && <span className="block text-[0.6875rem] text-soft">{horaRetiro.slice(0, 5)} hs</span>}
           </dd>
         </div>
@@ -35,7 +38,6 @@ export default function ReservationItinerary({ datos, publicacion, mostrarMapa =
         </div>
       </dl>
 
-      {/* Con la reserva confirmada se ve el punto exacto; si no, solo la zona aproximada. */}
       {mostrarMapa ? (
         <div className="mt-4">
           <MapaPublicacion latitud={publicacion.latitud} longitud={publicacion.longitud} exacta={Boolean(mostrarDireccion)} className="h-[13.75rem]" />

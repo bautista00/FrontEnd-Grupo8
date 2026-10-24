@@ -1,3 +1,7 @@
+/**
+ * Muestra el vehículo reservado, las fechas y los importes recibidos desde el resultado.
+ */
+
 import { CarIcon, MapPinIcon } from '../icons/Icons'
 import { formatARS as formatearPrecio, formatearFecha } from '../../utils/formatters'
 
@@ -5,6 +9,7 @@ export default function ReservedVehicleSummary({ reserva, pago, publicacion }) {
   const esEfectivo = pago.metodo === 'EFECTIVO'
   const pagoAprobado = pago.estado === 'APROBADO'
   const horaRetiro = publicacion.horaRetiroDevolucion?.slice(0, 5)
+  // Acepta los dos nombres que pueden traer las respuestas del vehículo.
   const asientos = publicacion.asientos ?? publicacion.cantidadAsientos
 
   return (
@@ -54,7 +59,6 @@ export default function ReservedVehicleSummary({ reserva, pago, publicacion }) {
           <dt className="text-muted">Método de pago</dt>
           <dd className="m-0 text-ink">{esEfectivo ? 'Efectivo al retirar' : 'Mercado Pago'}</dd>
         </div>
-        {/* El identificador de operación solo corresponde a Mercado Pago. */}
         {!esEfectivo && pago.mercadoPagoPaymentId && (
           <div className="flex flex-wrap justify-between gap-2 mt-2">
             <dt className="text-muted">Operación de Mercado Pago</dt>
@@ -65,7 +69,6 @@ export default function ReservedVehicleSummary({ reserva, pago, publicacion }) {
 
       <div className="flex flex-wrap items-start justify-between gap-3 mt-4 pt-5 border-t border-border">
         <div>
-          {/* Para efectivo evitamos afirmar que el dinero ya se cobró. */}
           <strong className="text-[0.8125rem] text-ink">
             {esEfectivo ? 'Total a pagar al retirar' : pagoAprobado ? 'Total abonado' : 'Total de la reserva'}
           </strong>

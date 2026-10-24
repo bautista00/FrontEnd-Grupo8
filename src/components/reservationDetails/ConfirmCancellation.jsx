@@ -1,5 +1,9 @@
+/**
+ * Pide confirmación antes de cancelar la reserva.
+ * Recibe del detalle las funciones de confirmar y cerrar, el bloqueo y el error.
+ */
+
 export default function ConfirmCancellation({ reserva, alCerrar, alConfirmar, cancelando, mensaje }) {
-  // Las fechas se reciben por props; usamos hora local para conservar el día.
   const formateadorFecha = new Intl.DateTimeFormat('es-AR', {
     weekday: 'long',
     day: 'numeric',
@@ -17,7 +21,6 @@ export default function ConfirmCancellation({ reserva, alCerrar, alConfirmar, ca
         aria-describedby="confirm-cancellation-description"
         className="relative w-full max-w-[35rem] max-h-[calc(100dvh-2rem)] overflow-y-auto p-8 bg-card border border-border rounded-lg shadow-md phone:p-6"
       >
-        {/* La cruz cierra el modal igual que Mantener reserva. */}
         <button type="button" aria-label="Cerrar confirmación" className="absolute top-4 right-4 grid place-items-center w-8 h-8 p-0 bg-transparent border-0 text-[1.625rem] leading-none text-muted" onClick={alCerrar} disabled={cancelando}>
           <span aria-hidden="true">×</span>
         </button>

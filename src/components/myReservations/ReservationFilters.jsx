@@ -1,3 +1,7 @@
+/**
+ * Permite elegir el filtro de Mis reservas llamando a la función que recibe de la vista.
+ */
+
 const FILTROS = [
   { id: "todas", texto: 'Todas' },
   { id: "proximas", texto: 'Próximas' },
@@ -7,7 +11,6 @@ const FILTROS = [
 export default function ReservationFilters({ hayReservasConfirmadas,filtroSeleccionado,alCambiar }) {
   return (
     <div className="flex flex-wrap gap-2 mb-6 pb-3 border-b border-border" role="group" aria-label="Filtros de reservas">
-      {/* map muestra un botón por filtro; Todas queda seleccionado visualmente. */}
       {FILTROS.map((filtro) => (
         <button
           key={filtro.id}
@@ -16,7 +19,6 @@ export default function ReservationFilters({ hayReservasConfirmadas,filtroSelecc
           aria-pressed={filtro.id === filtroSeleccionado}
           onClick={()=> alCambiar(filtro.id)}
         >
-          {/* El punto indica que hay reservas confirmadas. */}
           {filtro.id === "proximas" && hayReservasConfirmadas && (
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" aria-hidden="true" />
           )}

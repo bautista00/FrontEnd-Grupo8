@@ -1,8 +1,11 @@
+/**
+ * Muestra el total y el tiempo restante; el botón llama a la función de confirmar recibida.
+ */
+
 import { Link } from 'react-router-dom'
 import { formatARS as formatearPrecio } from '../../utils/formatters'
 
 export default function PaymentSummary({ carrito, metodoPago, alConfirmar, confirmando = false, reservaCreada = false }) {
-  // La selección llega desde la vista, igual que a PaymentMethod.
   const esMercadoPago = metodoPago === 'MERCADO_PAGO'
   const segundos = Math.max(0, carrito.segundosRestantes)
   const estaVencido = segundos === 0
@@ -16,7 +19,6 @@ export default function PaymentSummary({ carrito, metodoPago, alConfirmar, confi
         <span className="text-[0.6875rem] text-muted">{carrito.cantidadDias} días</span>
       </header>
 
-      {/* Usamos los precios guardados en el carrito. */}
       <div className="flex flex-wrap justify-between gap-3 text-[0.6875rem] leading-[1.6] text-soft">
         <span>{carrito.cantidadDias} días × {formatearPrecio(carrito.precioDiaAplicado)}</span>
         <span>{formatearPrecio(carrito.precioTotal)}</span>
@@ -30,7 +32,6 @@ export default function PaymentSummary({ carrito, metodoPago, alConfirmar, confi
         </div>
       </div>
 
-      {/* El aviso y el botón cambian con el método elegido. */}
       <p className="p-3 bg-paper border border-border rounded-[0.25rem] text-[0.6875rem] leading-[1.6] text-soft">
         {esMercadoPago
           ? 'Al confirmar, te llevaremos a Mercado Pago para completar el pago.'
@@ -42,7 +43,6 @@ export default function PaymentSummary({ carrito, metodoPago, alConfirmar, confi
           : `Tus fechas siguen retenidas ${minutos}:${segundosDelMinuto} min.`}
       </p>
 
-      {/* El clic ejecuta la función de la vista con el método elegido. */}
       <button type="button" onClick={alConfirmar} className="w-full mt-4 px-4 py-3 bg-ink border-0 rounded-[0.25rem] text-[0.6875rem] leading-[1.6] text-card disabled:cursor-not-allowed disabled:opacity-65" disabled={estaVencido || confirmando || reservaCreada}>
         {confirmando
           ? 'Confirmando...'

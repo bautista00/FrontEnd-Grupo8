@@ -1,3 +1,8 @@
+/**
+ * Muestra la reserva elegida en Mis reservas y permite cancelarla o continuar su pago.
+ * Recibe la reserva, la publicación y el pago mediante la navegación.
+ */
+
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import SelectedVehicle from "../components/reservations/shared/SelectedVehicle"
@@ -7,7 +12,6 @@ import ReservationManagement from "../components/reservationDetails/ReservationM
 import ConfirmCancellation from '../components/reservationDetails/ConfirmCancellation'
 import { API_URL } from '../utils/api'
 
-// Colores según los estados del backend.
 const ESTADOS_RESERVA = {
   PENDIENTE: { texto: 'Pendiente', clases: 'bg-amber-50 border-amber-200 text-amber-700' },
   CONFIRMADA: { texto: 'Confirmada', clases: 'bg-emerald-50 border-emerald-200 text-emerald-700' },
@@ -16,6 +20,7 @@ const ESTADOS_RESERVA = {
   FINALIZADA: { texto: 'Finalizada', clases: 'bg-surface border-border text-muted' },
 }
 
+// La key inicia otro detalle al elegir una reserva diferente.
 export default function ReservationDetails() {
   const ubicacion = useLocation()
   return <ReservationDetailsContent key={ubicacion.state?.reserva?.idReserva ?? 'sin-reserva'} ubicacion={ubicacion} />
@@ -23,20 +28,19 @@ export default function ReservationDetails() {
 
 function ReservationDetailsContent({ ubicacion }) {
 
-  // La reserva puede cambiar cuando el backend confirma su cancelación.
   const [reserva, actualizarReserva] = useState(ubicacion.state?.reserva ?? null)
   const vehiculo = ubicacion.state?.publicacion
   const pago = ubicacion.state?.pago
   const idReserva = reserva?.idReserva
   const [mensaje, actualizarMensaje] = useState('')
 
-  // Controla si aparece la confirmación de cancelación.
   const [mostrarModalCancelar, actualizarModalCancelar] = useState(false)
   const [cancelando, actualizarCancelando] = useState(false)
   const [mensajeCancelar, actualizarMensajeCancelar] = useState('')
+  // Reserva y sesión con las que se confirmó la cancelación.
   const [datosParaCancelar, actualizarDatosParaCancelar] = useState(null)
 
-  // El pago ya llega desde Mis reservas; guardamos solo la acción de continuarlo.
+  // Pago existente que se abrirá en Mercado Pago al confirmar la acción.
   const [idPagoParaContinuar, actualizarIdPagoParaContinuar] = useState(null)
   const [continuandoPago, actualizarContinuandoPago] = useState(false)
   const [mensajePago, actualizarMensajePago] = useState('')
@@ -46,6 +50,7 @@ function ReservationDetailsContent({ ubicacion }) {
     pago?.metodo === 'MERCADO_PAGO' &&
     pago?.estado === 'PENDIENTE'
 
+  // Se pasa a ReservationManagement como alContinuarPago y prepara la solicitud del checkout.
   const continuarPago = () => {
     if (
       !puedeContinuarPago ||
@@ -59,6 +64,7 @@ function ReservationDetailsContent({ ubicacion }) {
     actualizarIdPagoParaContinuar(pago.idPago)
   }
 
+  // Obtiene el checkout del pago existente y abre Mercado Pago.
   useEffect(() => {
     if (idPagoParaContinuar === null) return
 
@@ -84,7 +90,6 @@ function ReservationDetailsContent({ ubicacion }) {
         return respuesta.json()
       })
       .then((checkout) => {
-        // Abrimos el checkout del pago existente.
         window.location.href = checkout.initPoint
       })
       .catch((error) => {
@@ -108,7 +113,6 @@ function ReservationDetailsContent({ ubicacion }) {
     actualizarModalCancelar(true)
   }
 
-  // Cerramos el modal sin modificar la reserva.
   const cerrarModalCancelar = () => {
     if (cancelando) return
 
@@ -116,6 +120,7 @@ function ReservationDetailsContent({ ubicacion }) {
     actualizarModalCancelar(false)
   }
 
+  // Se pasa al modal como alConfirmar y prepara el pedido de cancelación.
   const cancelarReserva = () => {
     if (cancelando || continuandoPago) return
 
@@ -125,13 +130,14 @@ function ReservationDetailsContent({ ubicacion }) {
     actualizarDatosParaCancelar({ idReserva, token: localStorage.getItem('jwtToken') })
   }
 
+  // Cancela la reserva y muestra su nuevo estado con la respuesta del backend.
   useEffect(() => {
     if (datosParaCancelar === null) return
 
+    // Evita aplicar la cancelación a una pantalla o sesión que ya cambió.
     let vigente = true
     const { token, idReserva } = datosParaCancelar
 
-    // El backend identifica al usuario por el token y valida la cancelación.
     fetch(`${API_URL}/reservas/${idReserva}/cancelar`, {
       method: 'PUT',
       headers: {
@@ -156,7 +162,6 @@ function ReservationDetailsContent({ ubicacion }) {
       })
       .then((reservaCancelada) => {
         if (!vigente || token !== localStorage.getItem('jwtToken')) return
-        // La respuesta contiene la reserva con su nuevo estado.
         actualizarReserva(reservaCancelada)
         actualizarModalCancelar(false)
         actualizarMensaje('Tu reserva se canceló correctamente.')
@@ -195,7 +200,6 @@ function ReservationDetailsContent({ ubicacion }) {
     )
   }
 
-  // Usamos la fecha local de hoy para evaluar si se puede cancelar.
   const hoy = new Date()
   const fechaActual = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`
   const estadoVisual = ESTADOS_RESERVA[reserva.estado]
@@ -207,7 +211,6 @@ function ReservationDetailsContent({ ubicacion }) {
 
   return (
     <main className="flex-1 w-full max-w-page mx-auto px-(--gutter) pt-10 pb-16 phone:pt-7 phone:pb-10">
-      {/* Volvemos a la lista de reservas. */}
       <Link to="/mis-reservas" className="inline-flex items-center gap-2 mb-6 p-0 bg-transparent border-0 text-[0.6875rem] text-soft">
         <span aria-hidden="true">←</span>
         Volver a mis reservas
@@ -215,7 +218,6 @@ function ReservationDetailsContent({ ubicacion }) {
 
       <header className="flex flex-wrap items-end justify-between gap-4 mb-6">
         <div className="flex flex-wrap items-center gap-3">
-          {/* Usamos idReserva, igual que en el backend. */}
           <h1 className="text-[2.25rem] leading-[1.2] text-ink phone:text-[1.875rem]">
             Reserva #{reserva.idReserva}
           </h1>
@@ -238,7 +240,6 @@ function ReservationDetailsContent({ ubicacion }) {
 
       <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-start gap-6 tablet:grid-cols-1">
         <div className="min-w-0">
-          {/* Reutilizamos el componente de Confirmar reserva. */}
           <SelectedVehicle vehiculo={vehiculo} titulo="Vehículo reservado" />
           <ReservationItinerary datos={reserva} publicacion={vehiculo} mostrarMapa />
         </div>
@@ -257,7 +258,6 @@ function ReservationDetailsContent({ ubicacion }) {
         </aside>
       </div>
 
-      {/* Mostramos el modal con los datos de la reserva elegida. */}
       {mostrarModalCancelar && (
         <ConfirmCancellation
           reserva={reserva}

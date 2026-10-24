@@ -1,3 +1,8 @@
+/**
+ * Muestra el vehículo del carrito y permite abrir la edición de fechas o pedir su eliminación.
+ * Envía las fechas elegidas a Cart mediante la función recibida por props.
+ */
+
 import { useState } from 'react'
 import { CarIcon, MapPinIcon } from '../icons/Icons'
 import { formatARS as formatearPrecio, formatearFecha } from '../../utils/formatters'
@@ -12,10 +17,9 @@ export default function CartVehicle({
   quitando = false,
   mensajeFechas = '',
 }) {
-  // Abrimos y cerramos la edición dentro de esta misma card.
   const [mostrarEditor, actualizarMostrarEditor] = useState(false)
 
-  // Conservamos el editor abierto si el backend rechaza las fechas.
+  // Pasa las fechas a Cart y le indica cómo cerrar el editor cuando se guarden correctamente.
   const guardarYCerrar = (fechaInicio, fechaFin) => {
     alGuardarFechas(
       fechaInicio,
@@ -24,7 +28,6 @@ export default function CartVehicle({
     )
   }
 
-  // Recibimos el carrito como prop y extraemos la publicación para acceder al auto.
   const vehiculo = carrito.publicacion
 
   return (

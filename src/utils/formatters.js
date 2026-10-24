@@ -1,3 +1,8 @@
+/**
+ * Funciones compartidas para presentar importes y trabajar con fechas.
+ */
+
+// Presenta un importe en pesos argentinos.
 export function formatARS(amount) {
   return new Intl.NumberFormat('es-AR', {
     style: 'currency',
@@ -6,7 +11,7 @@ export function formatARS(amount) {
   }).format(amount)
 }
 
-// Fecha corta con hora local para evitar cambios de día.
+// Usa una hora local intermedia para conservar el día de la fecha recibida.
 export function formatearFecha(fecha) {
   return new Intl.DateTimeFormat('es-AR', {
     weekday: 'short',
@@ -15,18 +20,18 @@ export function formatearFecha(fecha) {
   }).format(new Date(fecha + 'T12:00:00'))
 }
 
-// Precio por día con el descuento de la publicación ya aplicado.
+// Calcula el precio diario de presentación con el descuento de la publicación.
 export function precioFinal(publicacion) {
   const descuento = Number(publicacion.descuentoPorcentaje) || 0
   return Number(publicacion.precioDia) * (1 - descuento / 100)
 }
 
-// Arma "AAAA-MM-DD" a partir del año, el mes (0 a 11) y el día.
+// Devuelve AAAA-MM-DD; el mes recibido va de 0 a 11.
 export function fechaISO(anio, mes, dia) {
   return anio + '-' + String(mes + 1).padStart(2, '0') + '-' + String(dia).padStart(2, '0')
 }
 
-// Cantidad de días entre retiro y devolución (del 12 al 16 son 4 días).
+// Calcula los días entre retiro y devolución.
 export function diasEntre(inicio, fin) {
   return Math.round((new Date(fin + 'T12:00:00') - new Date(inicio + 'T12:00:00')) / 86400000)
 }

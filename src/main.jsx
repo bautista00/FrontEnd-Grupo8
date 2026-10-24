@@ -1,3 +1,7 @@
+/**
+ * Inicia React, configura Google Maps y habilita la navegación de la aplicación.
+ */
+
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'

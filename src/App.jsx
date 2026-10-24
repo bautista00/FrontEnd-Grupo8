@@ -1,3 +1,8 @@
+/**
+ * Organiza las rutas y conserva el carrito compartido entre las pantallas.
+ * Entrega los datos y las funciones para modificarlos mediante props.
+ */
+
 import { useEffect, useState } from 'react'
 import { Link, Route, Routes, useLocation } from 'react-router-dom'
 import RequireAuth from './components/auth/RequireAuth'
@@ -21,24 +26,24 @@ import VehiclePhotos from './views/VehiclePhotos'
 import Profile from './views/Profile'
 
 export default function App() {
-  // Conserva el carrito mientras navegamos entre las vistas.
   const [carrito, actualizarCarrito] = useState(null)
-  // Distingue un carrito todavía no consultado de uno que ya sabemos que está vacío.
+  // Permite distinguir un carrito todavía no consultado de uno que ya sabemos que está vacío.
   const [carritoConsultado, actualizarCarritoConsultado] = useState(false)
 
-  // El backend elimina el carrito cuando crea la reserva; actualizamos su copia local.
+  // Actualiza la copia local después de que el backend convierte el carrito en reserva.
   const vaciarCarrito = () => {
     actualizarCarrito(null)
     actualizarCarritoConsultado(true)
   }
 
-  // Una nueva sesión necesita recuperar su propio carrito cuando corresponda.
+  // Descarta el carrito de la sesión anterior; Login y Registro reciben esta función.
   const reiniciarCarrito = () => {
     actualizarCarrito(null)
     actualizarCarritoConsultado(false)
   }
 
   const { pathname } = useLocation()
+  // Lleva la pantalla al inicio al cambiar de ruta.
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }) }, [pathname])
   return (
     <div className="min-h-screen flex flex-col">
@@ -47,15 +52,12 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login reiniciarCarrito={reiniciarCarrito} />} />
         <Route path="/registro" element={<Register reiniciarCarrito={reiniciarCarrito} />} />
-        {/* Las pantallas de la cuenta van dentro de RequireAuth: sin sesión mandan al login */}
         <Route path="/perfil" element={<RequireAuth><Profile /></RequireAuth>} />
         <Route path="/mis-reservas" element={<RequireAuth><MyReservations /></RequireAuth>} />
         <Route path="/mis-reservas/detalle" element={<RequireAuth><ReservationDetails /></RequireAuth>} />
         <Route path="/mis-publicaciones" element={<RequireAuth><MyPublications /></RequireAuth>} />
-        {/* Las key distintas hacen que React arme un formulario nuevo al pasar de crear a editar */}
         <Route path="/publicaciones/nueva" element={<RequireAuth><PublicationForm key="crear" /></RequireAuth>} />
         <Route path="/publicaciones/:id/editar" element={<RequireAuth><PublicationForm key="editar" modo="editar" /></RequireAuth>} />
-        {/* Detalle público de una publicación, al que se llega desde el catálogo. */}
         <Route
           path="/publicaciones/:id"
           element={
@@ -88,14 +90,11 @@ export default function App() {
             </RequireAuth>
           }
         />
-        {/* Esta ruta muestra la segunda pantalla del flujo de reserva. */}
         <Route
           path="/carrito/confirmar"
           element={<RequireAuth><ConfirmReservation vaciarCarrito={vaciarCarrito} /></RequireAuth>}
         />
-        {/* Resultado al crear la reserva; sus datos todavía son de ejemplo. */}
         <Route path="/reservas/resultado" element={<RequireAuth><ReservationResult /></RequireAuth>} />
-        {/* Mercado Pago vuelve al backend y el backend redirige acá con el estado del pago. */}
         <Route path="/reservas" element={<RequireAuth><PaymentReturn /></RequireAuth>} />
         <Route path="/reservas/:idReserva" element={<RequireAuth><PaymentReturn /></RequireAuth>} />
       </Routes>

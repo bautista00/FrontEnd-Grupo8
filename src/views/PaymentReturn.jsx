@@ -1,8 +1,11 @@
+/**
+ * Verifica en el backend el estado del pago al volver de Mercado Pago.
+ */
+
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { API_URL } from '../utils/api'
 
-// Textos para cada estado de pago que devuelve el backend.
 const MENSAJES = {
   APROBADO: {
     titulo: '¡Pago aprobado!',
@@ -22,13 +25,13 @@ const MENSAJES = {
 }
 
 export default function PaymentReturn() {
-  // El backend nos redirige a /reservas/:idReserva después del pago.
   const { idReserva } = useParams()
 
   const [pago, actualizarPago] = useState(null)
   const [verificando, actualizarVerificando] = useState(true)
   const [mensaje, actualizarMensaje] = useState('')
 
+  // Consulta el estado real del pago al volver de Mercado Pago.
   useEffect(() => {
     if (!idReserva) {
       actualizarMensaje('No pudimos identificar la reserva.')
@@ -42,7 +45,6 @@ export default function PaymentReturn() {
     actualizarMensaje('')
     actualizarPago(null)
 
-    // El resultado se obtiene del backend, no de los parámetros de la URL.
     fetch(`${API_URL}/pagos/reserva/${idReserva}`, {
       method: 'GET',
       headers: {
@@ -83,6 +85,7 @@ export default function PaymentReturn() {
       })
   }, [idReserva])
 
+  // El resultado se decide con la respuesta del backend, no con un estado escrito en la URL.
   const estadoPago = pago?.estado
   const datos = MENSAJES[estadoPago]
 

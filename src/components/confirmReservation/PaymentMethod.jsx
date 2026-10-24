@@ -1,10 +1,13 @@
+/**
+ * Permite elegir efectivo o Mercado Pago y comunica la elección a la vista de confirmación.
+ */
+
 export default function PaymentMethod({ metodoPago, alCambiar, bloqueado = false }) {
   return (
     <section className="min-w-0 mt-6 p-6 bg-card border border-border rounded-lg phone:p-[1.125rem]">
       <h2 id="payment-method-title" className="text-[1.25rem] leading-[1.4] text-ink">Método de pago</h2>
       <p className="mt-2 text-[0.6875rem] leading-[1.6] text-muted">Elegí cómo querés pagar la reserva.</p>
 
-      {/* El mismo name agrupa las opciones: solo se elige una. */}
       <fieldset disabled={bloqueado} className="grid gap-3 min-w-0 mt-4 mx-0 mb-0 p-0 border-0" aria-labelledby="payment-method-title">
         <label className={`flex items-start gap-3 p-4 border rounded-[0.25rem] cursor-pointer focus-within:outline-2 focus-within:outline-gold focus-within:outline-offset-2 ${metodoPago === 'MERCADO_PAGO' ? 'bg-paper border-soft' : 'border-border'}`}>
           <input
@@ -13,7 +16,6 @@ export default function PaymentMethod({ metodoPago, alCambiar, bloqueado = false
             name="metodoPago"
             value="MERCADO_PAGO"
             checked={metodoPago === 'MERCADO_PAGO'}
-            // Avisamos a la vista para que actualice su estado.
             onChange={(evento) => alCambiar(evento.target.value)}
           />
           <span className="min-w-0">
