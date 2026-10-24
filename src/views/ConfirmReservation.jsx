@@ -6,9 +6,12 @@ import PaymentSummary from "../components/confirmReservation/PaymentSummary"
 import SelectedVehicle from "../components/reservations/shared/SelectedVehicle"
 import { API_URL } from '../utils/api'
 
-export default function ConfirmReservation({ vaciarCarrito }) {
-  // Recibimos el carrito enviado por CartSummary.
+export default function ConfirmReservation(props) {
   const ubicacion = useLocation()
+  return <ReservationConfirmation key={ubicacion.state?.carrito?.idCarrito ?? 'sin-carrito'} {...props} ubicacion={ubicacion} />
+}
+
+function ReservationConfirmation({ vaciarCarrito, ubicacion }) {
   const navegar = useNavigate()
   const [carrito, actualizarCarrito] = useState(() => {
     const carritoRecibido = ubicacion.state?.carrito
@@ -63,15 +66,16 @@ export default function ConfirmReservation({ vaciarCarrito }) {
     actualizarDatosParaConfirmar({
       carrito,
       metodoPago,
-      vaciarCarrito
+      vaciarCarrito,
+      token: localStorage.getItem('jwtToken')
     })
   }
 
   useEffect(() => {
     if (datosParaConfirmar === null) return
 
-    const { carrito, metodoPago, vaciarCarrito } = datosParaConfirmar
-    const token = localStorage.getItem('jwtToken')
+    let vigente = true
+    const { carrito, metodoPago, vaciarCarrito, token } = datosParaConfirmar
 
     // Distinguimos si falló la creación o el inicio del pago.
     let reservaCreada = false
@@ -102,6 +106,7 @@ export default function ConfirmReservation({ vaciarCarrito }) {
         return respuesta.json()
       })
       .then((datosConfirmacion) => {
+        if (!vigente || token !== localStorage.getItem('jwtToken')) return
         reservaCreada = true
         // Guardamos los identificadores y estados que devuelve el backend.
         actualizarConfirmacion(datosConfirmacion)
@@ -142,11 +147,13 @@ export default function ConfirmReservation({ vaciarCarrito }) {
             return respuesta.json()
           })
           .then((checkout) => {
+            if (!vigente || token !== localStorage.getItem('jwtToken')) return
             // Salimos de la app: Mercado Pago nos devuelve a /reservas/:idReserva.
             window.location.href = checkout.initPoint
           })
       })
       .catch((error) => {
+        if (!vigente || token !== localStorage.getItem('jwtToken')) return
         console.error('Error al confirmar la reserva:', error)
         const mensajeError = error instanceof TypeError
           ? 'No pudimos conectar con el servidor. Intentá nuevamente.'
@@ -160,9 +167,11 @@ export default function ConfirmReservation({ vaciarCarrito }) {
         )
       })
       .finally(() => {
+        if (!vigente || token !== localStorage.getItem('jwtToken')) return
         actualizarConfirmando(false)
         actualizarDatosParaConfirmar(null)
       })
+    return () => { vigente = false }
   }, [datosParaConfirmar, navegar])
 
   // Evitamos leer datos cuando no hay carrito.

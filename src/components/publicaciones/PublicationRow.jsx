@@ -65,7 +65,8 @@ export default function PublicationRow({ publicacion, onCambiarEstado, deshabili
               >
                 Desactivar
               </button>
-              <Link to={`/publicaciones/${publicacion.idPublicacion}/editar`} className={btnBase + ' ' + btnDark + ' ' + btnSize}>
+              <Link to={`/publicaciones/${publicacion.idPublicacion}/editar`} aria-disabled={deshabilitado}
+                onClick={(event) => { if (deshabilitado) event.preventDefault() }} className={btnBase + ' ' + btnDark + ' ' + btnSize}>
                 Editar publicación
               </Link>
             </>

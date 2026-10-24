@@ -13,6 +13,7 @@ export default function Cart({
   carritoConsultado,
   actualizarCarritoConsultado
 }) {
+  const token = localStorage.getItem('jwtToken')
   //Controla si aparece el modal para quietar la publicacion del carrito. 
   const [mostrarModalQuitar, actualizarModalQuitar]=useState(false)
 
@@ -25,7 +26,7 @@ export default function Cart({
 
   // Impide repetir la eliminación mientras esperamos al backend.
   const [quitando, actualizarQuitando] = useState(false)
-  const [idCarritoParaQuitar, actualizarIdCarritoParaQuitar] = useState(null)
+  const [datosParaQuitar, actualizarDatosParaQuitar] = useState(null)
 
   // Controlan el guardado de fechas y los errores que mostrará el editor.
   const [guardandoFechas, actualizarGuardandoFechas] = useState(false)
@@ -37,8 +38,7 @@ export default function Cart({
   useEffect(() => {
     if (carritoConsultado) return
 
-    // Nombre provisional: coordinar esta clave con el login.
-    const token = localStorage.getItem('jwtToken')
+    let vigente = true
 
     // Sin sesión, no hacemos las consultas.
     if (!token) return
@@ -64,6 +64,7 @@ export default function Cart({
         return respuesta.json()
       })
       .then((datosCarrito) => {
+        if (!vigente || token !== localStorage.getItem('jwtToken')) return null
         // El backend devuelve 200 con un mensaje cuando no hay carrito.
         if (datosCarrito.mensaje && !datosCarrito.idCarrito) {
           actualizarMensajeVacio(datosCarrito.mensaje)
@@ -136,6 +137,7 @@ export default function Cart({
           })
       })
       .then((carritoCompleto) => {
+        if (!vigente || token !== localStorage.getItem('jwtToken')) return
         if (carritoCompleto === null) {
           actualizarCarrito(null)
           actualizarCarritoConsultado(true)
@@ -155,6 +157,7 @@ export default function Cart({
         actualizarCarritoConsultado(true)
       })
       .catch((error) => {
+        if (!vigente || token !== localStorage.getItem('jwtToken')) return
         // Maneja los errores de cualquiera de las consultas.
         console.error('Error al cargar el carrito:', error)
         actualizarMensaje(
@@ -163,7 +166,8 @@ export default function Cart({
             : error.message || 'No pudimos cargar tu carrito. Intentá nuevamente más tarde.'
         )
       })
-  }, [carritoConsultado, actualizarCarrito, actualizarCarritoConsultado])
+    return () => { vigente = false }
+  }, [carritoConsultado, actualizarCarrito, actualizarCarritoConsultado, token])
 
   // Obtenemos el vencimiento cuando ya existe un carrito.
   const fechaExpiracion = carrito ? carrito.fechaExpiracion : null
@@ -173,6 +177,7 @@ export default function Cart({
 
     // Recalculamos el tiempo restante cada segundo.
     const intervalo = setInterval(() => {
+      if (token !== localStorage.getItem('jwtToken')) return
       const vencimiento = new Date(fechaExpiracion).getTime()
       const segundosRestantes = Math.max(
         0,
@@ -191,7 +196,7 @@ export default function Cart({
 
     // Detenemos el intervalo al salir o cambiar el vencimiento.
     return () => clearInterval(intervalo)
-  }, [fechaExpiracion, actualizarCarrito])
+  }, [fechaExpiracion, actualizarCarrito, token])
   
   const abrirModalQuitar =()=>{
     if (quitando || guardandoFechas) return
@@ -214,15 +219,16 @@ export default function Cart({
     actualizarMensaje('')
 
     // Registra la eliminación confirmada para que la ejecute el efecto.
-    actualizarIdCarritoParaQuitar(carrito.idCarrito)
+    actualizarDatosParaQuitar({ idCarrito: carrito.idCarrito, token })
   }
 
   useEffect(() => {
-    if (idCarritoParaQuitar === null) return
+    if (datosParaQuitar === null) return
 
-    const token = localStorage.getItem('jwtToken')
+    let vigente = true
+    const { idCarrito, token } = datosParaQuitar
 
-    fetch(`${API_URL}/carritos/${idCarritoParaQuitar}`, {
+    fetch(`${API_URL}/carritos/${idCarrito}`, {
       method: 'DELETE',
       headers: {
         Authorization: `Bearer ${token}`
@@ -239,12 +245,14 @@ export default function Cart({
             })
         }
 
+        if (!vigente || token !== localStorage.getItem('jwtToken')) return
         // El backend confirmó: vaciamos el estado y cerramos el modal.
         actualizarCarrito(null)
         actualizarMensajeVacio('')
         actualizarModalQuitar(false)
       })
       .catch((error) => {
+        if (!vigente || token !== localStorage.getItem('jwtToken')) return
         console.error('Error al quitar el carrito:', error)
         actualizarMensaje(
           error instanceof TypeError
@@ -253,10 +261,12 @@ export default function Cart({
         )
       })
       .finally(() => {
+        if (!vigente || token !== localStorage.getItem('jwtToken')) return
         actualizarQuitando(false)
-        actualizarIdCarritoParaQuitar(null)
+        actualizarDatosParaQuitar(null)
       })
-  }, [idCarritoParaQuitar, actualizarCarrito])
+    return () => { vigente = false }
+  }, [datosParaQuitar, actualizarCarrito])
 
   const guardarFechas = (fechaInicio, fechaFin, alGuardarCorrectamente) => {
     if (carrito === null || guardandoFechas || quitando) return
@@ -269,15 +279,17 @@ export default function Cart({
       fechaInicio,
       fechaFin,
       publicacion: carrito.publicacion,
-      alGuardarCorrectamente
+      alGuardarCorrectamente,
+      token
     })
   }
 
   useEffect(() => {
     if (fechasParaGuardar === null) return
 
-    const token = localStorage.getItem('jwtToken')
+    let vigente = true
     const {
+      token,
       idCarrito,
       fechaInicio,
       fechaFin,
@@ -310,6 +322,7 @@ export default function Cart({
         return respuesta.json()
       })
       .then((datosCarrito) => {
+        if (!vigente || token !== localStorage.getItem('jwtToken')) return
         // Guardamos la respuesta y conservamos la publicación ya cargada.
         actualizarCarrito({
           ...datosCarrito,
@@ -319,6 +332,7 @@ export default function Cart({
         alGuardarCorrectamente()
       })
       .catch((error) => {
+        if (!vigente || token !== localStorage.getItem('jwtToken')) return
         actualizarMensajeFechas(
           error instanceof TypeError
             ? 'No pudimos conectar con el servidor. Intentá nuevamente.'
@@ -326,9 +340,11 @@ export default function Cart({
         )
       })
       .finally(() => {
+        if (!vigente || token !== localStorage.getItem('jwtToken')) return
         actualizarGuardandoFechas(false)
         actualizarFechasParaGuardar(null)
       })
+    return () => { vigente = false }
   }, [fechasParaGuardar, actualizarCarrito])
 
   // null significa que no hay un carrito. Comprobamos esto antes de acceder a sus datos.

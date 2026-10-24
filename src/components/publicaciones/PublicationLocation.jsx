@@ -32,7 +32,7 @@ export default function PublicationLocation({ valores, onChange, onUbicacionSele
           </FormField>
         ))}
         <FormField id="horaRetiroDevolucion" label="Hora de retiro y devolución *" hint="La misma para los dos.">
-          <input id="horaRetiroDevolucion" name="horaRetiroDevolucion" type="time" required className={inputStyles}
+          <input id="horaRetiroDevolucion" name="horaRetiroDevolucion" type="time" step={valores.horaRetiroDevolucion.length > 5 ? 1 : 60} required className={inputStyles}
             value={valores.horaRetiroDevolucion} onChange={onChange} />
         </FormField>
       </div>

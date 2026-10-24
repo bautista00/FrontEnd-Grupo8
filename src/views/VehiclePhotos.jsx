@@ -20,7 +20,8 @@ function Fotos({ vehiculo, fotosIniciales, sinPublicacion, aviso, onRecargar }) 
   // Se trabaja sobre una copia: los cambios recién se guardan con "Guardar fotos".
   const [fotos, setFotos] = useState(fotosIniciales)
   const [problemas, setProblemas] = useState([])
-  const [guardando, setGuardando] = useState(false)
+  const [datosParaGuardar, setDatosParaGuardar] = useState(null)
+  const guardando = datosParaGuardar !== null
   // URLs de vista previa creadas en esta pantalla: se liberan al salir de ella
   const vistasPrevias = useRef([])
 
@@ -30,6 +31,7 @@ function Fotos({ vehiculo, fotosIniciales, sinPublicacion, aviso, onRecargar }) 
   }, [])
 
   function agregar(archivos) {
+    if (guardando) return
     const nuevas = []
     const rechazadas = []
     archivos.forEach((archivo) => {
@@ -47,35 +49,50 @@ function Fotos({ vehiculo, fotosIniciales, sinPublicacion, aviso, onRecargar }) 
   }
 
   function quitar(posicion) {
+    if (guardando) return
     const foto = fotos[posicion]
     // Una foto nueva que se quita ya no necesita su vista previa
     if (foto.archivo) URL.revokeObjectURL(foto.url)
     setFotos(quitarFoto(fotos, posicion))
   }
 
-  async function guardar(destino, state) {
-    setGuardando(true)
-    try {
-      await sincronizarFotos(token, vehiculo.idVehiculo, fotosIniciales, fotos)
-      olvidarPortada(vehiculo.idVehiculo)
-      navigate(destino, { state })
-    } catch (e) {
-      console.error('Error al guardar fotos', e)
-      setGuardando(false)
-      // Pudo quedar algo a medias: se vuelve a pedir lo que realmente está guardado
-      onRecargar(`${e.message} Mostramos las fotos tal como quedaron guardadas; revisalas e intentá de nuevo.`)
-    }
+  function guardar(destino, state) {
+    if (guardando) return
+    setDatosParaGuardar({
+      token, idVehiculo: vehiculo.idVehiculo, originales: fotosIniciales.map((foto) => ({ ...foto })),
+      actuales: fotos.map((foto) => ({ ...foto })), destino, state, onRecargar,
+    })
   }
+
+  useEffect(() => {
+    if (!datosParaGuardar) return
+    let vigente = true
+    const { token: tokenEnvio, idVehiculo, originales, actuales, destino, state, onRecargar } = datosParaGuardar
+    sincronizarFotos(tokenEnvio, idVehiculo, originales, actuales)
+      .then(() => {
+        if (!vigente || tokenEnvio !== localStorage.getItem('jwtToken')) return
+        olvidarPortada(idVehiculo)
+        setDatosParaGuardar(null)
+        navigate(destino, { state })
+      })
+      .catch((error) => {
+        if (!vigente || tokenEnvio !== localStorage.getItem('jwtToken')) return
+        // pudo quedar una parte guardada
+        onRecargar(error.message + ' Mostramos las fotos tal como quedaron guardadas; revisalas e intentá de nuevo.')
+      })
+    return () => { vigente = false }
+  }, [datosParaGuardar, navigate])
 
   return (
     <main className={pageStyles + ' pb-20 phone:pb-12'}>
       <div className="max-w-4xl mx-auto">
-        <Link to="/mis-vehiculos" className={eyebrowStyles + ' inline-block mb-3'}>← Volver a mis vehículos</Link>
+        <Link aria-disabled={guardando} onClick={(event) => { if (guardando) event.preventDefault() }} to="/mis-vehiculos" className={eyebrowStyles + ' inline-block mb-3'}>← Volver a mis vehículos</Link>
         <h1 className={titleStyles}>Fotos del {vehiculo.marca} {vehiculo.modelo}</h1>
         <p className={introStyles}>La primera foto es la portada en el catálogo. Usá las flechas para cambiar el orden.</p>
 
         {aviso && <PublicationMessage error>{aviso}</PublicationMessage>}
 
+        <fieldset disabled={guardando} className="contents">
         <div className="mt-8">
           <PhotoDropzone onArchivos={agregar} />
         </div>
@@ -95,7 +112,7 @@ function Fotos({ vehiculo, fotosIniciales, sinPublicacion, aviso, onRecargar }) 
                   foto={foto}
                   indice={indice}
                   total={fotos.length}
-                  onMover={(posicion, desplazamiento) => setFotos(moverFoto(fotos, posicion, desplazamiento))}
+                  onMover={(posicion, desplazamiento) => { if (!guardando) setFotos(moverFoto(fotos, posicion, desplazamiento)) }}
                   onQuitar={quitar}
                 />
               ))}
@@ -105,7 +122,7 @@ function Fotos({ vehiculo, fotosIniciales, sinPublicacion, aviso, onRecargar }) 
             </p>}
 
         <div className={actionsStyles + ' justify-end mt-8'}>
-          <Link to="/mis-vehiculos" className={btnBase + ' ' + btnOutline + ' ' + btnSize}>Cancelar</Link>
+          <Link aria-disabled={guardando} onClick={(event) => { if (guardando) event.preventDefault() }} to="/mis-vehiculos" className={btnBase + ' ' + btnOutline + ' ' + btnSize}>Cancelar</Link>
           <button
             type="button"
             disabled={guardando}
@@ -126,6 +143,7 @@ function Fotos({ vehiculo, fotosIniciales, sinPublicacion, aviso, onRecargar }) 
             </button>
           )}
         </div>
+        </fieldset>
       </div>
     </main>
   )
@@ -133,6 +151,10 @@ function Fotos({ vehiculo, fotosIniciales, sinPublicacion, aviso, onRecargar }) 
 
 export default function VehiclePhotos() {
   const { id } = useParams()
+  return <VehiclePhotosLoader key={id} id={id} />
+}
+
+function VehiclePhotosLoader({ id }) {
   const token = localStorage.getItem('jwtToken')
   const [datos, setDatos] = useState(null)
   const [errorCarga, setErrorCarga] = useState('')
@@ -149,7 +171,7 @@ export default function VehiclePhotos() {
       publicacionActualDe(token, id),
     ])
       .then(([vehiculo, usuario, fotos, publicacion]) => {
-        if (!vigente) return
+        if (!vigente || token !== localStorage.getItem('jwtToken')) return
         // El backend rechaza cambios de otro usuario; acá además se evita mostrarle la pantalla
         if (vehiculo.idUsuario !== usuario.idUsuario) {
           setErrorCarga('Este vehículo no es tuyo')
@@ -160,7 +182,7 @@ export default function VehiclePhotos() {
       })
       .catch((e) => {
         console.error('Error al cargar fotos', e)
-        if (vigente) setErrorCarga('No pudimos cargar el vehículo')
+        if (vigente && token === localStorage.getItem('jwtToken')) setErrorCarga('No pudimos cargar el vehículo')
       })
     return () => { vigente = false }
   }, [id, token, version])
@@ -186,7 +208,7 @@ export default function VehiclePhotos() {
       fotosIniciales={datos.fotos}
       sinPublicacion={datos.sinPublicacion}
       aviso={aviso}
-      onRecargar={(mensaje) => { setAviso(mensaje); setVersion(version + 1) }}
+      onRecargar={(mensaje) => { setDatos(null); setAviso(mensaje); setVersion((actual) => actual + 1) }}
     />
   )
 }

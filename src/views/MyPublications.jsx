@@ -7,7 +7,8 @@ import PublicationMessage from '../components/publicaciones/PublicationMessage'
 import PublicationPagination from '../components/publicaciones/PublicationPagination'
 import { btnBase, btnDark, btnSize } from '../components/ui/buttonStyles'
 import { ESTADOS_PUBLICACION } from '../utils/publicaciones'
-import { API_URL } from '../utils/api'
+import { obtener } from '../utils/api'
+import enviar from '../components/publicaciones/enviarPublicacion'
 
 // Botones para filtrar por estado: "Todas" + uno por cada estado
 const FILTROS = [
@@ -27,77 +28,109 @@ export default function MyPublications() {
   const [texto, setTexto] = useState('')
   const [busqueda, setBusqueda] = useState('')
 
-  // Se incrementa para volver a pedir la lista (por ejemplo, después de pausar una publicación)
   const [recargar, setRecargar] = useState(0)
-  const [procesando, setProcesando] = useState(false)
+  const [accionPendiente, setAccionPendiente] = useState(null)
+  const [incierto, setIncierto] = useState(false)
+  const procesando = accionPendiente !== null
 
   const token = localStorage.getItem('jwtToken')
 
   // Cada vez que cambia un filtro, la página o "recargar", volvemos a consultar
   useEffect(() => {
     if (!token) return
+    let vigente = true
 
     const parametros = new URLSearchParams({ page: pagina, size: 10 })
     if (estado !== 'TODAS') parametros.set('estado', estado)
     if (busqueda) parametros.set('busqueda', busqueda)
 
-    fetch(`${API_URL}/publicaciones/mias?${parametros}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((respuesta) => {
-        if (!respuesta.ok) throw new Error('No se pudieron cargar tus publicaciones')
-        return respuesta.json()
-      })
+    obtener(`/publicaciones/mias?${parametros}`, token)
       .then((resultado) => {
+        if (!vigente || token !== localStorage.getItem('jwtToken')) return
         setDatos(resultado)
         setError('')
+        setIncierto(false)
       })
       .catch((error) => {
-        console.error('Error al cargar', error)
-        setError('No se pudieron cargar tus publicaciones. Intentá nuevamente.')
+        if (vigente && token === localStorage.getItem('jwtToken')) setError(error.message)
       })
+    return () => { vigente = false }
   }, [token, pagina, estado, busqueda, recargar])
 
+  useEffect(() => {
+    if (!accionPendiente) return
+    let vigente = true
+    const { publicacion, accion, token: tokenEnvio, filtro, paginaActual, total } = accionPendiente
+    const ruta = accion === 'desactivar' ? '' : `/${accion}`
+    enviar(`/publicaciones/${publicacion.idPublicacion}${ruta}`, accion === 'desactivar' ? 'DELETE' : 'PUT', tokenEnvio)
+      .then((respuesta) => {
+        if (!vigente || tokenEnvio !== localStorage.getItem('jwtToken')) return
+        const guardada = respuesta ?? { ...publicacion, estado: 'DESACTIVADA' }
+        const sigueEnFiltro = filtro === 'TODAS' || filtro === guardada.estado
+        setDatos((actuales) => ({ ...actuales, content: actuales.content
+          .map((item) => item.idPublicacion === guardada.idPublicacion ? guardada : item)
+          .filter((item) => filtro === 'TODAS' || item.estado === filtro),
+        totalElements: sigueEnFiltro ? actuales.totalElements : Math.max(0, actuales.totalElements - 1) }))
+        if (!sigueEnFiltro) {
+          setPagina(Math.min(paginaActual, Math.max(0, Math.ceil((total - 1) / 10) - 1)))
+          setDatos(null)
+          setRecargar((actual) => actual + 1)
+        }
+      })
+      .catch((error) => {
+        if (!vigente || tokenEnvio !== localStorage.getItem('jwtToken')) return
+        const sinConfirmacion = !error.status || error.status >= 500
+        setIncierto(sinConfirmacion)
+        setAviso(error.message + (sinConfirmacion ? ' Comprobá el estado antes de volver a guardar.' : ''))
+      })
+      .finally(() => { if (vigente) setAccionPendiente(null) })
+    return () => { vigente = false }
+  }, [accionPendiente])
+
   function cambiarFiltro(valor) {
+    if (procesando || incierto) return
+    if (valor === estado && pagina === 0) return
+    setDatos(null)
+    setError('')
     setEstado(valor)
     setPagina(0)
   }
 
   function buscar(event) {
     event.preventDefault()
+    if (procesando || incierto) return
+    setDatos(null)
+    setError('')
     setBusqueda(texto.trim())
     setPagina(0)
+    setRecargar((actual) => actual + 1)
   }
 
   // Pausar y reactivar son PUT a su propia ruta; desactivar es un DELETE
   function cambiarEstado(publicacion, accion) {
+    if (procesando || incierto) return
     if (accion === 'desactivar' && !window.confirm('¿Desactivar esta publicación? No vas a poder reactivarla.')) return
-
-    const ruta = accion === 'desactivar' ? '' : `/${accion}`
-    const metodo = accion === 'desactivar' ? 'DELETE' : 'PUT'
-
-    setProcesando(true)
     setAviso('')
-    fetch(`${API_URL}/publicaciones/${publicacion.idPublicacion}${ruta}`, {
-      method: metodo,
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((respuesta) => {
-        if (!respuesta.ok) throw new Error('No se pudo cambiar el estado')
-        // Volvemos a pedir la lista para ver el estado nuevo
-        setRecargar(recargar + 1)
-      })
-      .catch((error) => {
-        console.error('Error al cambiar el estado', error)
-        setAviso('No se pudo cambiar el estado de la publicación. Intentá nuevamente.')
-      })
-      .finally(() => setProcesando(false))
+    setAccionPendiente({ publicacion, accion, token, filtro: estado, paginaActual: pagina, total: datos.totalElements })
+  }
+
+  function consultarDeNuevo() {
+    setDatos(null)
+    setError('')
+    setAviso('')
+    setRecargar((actual) => actual + 1)
+  }
+
+  function cambiarPagina(nuevaPagina) {
+    if (procesando || incierto) return
+    setDatos(null)
+    setPagina(nuevaPagina)
   }
 
   // Lo que se muestra debajo de los filtros
   let resultados
   if (error) {
-    resultados = <PublicationMessage error onRetry={() => setRecargar(recargar + 1)}>{error}</PublicationMessage>
+    resultados = <PublicationMessage error onRetry={consultarDeNuevo}>{error}</PublicationMessage>
   } else if (!datos) {
     resultados = <PublicationMessage>Cargando tus publicaciones…</PublicationMessage>
   } else if (datos.content.length === 0) {
@@ -120,7 +153,7 @@ export default function MyPublications() {
               key={publicacion.idPublicacion}
               publicacion={publicacion}
               onCambiarEstado={cambiarEstado}
-              deshabilitado={procesando}
+              deshabilitado={procesando || incierto}
             />
           ))}
         </div>
@@ -128,7 +161,8 @@ export default function MyPublications() {
           pagina={pagina}
           totalPages={datos.totalPages}
           totalElements={datos.totalElements}
-          onChange={setPagina}
+          onChange={cambiarPagina}
+          disabled={procesando || incierto}
         />
       </>
     )
@@ -153,6 +187,7 @@ export default function MyPublications() {
             <button
               key={filtro.valor}
               type="button"
+              disabled={procesando || incierto}
               aria-pressed={estado === filtro.valor}
               onClick={() => cambiarFiltro(filtro.valor)}
               className={'border-0 rounded-[0.375rem] px-3.5 py-1.5 text-[0.75rem] phone:px-[0.5625rem] '
@@ -171,14 +206,17 @@ export default function MyPublications() {
               placeholder="Marca, modelo o patente…"
               className="w-full bg-white border border-border rounded-[0.25rem] py-2 pr-3 pl-9 text-[0.75rem]"
               value={texto}
+              disabled={procesando || incierto}
               onChange={(event) => setTexto(event.target.value)}
             />
           </div>
-          <button type="submit" className="border border-border rounded-[0.25rem] px-3 text-[0.75rem]">Buscar</button>
+          <button type="submit" disabled={procesando || incierto} className="border border-border rounded-[0.25rem] px-3 text-[0.75rem]">Buscar</button>
         </form>
       </div>
 
       {aviso && <PublicationMessage error>{aviso}</PublicationMessage>}
+      {incierto && <button type="button" onClick={consultarDeNuevo} className="text-xs underline">Comprobar estado</button>}
+      {procesando && <PublicationMessage>Guardando estado…</PublicationMessage>}
       {resultados}
     </main>
   )

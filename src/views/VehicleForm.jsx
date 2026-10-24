@@ -13,8 +13,12 @@ const PASOS = ['Datos', 'Fotos', 'Publicación']
 // Muestra el error de un campo debajo del input
 const aviso = (mensaje) => mensaje && <span role="alert" className="text-error">{mensaje}</span>
 
-export default function VehicleForm({ modo = 'crear' }) {
+export default function VehicleForm(props) {
   const { id } = useParams()
+  return <VehicleEditor key={props.modo === 'editar' ? id : 'nuevo'} {...props} id={id} />
+}
+
+function VehicleEditor({ modo = 'crear', id }) {
   const navigate = useNavigate()
   const token = localStorage.getItem('jwtToken')
   const editando = modo === 'editar'
@@ -26,7 +30,8 @@ export default function VehicleForm({ modo = 'crear' }) {
   const [errores, setErrores] = useState({})
   const [errorGeneral, setErrorGeneral] = useState('')
   const [cargando, setCargando] = useState(true)
-  const [guardando, setGuardando] = useState(false)
+  const [datosParaGuardar, setDatosParaGuardar] = useState(null)
+  const guardando = datosParaGuardar !== null
 
   useEffect(() => {
     if (!token) return
@@ -41,14 +46,14 @@ export default function VehicleForm({ modo = 'crear' }) {
           editando ? obtener(`/vehiculo/${id}`, token) : null,
           editando ? null : obtener('/usuarios/me', token),
         ])
-        if (!vigente) return
+        if (!vigente || token !== localStorage.getItem('jwtToken')) return
         setTipos(listaTipos)
         setOtros((flota?.content ?? []).filter((v) => String(v.idVehiculo) !== String(id)))
         setValores(valoresInicialesVehiculo(vehiculo, listaTipos))
         setIdUsuario(editando ? vehiculo.idUsuario : usuario.idUsuario)
       } catch (e) {
         console.error('Error al cargar el formulario de vehículo', e)
-        if (vigente) setErrorGeneral(editando ? 'No pudimos cargar el vehículo.' : 'No pudimos cargar los tipos de vehículo.')
+        if (vigente && token === localStorage.getItem('jwtToken')) setErrorGeneral(editando ? 'No pudimos cargar el vehículo.' : 'No pudimos cargar los tipos de vehículo.')
       } finally {
         if (vigente) setCargando(false)
       }
@@ -58,34 +63,39 @@ export default function VehicleForm({ modo = 'crear' }) {
   }, [id, editando, token])
 
   function cambiar(event) {
+    if (guardando) return
     const { name, value } = event.target
     setValores({ ...valores, [name]: name === 'patente' ? normalizarPatente(value) : value })
     if (errores[name]) setErrores({ ...errores, [name]: undefined })
   }
 
-  async function guardar(event) {
+  function guardar(event) {
     event.preventDefault()
+    if (guardando) return
     const encontrados = validarVehiculo(valores, tipos, otros)
     setErrores(encontrados)
     if (Object.keys(encontrados).length > 0) return
-
-    setGuardando(true)
     setErrorGeneral('')
-    try {
-      const datos = { ...valoresAVehiculo(valores), idUsuario }
-      if (editando) {
-        await enviar(`/vehiculo/${id}`, 'PUT', token, datos)
-        navigate('/mis-vehiculos')
-      } else {
-        const vehiculo = await enviar('/vehiculo', 'POST', token, datos)
-        navigate(`/vehiculos/${vehiculo.idVehiculo}/fotos`) // paso 2 del alta
-      }
-    } catch (e) {
-      console.error('Error al guardar vehículo', e)
-      setErrorGeneral(e.message)
-      setGuardando(false)
-    }
+    setDatosParaGuardar({ datos: { ...valoresAVehiculo(valores), idUsuario }, token, id, editando })
   }
+
+  useEffect(() => {
+    if (!datosParaGuardar) return
+    let vigente = true
+    const { datos, token: tokenEnvio, id, editando } = datosParaGuardar
+    enviar(editando ? '/vehiculo/' + id : '/vehiculo', editando ? 'PUT' : 'POST', tokenEnvio, datos)
+      .then((vehiculo) => {
+        if (!vigente || tokenEnvio !== localStorage.getItem('jwtToken')) return
+        setDatosParaGuardar(null)
+        navigate(editando ? '/mis-vehiculos' : '/vehiculos/' + vehiculo.idVehiculo + '/fotos')
+      })
+      .catch((error) => {
+        if (!vigente || tokenEnvio !== localStorage.getItem('jwtToken')) return
+        setErrorGeneral(error.message)
+        setDatosParaGuardar(null)
+      })
+    return () => { vigente = false }
+  }, [datosParaGuardar, navigate])
 
   if (cargando) {
     return <main className={pageStyles + ' pb-20'}><PublicationMessage>Cargando…</PublicationMessage></main>
@@ -95,7 +105,7 @@ export default function VehicleForm({ modo = 'crear' }) {
     return (
       <main className={pageStyles + ' pb-20'}>
         <PublicationMessage error>{errorGeneral}</PublicationMessage>
-        <Link to="/mis-vehiculos" className="inline-block mt-5 text-gold">Volver a mis vehículos</Link>
+        <Link aria-disabled={guardando} onClick={(event) => { if (guardando) event.preventDefault() }} to="/mis-vehiculos" className="inline-block mt-5 text-gold">Volver a mis vehículos</Link>
       </main>
     )
   }
@@ -103,7 +113,7 @@ export default function VehicleForm({ modo = 'crear' }) {
   return (
     <main className={pageStyles + ' pb-20'}>
       <div className="max-w-3xl mx-auto">
-        <Link to="/mis-vehiculos" className="text-[0.75rem] text-soft hover:underline">← Volver a mis vehículos</Link>
+        <Link aria-disabled={guardando} onClick={(event) => { if (guardando) event.preventDefault() }} to="/mis-vehiculos" className="text-[0.75rem] text-soft hover:underline">← Volver a mis vehículos</Link>
 
         {!editando && (
           <ol className={eyebrowStyles + ' flex gap-2 mt-4 p-0 list-none'} aria-label="Pasos del alta">
@@ -124,6 +134,7 @@ export default function VehicleForm({ modo = 'crear' }) {
         </p>
 
         <form onSubmit={guardar} noValidate className="mt-6">
+          <fieldset disabled={guardando} className="contents">
           <div className="grid grid-cols-2 gap-x-6 gap-y-4 phone:grid-cols-1">
             <InputField id="patente" label="Patente *" placeholder="AB123CD" maxLength={7} autoComplete="off" value={valores.patente} onChange={cambiar} hint={aviso(errores.patente)} />
             <FormField id="idTipoVehiculo" label="Tipo de vehículo *" hint={aviso(errores.idTipoVehiculo)}>
@@ -143,11 +154,12 @@ export default function VehicleForm({ modo = 'crear' }) {
           {errorGeneral && <div className="mt-4"><PublicationMessage error>{errorGeneral}</PublicationMessage></div>}
 
           <div className={actionsStyles + ' justify-end mt-8'}>
-            <Link to="/mis-vehiculos" className={btnBase + ' ' + btnOutline + ' ' + btnSize}>Cancelar</Link>
+            <Link aria-disabled={guardando} onClick={(event) => { if (guardando) event.preventDefault() }} to="/mis-vehiculos" className={btnBase + ' ' + btnOutline + ' ' + btnSize}>Cancelar</Link>
             <button type="submit" disabled={guardando} className={btnBase + ' ' + btnDark + ' ' + btnSize}>
               {guardando ? 'Guardando…' : editando ? 'Guardar cambios' : 'Continuar a las fotos'}
             </button>
           </div>
+          </fieldset>
         </form>
       </div>
     </main>

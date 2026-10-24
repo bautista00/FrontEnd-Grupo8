@@ -16,9 +16,9 @@ export function valoresIniciales(publicacion) {
     longitud: publicacion?.longitud ?? null,
     placeId: publicacion?.placeId ?? '',
     // El backend manda "10:00:00" y el input de hora usa "10:00"
-    horaRetiroDevolucion: (publicacion?.horaRetiroDevolucion ?? '').slice(0, 5),
+    horaRetiroDevolucion: (publicacion?.horaRetiroDevolucion ?? '').replace(/^(\d{2}:\d{2}):00$/, '$1'),
     descripcion: publicacion?.descripcion ?? '',
-    periodos: publicacion?.periodos ?? [],
+    periodos: (publicacion?.periodos ?? []).map((periodo) => ({ ...periodo })),
   }
 }
 
@@ -30,7 +30,7 @@ export function datosPublicacion(valores, idUbicacion) {
     precioDia: Number(valores.precioDia),
     descuentoPorcentaje: Number(valores.descuentoPorcentaje || 0),
     descripcion: valores.descripcion.trim(),
-    horaRetiroDevolucion: valores.horaRetiroDevolucion + ':00',
+    horaRetiroDevolucion: valores.horaRetiroDevolucion.length === 5 ? valores.horaRetiroDevolucion + ':00' : valores.horaRetiroDevolucion,
   }
 }
 
@@ -54,6 +54,20 @@ export function periodoDesdeApi(periodo) {
   return { idDisponibilidad: periodo.idDisponibilidad, desde: periodo.fechaInicio, hasta: periodo.fechaFin }
 }
 
+export function completarIds(periodos, guardados, anteriores = [], verificar = false) {
+  const usados = new Set(periodos.map((periodo) => periodo.idDisponibilidad).filter(Boolean))
+  return periodos.map((periodo) => {
+    if (periodo.idDisponibilidad) return periodo
+    const candidatos = guardados.filter((guardado) => !usados.has(guardado.idDisponibilidad)
+      && !anteriores.some((anterior) => anterior.idDisponibilidad === guardado.idDisponibilidad)
+      && (guardado.clave ? guardado.clave === periodo.clave : guardado.desde === periodo.desde && guardado.hasta === periodo.hasta))
+    if (verificar && candidatos.length > 1) throw new Error('Hay varios períodos iguales. Revisalos desde Mis publicaciones antes de seguir.')
+    if (candidatos.length !== 1) return periodo
+    usados.add(candidatos[0].idDisponibilidad)
+    return { ...periodo, idDisponibilidad: candidatos[0].idDisponibilidad }
+  })
+}
+
 // true si los datos de la publicación (sin contar los períodos) son distintos a los guardados
 export function cambiaronDatos(valores, publicacion) {
   const actuales = datosPublicacion(valores, publicacion.idUbicacion)
@@ -63,8 +77,8 @@ export function cambiaronDatos(valores, publicacion) {
 
 // true si se agregó o se quitó algún período
 export function cambiaronPeriodos(valores, publicacion) {
-  const hayNuevos = valores.periodos.some((periodo) => !periodo.idDisponibilidad)
-  return hayNuevos || valores.periodos.length !== publicacion.periodos.length
+  return JSON.stringify(valores.periodos.map(({ idDisponibilidad, desde, hasta }) => ({ idDisponibilidad, desde, hasta })))
+    !== JSON.stringify(publicacion.periodos.map(({ idDisponibilidad, desde, hasta }) => ({ idDisponibilidad, desde, hasta })))
 }
 
 function fechaDeHoy() {
@@ -77,7 +91,7 @@ export function validarFormulario(valores, editando) {
   const descuento = Number(valores.descuentoPorcentaje || 0)
 
   if (!valores.idVehiculo) return 'Elegí un vehículo.'
-  if (!(Number(valores.precioDia) >= 1)) return 'Ingresá un precio por día mayor o igual a 1.'
+  if (!Number.isFinite(Number(valores.precioDia)) || Number(valores.precioDia) < 1) return 'Ingresá un precio por día mayor o igual a 1.'
   if (!(descuento >= 0 && descuento <= 50)) return 'El descuento debe estar entre 0 y 50 %.'
   if (!valores.descripcion.trim() || valores.descripcion.length > 600) return 'Completá la descripción, con un máximo de 600 caracteres.'
   if (!valores.horaRetiroDevolucion) return 'Completá la hora de retiro y devolución.'

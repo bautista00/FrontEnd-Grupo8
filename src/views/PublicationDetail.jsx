@@ -11,8 +11,12 @@ import DetailSpecs from '../components/detalle/DetailSpecs'
 import { obtener, enviar } from '../utils/api'
 import { formatFechaPublicacion } from '../utils/publicaciones'
 
-export default function PublicationDetail({ actualizarCarrito, actualizarCarritoConsultado }) {
+export default function PublicationDetail(props) {
   const { id } = useParams()
+  return <Detail key={id} {...props} id={id} />
+}
+
+function Detail({ id, actualizarCarrito, actualizarCarritoConsultado }) {
   const navigate = useNavigate()
   const token = localStorage.getItem('jwtToken')
 
@@ -27,6 +31,7 @@ export default function PublicationDetail({ actualizarCarrito, actualizarCarrito
   const [datosParaAgregar, setDatosParaAgregar] = useState(null)
 
   useEffect(() => {
+    let vigente = true
     Promise.all([
       // 1. La publicación (ya trae la ubicación, aproximada salvo para el dueño o una reserva confirmada);
       //    con su id de vehículo pedimos el vehículo
@@ -38,6 +43,7 @@ export default function PublicationDetail({ actualizarCarrito, actualizarCarrito
       obtener(`/disponibilidades/publicacion/${id}`, token),
     ])
       .then(([[datos, vehiculo], periodos]) => {
+        if (!vigente || token !== localStorage.getItem('jwtToken')) return
         // 2. Juntamos todo en un solo objeto
         setPublicacion({
           ...vehiculo,
@@ -47,9 +53,11 @@ export default function PublicationDetail({ actualizarCarrito, actualizarCarrito
         setError('')
       })
       .catch((error) => {
+        if (!vigente || token !== localStorage.getItem('jwtToken')) return
         console.error('Error al cargar la publicación', error)
         setError('No pudimos cargar la publicación. Intentá nuevamente.')
       })
+    return () => { vigente = false }
   }, [id, token, recargar])
 
   function agregarAlCarrito(fechaInicio, fechaFin) {
@@ -76,6 +84,7 @@ export default function PublicationDetail({ actualizarCarrito, actualizarCarrito
 
   useEffect(() => {
     if (datosParaAgregar === null) return
+    let vigente = true
 
     const {
       idPublicacion,
@@ -88,19 +97,23 @@ export default function PublicationDetail({ actualizarCarrito, actualizarCarrito
     // Si el backend explica el problema (por ejemplo, fechas ocupadas), se muestra ese mensaje
     enviar(`/carritos/publicaciones/${idPublicacion}`, 'POST', token, { fechaInicio, fechaFin }, 'No pudimos agregar el vehículo al carrito. Intentá nuevamente.')
       .then((datosCarrito) => {
+        if (!vigente || token !== localStorage.getItem('jwtToken')) return
         // Guardamos en App la respuesta del backend y la publicación ya cargada.
         actualizarCarrito({ ...datosCarrito, publicacion })
         actualizarCarritoConsultado(true)
         navigate('/carrito')
       })
       .catch((error) => {
+        if (!vigente || token !== localStorage.getItem('jwtToken')) return
         console.error('Error al agregar al carrito', error)
         setMensaje(error.message)
       })
       .finally(() => {
+        if (!vigente || token !== localStorage.getItem('jwtToken')) return
         setAgregando(false)
         setDatosParaAgregar(null)
       })
+    return () => { vigente = false }
   }, [datosParaAgregar, actualizarCarrito, actualizarCarritoConsultado, navigate])
 
   if (error) {

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { pageStyles } from '../components/publicaciones/publicationStyles'
 import PublicationMessage from '../components/publicaciones/PublicationMessage'
@@ -15,40 +15,50 @@ export default function Login({ reiniciarCarrito }) {
   const volverA = useLocation().state?.volverA ?? '/'
   const [valores, setValores] = useState({ email: '', password: '' })
   const [error, setError] = useState('')
-  const [enviando, setEnviando] = useState(false)
+  const [datosParaEnviar, setDatosParaEnviar] = useState(null)
+  const enviando = datosParaEnviar !== null
 
   function cambiarCampo(event) {
+    if (enviando) return
     const { name, value } = event.target
     setValores({ ...valores, [name]: value })
   }
 
   function iniciarSesion(event) {
     event.preventDefault()
-    setEnviando(true)
+    if (enviando) return
     setError('')
 
-    // Si el backend explica el problema lo mostramos; si no, un mensaje general
-    enviar('/auth/login', 'POST', null, { email: valores.email.trim(), password: valores.password }, 'El correo o la contraseña no son correctos.')
+    setDatosParaEnviar({ datos: { email: valores.email.trim(), password: valores.password }, tokenInicial: localStorage.getItem('jwtToken'), volverA, reiniciarCarrito })
+  }
+
+  useEffect(() => {
+    if (!datosParaEnviar) return
+    let vigente = true
+    const { datos, tokenInicial, volverA, reiniciarCarrito } = datosParaEnviar
+    enviar('/auth/login', 'POST', null, datos, 'El correo o la contraseña no son correctos.')
       .then((respuesta) => {
-        // El resto de las vistas leen el token con esta clave
+        if (!vigente || tokenInicial !== localStorage.getItem('jwtToken')) return
+        setDatosParaEnviar(null)
+        setValores((actuales) => ({ ...actuales, password: '' }))
         localStorage.setItem('jwtToken', respuesta.token)
-        // Descartamos el carrito de la sesión anterior antes de navegar.
         reiniciarCarrito()
         navigate(volverA)
       })
       .catch((error) => {
-        console.error('Error al iniciar sesión', error)
+        if (!vigente || tokenInicial !== localStorage.getItem('jwtToken')) return
         setError(error.message)
-        setEnviando(false)
+        setDatosParaEnviar(null)
       })
-  }
+    return () => { vigente = false }
+  }, [datosParaEnviar, navigate])
 
   return (
     <main className={pageStyles + ' pb-16'}>
       <AuthCard titulo="Iniciar sesión" subtitulo="Ingresá con tu email y tu contraseña.">
         <form onSubmit={iniciarSesion} className="grid gap-4">
-          <InputField id="email" type="email" label="Correo electrónico" autoComplete="email" required value={valores.email} onChange={cambiarCampo} />
-          <PasswordField id="password" label="Contraseña" autoComplete="current-password" required value={valores.password} onChange={cambiarCampo} />
+          <InputField disabled={enviando} id="email" type="email" label="Correo electrónico" autoComplete="email" required value={valores.email} onChange={cambiarCampo} />
+          <PasswordField disabled={enviando} id="password" label="Contraseña" autoComplete="current-password" required value={valores.password} onChange={cambiarCampo} />
 
           {error && <PublicationMessage error>{error}</PublicationMessage>}
 

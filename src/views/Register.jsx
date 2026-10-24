@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { pageStyles } from '../components/publicaciones/publicationStyles'
 import PublicationMessage from '../components/publicaciones/PublicationMessage'
@@ -34,22 +34,24 @@ export default function Register({ reiniciarCarrito }) {
   const volverA = useLocation().state?.volverA ?? '/'
   const [valores, setValores] = useState(VALORES_INICIALES)
   const [error, setError] = useState('')
-  const [enviando, setEnviando] = useState(false)
+  const [datosParaEnviar, setDatosParaEnviar] = useState(null)
+  const enviando = datosParaEnviar !== null
 
   function cambiarCampo(event) {
+    if (enviando) return
     const { name, value } = event.target
     setValores({ ...valores, [name]: value })
   }
 
   function crearCuenta(event) {
     event.preventDefault()
+    if (enviando) return
     const problema = validar(valores)
     if (problema) {
       setError(problema)
       return
     }
 
-    setEnviando(true)
     setError('')
     // El teléfono es opcional: si está vacío no lo mandamos
     const datos = {
@@ -61,20 +63,29 @@ export default function Register({ reiniciarCarrito }) {
       password: valores.password,
     }
 
+    setDatosParaEnviar({ datos: datos, tokenInicial: localStorage.getItem('jwtToken'), volverA, reiniciarCarrito })
+  }
+
+  useEffect(() => {
+    if (!datosParaEnviar) return
+    let vigente = true
+    const { datos, tokenInicial, volverA, reiniciarCarrito } = datosParaEnviar
     enviar('/auth/register', 'POST', null, datos, 'No pudimos crear la cuenta. Intentá nuevamente.')
       .then((respuesta) => {
-        // El resto de las vistas leen el token con esta clave
+        if (!vigente || tokenInicial !== localStorage.getItem('jwtToken')) return
+        setDatosParaEnviar(null)
+        setValores((actuales) => ({ ...actuales, password: '', repetirPassword: '' }))
         localStorage.setItem('jwtToken', respuesta.token)
-        // La cuenta nueva no reutiliza el carrito guardado de otra sesión.
         reiniciarCarrito()
         navigate(volverA)
       })
       .catch((error) => {
-        console.error('Error al crear la cuenta', error)
+        if (!vigente || tokenInicial !== localStorage.getItem('jwtToken')) return
         setError(error.message)
-        setEnviando(false)
+        setDatosParaEnviar(null)
       })
-  }
+    return () => { vigente = false }
+  }, [datosParaEnviar, navigate])
 
   const hoy = new Date().toISOString().slice(0, 10)
 
@@ -83,12 +94,12 @@ export default function Register({ reiniciarCarrito }) {
       <AuthCard titulo="Crear cuenta" subtitulo="Completá tus datos para alquilar o publicar vehículos.">
         <form onSubmit={crearCuenta} className="grid gap-4">
           <div className="grid grid-cols-2 gap-4 phone:grid-cols-1">
-            <InputField id="nombre" label="Nombre" autoComplete="given-name" required value={valores.nombre} onChange={cambiarCampo} />
-            <InputField id="apellido" label="Apellido" autoComplete="family-name" required value={valores.apellido} onChange={cambiarCampo} />
+            <InputField disabled={enviando} id="nombre" label="Nombre" autoComplete="given-name" required value={valores.nombre} onChange={cambiarCampo} />
+            <InputField disabled={enviando} id="apellido" label="Apellido" autoComplete="family-name" required value={valores.apellido} onChange={cambiarCampo} />
           </div>
-          <InputField id="email" type="email" label="Correo electrónico" placeholder="nombre@ejemplo.com" autoComplete="email" required value={valores.email} onChange={cambiarCampo} />
+          <InputField disabled={enviando} id="email" type="email" label="Correo electrónico" placeholder="nombre@ejemplo.com" autoComplete="email" required value={valores.email} onChange={cambiarCampo} />
           <div className="grid grid-cols-2 gap-4 phone:grid-cols-1">
-            <InputField id="fechaNacimiento" type="date" label="Fecha de nacimiento" max={hoy} autoComplete="bday" required value={valores.fechaNacimiento} onChange={cambiarCampo} />
+            <InputField disabled={enviando} id="fechaNacimiento" type="date" label="Fecha de nacimiento" max={hoy} autoComplete="bday" required value={valores.fechaNacimiento} onChange={cambiarCampo} />
             <InputField
               id="telefono"
               type="tel"
@@ -99,8 +110,8 @@ export default function Register({ reiniciarCarrito }) {
               onChange={cambiarCampo}
             />
           </div>
-          <PasswordField id="password" label="Contraseña" hint={`Mínimo ${MINIMO_PASSWORD} caracteres.`} autoComplete="new-password" required value={valores.password} onChange={cambiarCampo} />
-          <PasswordField id="repetirPassword" label="Repetir contraseña" autoComplete="new-password" required value={valores.repetirPassword} onChange={cambiarCampo} />
+          <PasswordField disabled={enviando} id="password" label="Contraseña" hint={`Mínimo ${MINIMO_PASSWORD} caracteres.`} autoComplete="new-password" required value={valores.password} onChange={cambiarCampo} />
+          <PasswordField disabled={enviando} id="repetirPassword" label="Repetir contraseña" autoComplete="new-password" required value={valores.repetirPassword} onChange={cambiarCampo} />
 
           {error && <PublicationMessage error>{error}</PublicationMessage>}
 

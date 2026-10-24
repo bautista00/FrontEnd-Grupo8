@@ -13,12 +13,18 @@ import PublicationPreview from '../components/publicaciones/PublicationPreview'
 import PendingChangesBar from '../components/publicaciones/PendingChangesBar'
 import PublicationMessage from '../components/publicaciones/PublicationMessage'
 import { tieneCoordenadas } from '../components/publicaciones/ubicacion'
-import { valoresIniciales, datosPublicacion, datosUbicacion, periodoDesdeApi, cambiaronDatos, cambiaronPeriodos, validarFormulario } from '../components/publicaciones/publicationFormData'
+import { valoresIniciales, periodoDesdeApi, completarIds, cambiaronDatos, cambiaronPeriodos, validarFormulario } from '../components/publicaciones/publicationFormData'
+import guardarPublicacion from '../components/publicaciones/guardarPublicacion'
 
-import { obtener, enviar } from '../utils/api'
+import { obtener } from '../utils/api'
+import enviar from '../components/publicaciones/enviarPublicacion'
 
-export default function PublicationForm({ modo = 'crear' }) {
+export default function PublicationForm(props) {
   const { id } = useParams()
+  return <PublicationEditor key={props.modo === 'editar' ? id : 'nueva'} {...props} id={id} />
+}
+
+function PublicationEditor({ modo = 'crear', id }) {
   const navigate = useNavigate()
   const location = useLocation()
   const editando = modo === 'editar'
@@ -33,7 +39,11 @@ export default function PublicationForm({ modo = 'crear' }) {
 
   const [cargando, setCargando] = useState(editando)
   const [errorCarga, setErrorCarga] = useState('')
-  const [guardando, setGuardando] = useState(false)
+  const [accionPendiente, setAccionPendiente] = useState(null)
+  const [incierto, setIncierto] = useState(false)
+  const [regreso] = useState(location.state)
+  const guardando = accionPendiente !== null
+  const ubicacionFija = editando || Boolean(publicacion?.idPublicacion)
   // Mensaje de arriba del formulario. Puede venir de la pantalla de crear (location.state)
   const [mensaje, setMensaje] = useState(location.state?.mensaje ?? '')
   const [esError, setEsError] = useState(location.state?.error ?? false)
@@ -54,17 +64,18 @@ export default function PublicationForm({ modo = 'crear' }) {
   // Al editar: pedimos la publicación con su vehículo, su ubicación y sus períodos
   useEffect(() => {
     if (!editando || !token) return
+    let vigente = true
 
-    // 1. La publicación (el backend rechaza si no es del usuario logueado)
     obtener(`/publicaciones/${id}`, token)
       .then((datos) =>
-        // 2. Con los ids de la publicación pedimos el resto
         Promise.all([
           obtener(`/vehiculo/${datos.idVehiculo}`, token),
           obtener(`/ubicaciones/${datos.idUbicacion}`, token),
           obtener(`/disponibilidades/publicacion/${id}`, token),
-        ]).then(([vehiculo, ubicacion, periodos]) => {
-          // 3. Juntamos todo en un solo objeto
+          obtener('/usuarios/me', token),
+        ]).then(([vehiculo, ubicacion, periodos, usuario]) => {
+          if (!vigente || token !== localStorage.getItem('jwtToken')) return
+          if (vehiculo.idUsuario !== usuario.idUsuario) throw new Error('Esta publicación no pertenece a tu cuenta.')
           const completa = {
             ...vehiculo,
             ...ubicacion,
@@ -73,18 +84,84 @@ export default function PublicationForm({ modo = 'crear' }) {
             placeId: ubicacion.placeId,
             periodos: periodos.map(periodoDesdeApi),
           }
+          const pendiente = regreso?.idPublicacion === datos.idPublicacion && regreso.idUsuario === usuario.idUsuario
+            ? regreso.borrador : null
+          const iniciales = pendiente ? { ...pendiente, periodos: completarIds(pendiente.periodos, completa.periodos,
+            regreso.periodosAnteriores, true) } : valoresIniciales(completa)
           setPublicacion(completa)
-          setValores(valoresIniciales(completa))
+          setValores(iniciales)
           setVersionCalendario((version) => version + 1)
           setErrorCarga('')
         }),
       )
       .catch((error) => {
-        console.error('Error al cargar', error)
-        setErrorCarga(error.message)
+        if (vigente && token === localStorage.getItem('jwtToken')) setErrorCarga(error.message)
       })
-      .finally(() => setCargando(false))
-  }, [editando, id, token, recargar])
+      .finally(() => { if (vigente) setCargando(false) })
+    return () => { vigente = false }
+  }, [editando, id, token, recargar, regreso])
+
+  useEffect(() => {
+    if (!accionPendiente) return
+    let vigente = true
+    const { tipo, token: tokenEnvio, publicacion: anterior } = accionPendiente
+    let peticion
+    if (tipo === 'guardar') {
+      peticion = guardarPublicacion(accionPendiente)
+    } else if (tipo === 'comprobar') {
+      peticion = Promise.all([
+        obtener(`/publicaciones/${anterior.idPublicacion}`, tokenEnvio),
+        obtener(`/disponibilidades/publicacion/${anterior.idPublicacion}`, tokenEnvio),
+      ]).then(([datos, periodos]) => ({ ...anterior, ...datos, periodos: periodos.map(periodoDesdeApi) }))
+    } else {
+      const { accion } = accionPendiente
+      const ruta = accion === 'desactivar' ? '' : `/${accion}`
+      peticion = enviar(`/publicaciones/${anterior.idPublicacion}${ruta}`, accion === 'desactivar' ? 'DELETE' : 'PUT', tokenEnvio)
+        .then((datos) => ({ ...anterior, ...(datos ?? { estado: 'DESACTIVADA' }) }))
+    }
+    peticion.then((guardada) => {
+      if (!vigente || tokenEnvio !== localStorage.getItem('jwtToken')) return
+      const nuevosValores = tipo === 'comprobar'
+        ? { ...accionPendiente.valores, periodos: completarIds(accionPendiente.valores.periodos,
+          guardada.periodos, anterior.periodos, true) }
+        : valoresIniciales(guardada)
+      setPublicacion(guardada)
+      setValores(nuevosValores)
+      setIncierto(false)
+      setEsError(false)
+      setAccionPendiente(null)
+      setInicioPeriodo('')
+      setVersionCalendario((version) => version + 1)
+      setMensaje(tipo === 'comprobar' ? 'Ya comprobamos los datos guardados. Revisá lo que sigue pendiente.'
+        : tipo === 'estado' ? 'El estado de la publicación se actualizó.' : 'Los cambios se guardaron.')
+      if (tipo === 'guardar' && !accionPendiente.editando) {
+        navigate(`/publicaciones/${guardada.idPublicacion}/editar`, { replace: true, state: { mensaje: 'La publicación se creó.' } })
+      }
+    }).catch((error) => {
+      if (!vigente || tokenEnvio !== localStorage.getItem('jwtToken')) return
+      const sinConfirmacion = !error.status || error.status >= 500
+      const guardada = error.guardada
+      const borrador = guardada ? { ...accionPendiente.valores, periodos: completarIds(accionPendiente.valores.periodos,
+        guardada.periodos, anterior?.periodos) } : accionPendiente.valores
+      if (guardada) {
+        setPublicacion(guardada)
+        setValores(borrador)
+      }
+      const detalle = (error.parcial ? `Se guardó una parte de los cambios. Queda pendiente: ${error.recurso}. ` : '') + error.message
+      if (tipo === 'guardar' && !accionPendiente.editando && guardada?.idPublicacion && !sinConfirmacion) {
+        navigate(`/publicaciones/${guardada.idPublicacion}/editar`, { replace: true, state: {
+          mensaje: detalle, error: true, borrador, idPublicacion: guardada.idPublicacion,
+          idUsuario: accionPendiente.idUsuario, periodosAnteriores: anterior?.periodos ?? [],
+        } })
+        return
+      }
+      setMensaje(detalle + (sinConfirmacion ? ' No recibimos una confirmación. Comprobá lo guardado antes de intentar otra vez.' : ''))
+      setEsError(true)
+      setIncierto(sinConfirmacion)
+      setAccionPendiente(null)
+    })
+    return () => { vigente = false }
+  }, [accionPendiente, navigate])
 
   function mostrarMensaje(texto, error = false) {
     setMensaje(texto)
@@ -92,7 +169,9 @@ export default function PublicationForm({ modo = 'crear' }) {
   }
 
   function cambiarCampo(event) {
+    if (guardando) return
     const { name, value } = event.target
+    if (ubicacionFija && ['direccion', 'zona', 'localidad', 'ciudad', 'provincia', 'codigoPostal'].includes(name)) return
     setValores((actuales) => {
       const nuevos = { ...actuales, [name]: value }
       // Si se cambia a mano un dato de la dirección, las coordenadas del mapa ya no sirven
@@ -108,117 +187,47 @@ export default function PublicationForm({ modo = 'crear' }) {
 
   // Cuando se elige una sugerencia de Google, completamos todos los campos de la ubicación
   function seleccionarUbicacion(ubicacion) {
+    if (guardando || ubicacionFija) return
     setValores((actuales) => ({ ...actuales, ...ubicacion }))
   }
 
   function elegirVehiculo(vehiculo) {
+    if (guardando || ubicacionFija) return
     setVehiculoElegido(vehiculo)
     setValores({ ...valores, idVehiculo: String(vehiculo.idVehiculo) })
   }
 
   function guardar(event) {
     event.preventDefault()
+    if (guardando || incierto || publicacion?.estado === 'DESACTIVADA') return
     if (inicioPeriodo) {
       mostrarMensaje('Terminá de elegir el período o cancelá la selección antes de guardar.', true)
       return
     }
-    const problema = validarFormulario(valores, editando)
+    const problema = validarFormulario(valores, editando || Boolean(publicacion?.idPublicacion))
     if (problema) {
       mostrarMensaje(problema, true)
       return
     }
-    setGuardando(true)
     mostrarMensaje('')
-    if (editando) guardarCambios()
-    else crearPublicacion()
-  }
-
-  function crearPublicacion() {
-    let idPublicacion = null
-
-    // 1. Creamos la ubicación de retiro
-    enviar('/ubicaciones', 'POST', token, datosUbicacion(valores))
-      // 2. Creamos la publicación con el id de esa ubicación
-      .then((ubicacion) => enviar('/publicaciones', 'POST', token, datosPublicacion(valores, ubicacion.idUbicacion)))
-      // 3. Cargamos los períodos disponibles de la publicación nueva
-      .then((nueva) => {
-        idPublicacion = nueva.idPublicacion
-        return Promise.all(valores.periodos.map((periodo) =>
-          enviar('/disponibilidades', 'POST', token, { idPublicacion, fechaInicio: periodo.desde, fechaFin: periodo.hasta }),
-        ))
-      })
-      .then(() => {
-        navigate(`/publicaciones/${idPublicacion}/editar`, { replace: true, state: { mensaje: 'La publicación se creó.' } })
-      })
-      .catch((error) => {
-        console.error('Error al crear la publicación', error)
-        if (idPublicacion) {
-          // La publicación ya se creó: vamos a editarla para revisar los períodos
-          navigate(`/publicaciones/${idPublicacion}/editar`, {
-            replace: true,
-            state: { mensaje: 'La publicación se creó, pero no se pudieron guardar todos los períodos. Revisalos acá.', error: true },
-          })
-          return
-        }
-        setGuardando(false)
-        mostrarMensaje(error.message, true)
-      })
-  }
-
-  function guardarCambios() {
-    const pedidos = []
-
-    // Precio, descuento, hora y descripción
-    if (cambiaronDatos(valores, publicacion)) {
-      pedidos.push(enviar(`/publicaciones/${id}`, 'PUT', token, datosPublicacion(valores, publicacion.idUbicacion)))
-    }
-    // Períodos nuevos (todavía no tienen id)
-    valores.periodos
-      .filter((periodo) => !periodo.idDisponibilidad)
-      .forEach((periodo) => {
-        pedidos.push(enviar('/disponibilidades', 'POST', token, { idPublicacion: Number(id), fechaInicio: periodo.desde, fechaFin: periodo.hasta }))
-      })
-    // Períodos que se quitaron del calendario
-    publicacion.periodos
-      .filter((guardado) => !valores.periodos.some((periodo) => periodo.idDisponibilidad === guardado.idDisponibilidad))
-      .forEach((periodo) => {
-        pedidos.push(enviar(`/disponibilidades/${periodo.idDisponibilidad}`, 'DELETE', token))
-      })
-
-    // Esperamos a que terminen todos (salgan bien o mal) y volvemos a pedir los datos guardados
-    Promise.allSettled(pedidos).then((resultados) => {
-      const fallido = resultados.find((resultado) => resultado.status === 'rejected')
-      if (fallido) mostrarMensaje(fallido.reason.message + ' Te mostramos lo que quedó guardado.', true)
-      else mostrarMensaje('Los cambios se guardaron.')
-      setGuardando(false)
-      setRecargar(recargar + 1)
+    setAccionPendiente({
+      tipo: 'guardar', valores: structuredClone(valores), publicacion: structuredClone(publicacion),
+      token, editando, idUsuario: vehiculoElegido?.idUsuario,
     })
   }
 
   // Pausar y reactivar son PUT a su propia ruta; desactivar es un DELETE
   function cambiarEstado(accion) {
+    if (guardando || incierto || !publicacion?.idPublicacion || publicacion.estado === 'DESACTIVADA'
+      || cambiaronDatos(valores, publicacion) || cambiaronPeriodos(valores, publicacion)) return
     if (accion === 'desactivar' && !window.confirm('¿Desactivar esta publicación? No vas a poder reactivarla.')) return
-
-    const textos = {
-      pausar: 'La publicación quedó pausada.',
-      reactivar: 'La publicación está activa de nuevo.',
-      desactivar: 'La publicación se desactivó.',
-    }
-    const ruta = accion === 'desactivar' ? '' : `/${accion}`
-    const metodo = accion === 'desactivar' ? 'DELETE' : 'PUT'
-
-    setGuardando(true)
-    enviar(`/publicaciones/${id}${ruta}`, metodo, token)
-      .then(() => mostrarMensaje(textos[accion]))
-      .catch((error) => mostrarMensaje(error.message, true))
-      .finally(() => {
-        setGuardando(false)
-        setRecargar(recargar + 1)
-      })
+    mostrarMensaje('')
+    setAccionPendiente({ tipo: 'estado', accion, publicacion, token })
   }
 
   // Vuelve el formulario a lo que está guardado
   function descartar() {
+    if (guardando) return
     setValores(valoresIniciales(publicacion))
     setVersionCalendario(versionCalendario + 1)
     setInicioPeriodo('')
@@ -229,6 +238,11 @@ export default function PublicationForm({ modo = 'crear' }) {
     setErrorCarga('')
     setCargando(true)
     setRecargar(recargar + 1)
+  }
+
+  function comprobarGuardado() {
+    if (guardando || !publicacion?.idPublicacion) return
+    setAccionPendiente({ tipo: 'comprobar', publicacion, valores: structuredClone(valores), token })
   }
 
   // Pantallas antes de mostrar el formulario
@@ -250,7 +264,7 @@ export default function PublicationForm({ modo = 'crear' }) {
   const desactivada = publicacion?.estado === 'DESACTIVADA'
   const hayCambios = editando && (cambiaronDatos(valores, publicacion) || cambiaronPeriodos(valores, publicacion))
   // Pausar/desactivar solo se puede si no hay cambios sin guardar
-  const estadoBloqueado = guardando || hayCambios || desactivada
+  const estadoBloqueado = guardando || hayCambios || desactivada || incierto
 
   // Pasos que se muestran arriba al crear
   const pasos = [
@@ -273,7 +287,7 @@ export default function PublicationForm({ modo = 'crear' }) {
   return (
     <main className={pageStyles + (hayCambios ? ' pb-[9.375rem] phone:pb-[10.625rem]' : ' pb-20 phone:pb-12')}>
       {editando
-        ? <Link to="/mis-publicaciones" className={eyebrowStyles + ' inline-block mb-3'}>← Mis publicaciones</Link>
+        ? <Link to="/mis-publicaciones" aria-disabled={guardando} onClick={(event) => { if (guardando) event.preventDefault() }} className={eyebrowStyles + ' inline-block mb-3'}>← Mis publicaciones</Link>
         : <p className={eyebrowStyles}>Panel de propietario · Nueva publicación</p>}
 
       <div className={headingStyles + (editando ? ' pb-4 border-b border-border' : '')}>
@@ -317,13 +331,16 @@ export default function PublicationForm({ modo = 'crear' }) {
       {mensaje && <PublicationMessage error={esError}>{mensaje}</PublicationMessage>}
       {errorCarga && <PublicationMessage error onRetry={reintentarCarga}>{errorCarga}</PublicationMessage>}
       {guardando && <PublicationMessage>Guardando cambios…</PublicationMessage>}
+      {incierto && (publicacion?.idPublicacion
+        ? <button type="button" disabled={guardando} onClick={comprobarGuardado} className={smallButtonStyles}>Comprobar guardado</button>
+        : <PublicationMessage>Revisá <Link to="/mis-publicaciones" className="underline">Mis publicaciones</Link> antes de intentar otra alta.</PublicationMessage>)}
       {desactivada && <PublicationMessage>Esta publicación está desactivada. No se puede modificar ni reactivar.</PublicationMessage>}
 
       <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-8 mt-8 items-start tablet:grid-cols-1">
         <form id="form-publicacion" onSubmit={guardar} className="min-w-0">
           {/* Mientras se guarda (o si está desactivada) se bloquea todo el formulario */}
           <fieldset disabled={guardando || desactivada} className="grid min-w-0 gap-6 border-0 p-0 m-0">
-            <PublicationVehicle editando={editando} vehiculo={vehiculo} seleccionado={valores.idVehiculo} onChange={elegirVehiculo} />
+            <PublicationVehicle editando={ubicacionFija} vehiculo={vehiculo} seleccionado={valores.idVehiculo} onChange={elegirVehiculo} />
 
             {editando ? (
               <>
@@ -338,7 +355,7 @@ export default function PublicationForm({ modo = 'crear' }) {
               </>
             ) : (
               <>
-                <PublicationLocation valores={valores} onChange={cambiarCampo} onUbicacionSeleccionada={seleccionarUbicacion} />
+                <PublicationLocation valores={valores} onChange={cambiarCampo} onUbicacionSeleccionada={seleccionarUbicacion} readOnly={ubicacionFija} />
                 <PublicationSection titulo="Precio y días disponibles" numero="3">
                   <PublicationPrice valores={valores} onChange={cambiarCampo} />
                   <p className={descriptionStyles}>Solo se puede reservar dentro de estos períodos. Después los ajustás desde la publicación.</p>
@@ -388,7 +405,7 @@ export default function PublicationForm({ modo = 'crear' }) {
             ) : (
               <div className="flex justify-between gap-4 pt-2">
                 <Link to="/mis-publicaciones" className={btnBase + ' ' + btnOutline + ' ' + btnSize}>Cancelar</Link>
-                <button type="submit" className={btnBase + ' ' + btnDark + ' ' + btnSize}>
+                <button type="submit" disabled={incierto} className={btnBase + ' ' + btnDark + ' ' + btnSize}>
                   Publicar <PublicationIcon nombre="arrow" />
                 </button>
               </div>
@@ -400,7 +417,7 @@ export default function PublicationForm({ modo = 'crear' }) {
       </div>
 
       {hayCambios && (
-        <PendingChangesBar onDiscard={descartar} formId="form-publicacion" disabled={guardando} saveDisabled={guardando || desactivada} />
+        <PendingChangesBar onDiscard={descartar} formId="form-publicacion" disabled={guardando} saveDisabled={guardando || desactivada || incierto} />
       )}
     </main>
   )

@@ -17,8 +17,11 @@ const ESTADOS_RESERVA = {
 }
 
 export default function ReservationDetails() {
-  // Recibimos los datos enviados desde la tarjeta de Mis reservas.
   const ubicacion = useLocation()
+  return <ReservationDetailsContent key={ubicacion.state?.reserva?.idReserva ?? 'sin-reserva'} ubicacion={ubicacion} />
+}
+
+function ReservationDetailsContent({ ubicacion }) {
 
   // La reserva puede cambiar cuando el backend confirma su cancelación.
   const [reserva, actualizarReserva] = useState(ubicacion.state?.reserva ?? null)
@@ -31,7 +34,7 @@ export default function ReservationDetails() {
   const [mostrarModalCancelar, actualizarModalCancelar] = useState(false)
   const [cancelando, actualizarCancelando] = useState(false)
   const [mensajeCancelar, actualizarMensajeCancelar] = useState('')
-  const [idReservaParaCancelar, actualizarIdReservaParaCancelar] = useState(null)
+  const [datosParaCancelar, actualizarDatosParaCancelar] = useState(null)
 
   const abrirModalCancelar = () => {
     actualizarMensaje('')
@@ -53,16 +56,17 @@ export default function ReservationDetails() {
     actualizarCancelando(true)
     actualizarMensajeCancelar('')
 
-    actualizarIdReservaParaCancelar(idReserva)
+    actualizarDatosParaCancelar({ idReserva, token: localStorage.getItem('jwtToken') })
   }
 
   useEffect(() => {
-    if (idReservaParaCancelar === null) return
+    if (datosParaCancelar === null) return
 
-    const token = localStorage.getItem('jwtToken')
+    let vigente = true
+    const { token, idReserva } = datosParaCancelar
 
     // El backend identifica al usuario por el token y valida la cancelación.
-    fetch(`${API_URL}/reservas/${idReservaParaCancelar}/cancelar`, {
+    fetch(`${API_URL}/reservas/${idReserva}/cancelar`, {
       method: 'PUT',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -85,12 +89,14 @@ export default function ReservationDetails() {
         return respuesta.json()
       })
       .then((reservaCancelada) => {
+        if (!vigente || token !== localStorage.getItem('jwtToken')) return
         // La respuesta contiene la reserva con su nuevo estado.
         actualizarReserva(reservaCancelada)
         actualizarModalCancelar(false)
         actualizarMensaje('Tu reserva se canceló correctamente.')
       })
       .catch((error) => {
+        if (!vigente || token !== localStorage.getItem('jwtToken')) return
         console.error('Error al cancelar la reserva:', error)
         actualizarMensajeCancelar(
           error instanceof TypeError
@@ -99,10 +105,12 @@ export default function ReservationDetails() {
         )
       })
       .finally(() => {
+        if (!vigente || token !== localStorage.getItem('jwtToken')) return
         actualizarCancelando(false)
-        actualizarIdReservaParaCancelar(null)
+        actualizarDatosParaCancelar(null)
       })
-  }, [idReservaParaCancelar])
+    return () => { vigente = false }
+  }, [datosParaCancelar])
 
   if (!idReserva || !reserva || !vehiculo) {
     return (
