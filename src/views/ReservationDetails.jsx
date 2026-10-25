@@ -41,7 +41,7 @@ function ReservationDetailsContent({ ubicacion }) {
   const [datosParaCancelar, actualizarDatosParaCancelar] = useState(null)
 
   // Pago existente que se abrirá en Mercado Pago al confirmar la acción.
-  const [idPagoParaContinuar, actualizarIdPagoParaContinuar] = useState(null)
+  const [datosParaContinuarPago, actualizarDatosParaContinuarPago] = useState(null)
   const [continuandoPago, actualizarContinuandoPago] = useState(false)
   const [mensajePago, actualizarMensajePago] = useState('')
 
@@ -61,16 +61,17 @@ function ReservationDetailsContent({ ubicacion }) {
 
     actualizarContinuandoPago(true)
     actualizarMensajePago('')
-    actualizarIdPagoParaContinuar(pago.idPago)
+    actualizarDatosParaContinuarPago({ idPago: pago.idPago, token: localStorage.getItem('jwtToken') })
   }
 
   // Obtiene el checkout del pago existente y abre Mercado Pago.
   useEffect(() => {
-    if (idPagoParaContinuar === null) return
+    if (datosParaContinuarPago === null) return
 
-    const token = localStorage.getItem('jwtToken')
+    let vigente = true
+    const { idPago, token } = datosParaContinuarPago
 
-    fetch(`${API_URL}/pagos/${idPagoParaContinuar}/checkout`, {
+    fetch(`${API_URL}/pagos/${idPago}/checkout`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`
@@ -90,9 +91,11 @@ function ReservationDetailsContent({ ubicacion }) {
         return respuesta.json()
       })
       .then((checkout) => {
+        if (!vigente || token !== localStorage.getItem('jwtToken')) return
         window.location.href = checkout.initPoint
       })
       .catch((error) => {
+        if (!vigente || token !== localStorage.getItem('jwtToken')) return
         actualizarMensajePago(
           error instanceof TypeError
             ? 'No pudimos conectar con el servidor. Intentá nuevamente.'
@@ -100,10 +103,12 @@ function ReservationDetailsContent({ ubicacion }) {
         )
       })
       .finally(() => {
+        if (!vigente || token !== localStorage.getItem('jwtToken')) return
         actualizarContinuandoPago(false)
-        actualizarIdPagoParaContinuar(null)
+        actualizarDatosParaContinuarPago(null)
       })
-  }, [idPagoParaContinuar])
+    return () => { vigente = false }
+  }, [datosParaContinuarPago])
 
   const abrirModalCancelar = () => {
     if (cancelando || continuandoPago) return
