@@ -19,6 +19,20 @@ import guardarPublicacion from '../components/publicaciones/guardarPublicacion'
 import { obtener } from '../utils/api'
 import enviar from '../components/publicaciones/enviarPublicacion'
 
+// Borrador del alta mientras se registra otro vehículo desde el formulario
+const BORRADOR_ALTA = 'borradorPublicacion'
+
+// Solo se retoma si se vuelve del alta de vehículo y es de la misma sesión
+function leerBorrador(state) {
+  if (!state?.retomarBorrador) return null
+  try {
+    const borrador = JSON.parse(sessionStorage.getItem(BORRADOR_ALTA))
+    return borrador?.token === localStorage.getItem('jwtToken') ? borrador.valores : null
+  } catch {
+    return null
+  }
+}
+
 export default function PublicationForm(props) {
   const { id } = useParams()
   return <PublicationEditor key={props.modo === 'editar' ? id : 'nueva'} {...props} id={id} />
@@ -32,8 +46,13 @@ function PublicationEditor({ modo = 'crear', id }) {
 
   // Publicación tal como está guardada en el backend (solo al editar)
   const [publicacion, setPublicacion] = useState(null)
+  // Al volver de registrar un vehículo se retoma lo que ya estaba completo
+  const [borrador] = useState(() => (editando ? null : leerBorrador(location.state)))
   // Lo que el usuario va completando en el formulario
-  const [valores, setValores] = useState(valoresIniciales())
+  const [valores, setValores] = useState(() => {
+    const idVehiculo = location.state?.idVehiculo ?? borrador?.idVehiculo
+    return { ...valoresIniciales(), ...borrador, idVehiculo: idVehiculo ? String(idVehiculo) : '' }
+  })
   // Vehículo elegido en la lista (solo al crear)
   const [vehiculoElegido, setVehiculoElegido] = useState(null)
 
@@ -60,6 +79,33 @@ function PublicationEditor({ modo = 'crear', id }) {
   useEffect(() => {
     if (location.state) navigate(location.pathname, { replace: true, state: null })
   }, [location.state, location.pathname, navigate])
+
+  // El borrador ya quedó en el estado (o no corresponde retomarlo): se descarta
+  useEffect(() => {
+    if (!editando) sessionStorage.removeItem(BORRADOR_ALTA)
+  }, [editando])
+
+  // Al crear: si llega un vehículo (desde Mis vehículos, sus fotos o el borrador), se pide para dejarlo elegido
+  const [idVehiculoRecibido] = useState(editando ? '' : valores.idVehiculo)
+  useEffect(() => {
+    if (!idVehiculoRecibido || !token) return
+    let vigente = true
+
+    Promise.all([obtener(`/vehiculo/${idVehiculoRecibido}`, token), obtener('/usuarios/me', token)])
+      .then(([vehiculo, usuario]) => {
+        if (!vigente || token !== localStorage.getItem('jwtToken')) return
+        if (vehiculo.idUsuario !== usuario.idUsuario) throw new Error('El vehículo no pertenece a tu cuenta.')
+        // Si mientras tanto se eligió otro de la lista, se respeta esa elección
+        setVehiculoElegido((actual) => actual ?? vehiculo)
+      })
+      .catch(() => {
+        if (!vigente || token !== localStorage.getItem('jwtToken')) return
+        setValores((actuales) => (actuales.idVehiculo === idVehiculoRecibido ? { ...actuales, idVehiculo: '' } : actuales))
+        setMensaje('No pudimos seleccionar el vehículo. Elegilo de la lista.')
+        setEsError(true)
+      })
+    return () => { vigente = false }
+  }, [idVehiculoRecibido, token])
 
   // Al editar: pedimos la publicación con su vehículo, su ubicación y sus períodos
   useEffect(() => {
@@ -195,6 +241,13 @@ function PublicationEditor({ modo = 'crear', id }) {
     if (guardando || ubicacionFija) return
     setVehiculoElegido(vehiculo)
     setValores({ ...valores, idVehiculo: String(vehiculo.idVehiculo) })
+  }
+
+  // Guarda lo completado y va al alta de vehículo; al terminar, las fotos vuelven acá con el vehículo nuevo
+  function registrarOtroVehiculo() {
+    if (guardando || incierto) return
+    sessionStorage.setItem(BORRADOR_ALTA, JSON.stringify({ token, valores }))
+    navigate('/vehiculos/nuevo', { state: { desdePublicacion: true } })
   }
 
   function guardar(event) {
@@ -340,7 +393,8 @@ function PublicationEditor({ modo = 'crear', id }) {
         <form id="form-publicacion" onSubmit={guardar} className="min-w-0">
           {/* Mientras se guarda (o si está desactivada) se bloquea todo el formulario */}
           <fieldset disabled={guardando || desactivada} className="grid min-w-0 gap-6 border-0 p-0 m-0">
-            <PublicationVehicle editando={ubicacionFija} vehiculo={vehiculo} seleccionado={valores.idVehiculo} onChange={elegirVehiculo} />
+            <PublicationVehicle editando={ubicacionFija} vehiculo={vehiculo} seleccionado={valores.idVehiculo} onChange={elegirVehiculo}
+              onRegistrarOtro={incierto ? null : registrarOtroVehiculo} />
 
             {editando ? (
               <>

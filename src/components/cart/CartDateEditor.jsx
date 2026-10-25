@@ -76,7 +76,7 @@ export default function CartDateEditor({
           type="button"
           onClick={() => alGuardar(inicio, fin)}
           disabled={!rangoValido || guardando || !alGuardar}
-          className="px-4 py-3 bg-ink text-white rounded-[0.25rem] text-[0.75rem] disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-3 bg-ink text-white rounded-sm text-[0.75rem] disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {guardando ? 'Guardando...' : 'Guardar fechas'}
         </button>
@@ -85,7 +85,7 @@ export default function CartDateEditor({
           type="button"
           onClick={alCancelar}
           disabled={guardando}
-          className="px-4 py-3 bg-card border border-border rounded-[0.25rem] text-[0.75rem] disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-3 bg-card border border-border rounded-sm text-[0.75rem] disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Cancelar
         </button>

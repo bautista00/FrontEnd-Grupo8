@@ -21,8 +21,8 @@ export default function PhotoDropzone({ onArchivos }) {
         + (arrastrando ? 'border-ink bg-surface' : 'border-border')}
     >
       <PublicationIcon nombre="image" />
-      <p className="text-[14px] text-ink">Arrastrá fotos acá o elegilas desde tu equipo</p>
-      <p className="text-[12px] text-muted">JPG o PNG, hasta {FOTO_MAX_MB} MB cada una. Exterior e interior.</p>
+      <p className="text-[0.875rem] text-ink">Arrastrá fotos acá o elegilas desde tu equipo</p>
+      <p className="text-[0.75rem] text-muted">JPG o PNG, hasta {FOTO_MAX_MB} MB cada una. Exterior e interior.</p>
       <input
         ref={inputRef}
         type="file"

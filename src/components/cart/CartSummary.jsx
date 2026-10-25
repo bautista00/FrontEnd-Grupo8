@@ -15,7 +15,7 @@ export default function CartSummary({ carrito, estaVencido, bloqueado = false })
     navegar('/carrito/confirmar', { state: { carrito } })
   }
   return (
-    <section className="min-w-0 p-6 bg-card border border-border rounded-lg phone:p-[1.125rem]" aria-labelledby="cart-summary-title">
+    <section className="min-w-0 p-6 bg-card border border-border rounded-lg phone:p-4.5" aria-labelledby="cart-summary-title">
       <h2 id="cart-summary-title" className="mb-6 text-[1.25rem] text-ink">Resumen de reserva</h2>
 
       <div className="flex justify-between gap-4 text-[0.6875rem] leading-[1.6] text-soft">
@@ -32,7 +32,7 @@ export default function CartSummary({ carrito, estaVencido, bloqueado = false })
       </div>
 
       {/* La retención de fechas del carrito vencido se conectará después. */}
-      <button type="button" onClick={continuarReserva} disabled={estaVencido || bloqueado} className={`flex items-center justify-center gap-2 w-full mt-6 px-4 py-3 border rounded-[0.25rem] text-[0.6875rem] disabled:cursor-not-allowed disabled:opacity-65 ${estaVencido ? 'bg-border border-border text-muted' : 'bg-ink border-ink text-white'}`}>
+      <button type="button" onClick={continuarReserva} disabled={estaVencido || bloqueado} className={`flex items-center justify-center gap-2 w-full mt-6 px-4 py-3 border rounded-sm text-[0.6875rem] disabled:cursor-not-allowed disabled:opacity-65 ${estaVencido ? 'bg-border border-border text-muted' : 'bg-ink border-ink text-white'}`}>
         {/* Cambiamos el texto del mismo botón según la prop estaVencido. */}
         {estaVencido ? 'Volvé a retener las fechas' : 'Continuar con la reserva'}
         {/* && muestra la flecha solamente cuando el carrito sigue vigente. */}

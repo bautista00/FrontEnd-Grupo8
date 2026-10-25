@@ -15,7 +15,7 @@ export default function ConfirmCancellation({ reserva, alCerrar, alConfirmar, ca
         aria-modal="true"
         aria-labelledby="confirm-cancellation-title"
         aria-describedby="confirm-cancellation-description"
-        className="relative w-full max-w-[35rem] max-h-[calc(100dvh-2rem)] overflow-y-auto p-8 bg-card border border-border rounded-lg shadow-md phone:p-6"
+        className="relative w-full max-w-140 max-h-[calc(100dvh-2rem)] overflow-y-auto p-8 bg-card border border-border rounded-lg shadow-md phone:p-6"
       >
         {/* La cruz cierra el modal igual que Mantener reserva. */}
         <button type="button" aria-label="Cerrar confirmación" className="absolute top-4 right-4 grid place-items-center w-8 h-8 p-0 bg-transparent border-0 text-[1.625rem] leading-none text-muted" onClick={alCerrar} disabled={cancelando}>
@@ -43,10 +43,10 @@ export default function ConfirmCancellation({ reserva, alCerrar, alConfirmar, ca
         )}
 
         <div className="flex flex-wrap justify-end gap-3 mt-8 phone:flex-col">
-          <button type="button" className="px-5 py-3 bg-card border border-border rounded-[0.25rem] text-[0.75rem] text-soft" onClick={alCerrar} disabled={cancelando}>
+          <button type="button" className="px-5 py-3 bg-card border border-border rounded-sm text-[0.75rem] text-soft" onClick={alCerrar} disabled={cancelando}>
             No, mantener reserva
           </button>
-          <button type="button" className="px-5 py-3 bg-red-600 border border-red-600 rounded-[0.25rem] text-[0.75rem] text-white disabled:cursor-not-allowed" onClick={alConfirmar} disabled={cancelando}>
+          <button type="button" className="px-5 py-3 bg-red-600 border border-red-600 rounded-sm text-[0.75rem] text-white disabled:cursor-not-allowed" onClick={alConfirmar} disabled={cancelando}>
             {cancelando ? 'Cancelando...' : 'Sí, cancelar reserva'}
           </button>
         </div>

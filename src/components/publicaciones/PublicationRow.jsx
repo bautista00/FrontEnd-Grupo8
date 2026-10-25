@@ -12,8 +12,8 @@ export default function PublicationRow({ publicacion, onCambiarEstado, deshabili
   const desactivada = publicacion.estado === 'DESACTIVADA'
 
   return (
-    <article className={'flex items-center gap-5 p-6 bg-white border border-border rounded-lg max-[68.75rem]:flex-wrap phone:p-[1.125rem]' + (desactivada ? ' opacity-70' : '')}>
-      <div className="relative grid place-items-center w-48 h-30 shrink-0 bg-surface rounded-[0.25rem] overflow-hidden phone:w-full phone:h-auto phone:aspect-[16/10]">
+    <article className={'flex items-center gap-5 p-6 bg-white border border-border rounded-lg max-[68.75rem]:flex-wrap phone:p-4.5' + (desactivada ? ' opacity-70' : '')}>
+      <div className="relative grid place-items-center w-48 h-30 shrink-0 bg-surface rounded-sm overflow-hidden phone:w-full phone:h-auto phone:aspect-16/10">
         <PublicationPhoto idVehiculo={publicacion.idVehiculo} alt={publicacion.marca + ' ' + publicacion.modelo} />
         {publicacion.tipoVehiculo && (
           <span className="absolute top-2 left-2 bg-white rounded-[0.1875rem] px-1.5 py-0.5 text-[0.5625rem] uppercase">{publicacion.tipoVehiculo}</span>
@@ -24,11 +24,11 @@ export default function PublicationRow({ publicacion, onCambiarEstado, deshabili
         <div className={metaStyles}>
           {estado && (
             <span className={estado.color}>
-              <span className={'inline-block size-[0.3125rem] mr-[0.3125rem] rounded-full ' + estado.punto} />
+              <span className={'inline-block size-1.25 mr-1.25 rounded-full ' + estado.punto} />
               {estado.nombre} · {estado.detalle}
             </span>
           )}
-          <span className="bg-paper border border-border rounded-[0.1875rem] px-2 py-px font-[family-name:monospace] text-[0.625rem]">Patente: {publicacion.patente}</span>
+          <span className="bg-paper border border-border rounded-[0.1875rem] px-2 py-px font-[monospace] text-[0.625rem]">Patente: {publicacion.patente}</span>
         </div>
         <h2 className="text-[1.5rem] my-2 phone:text-[1.375rem]">{publicacion.marca} {publicacion.modelo} {publicacion.anio}</h2>
         <p className={metaStyles}><PublicationIcon nombre="pin" />{publicacion.zona}, {publicacion.ciudad}</p>

@@ -10,8 +10,8 @@ export default function PublicationPreview({ vehiculo, valores, editando }) {
   return <aside className="grid gap-6 tablet:grid-cols-2 tablet:items-start phone:grid-cols-1">
     <section className="bg-white border border-border rounded-lg p-4">
       <p className={eyebrowStyles}>Vista previa en el catálogo</p>
-      <div className="border border-border rounded-[0.25rem] overflow-hidden mt-3">
-        <div className="relative flex flex-col items-center justify-center gap-2 aspect-[16/10] bg-surface">
+      <div className="border border-border rounded-sm overflow-hidden mt-3">
+        <div className="relative flex flex-col items-center justify-center gap-2 aspect-16/10 bg-surface">
           <PublicationPhoto idVehiculo={vehiculo?.idVehiculo} large />
           <span className="text-muted text-[0.6875rem]">Portada del vehículo</span>
         </div>

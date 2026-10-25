@@ -5,16 +5,16 @@ import PublicationVehicleOptions from './PublicationVehicleOptions'
 import PublicationPhoto from './PublicationPhoto'
 
 // Sección "Vehículo": al crear se elige de la lista; al editar solo se muestra
-export default function PublicationVehicle({ editando, vehiculo, seleccionado, onChange }) {
+export default function PublicationVehicle({ editando, vehiculo, seleccionado, onChange, onRegistrarOtro }) {
   const registrarOtro = !editando && (
-    <button type="button" disabled className={textButtonStyles}><PublicationIcon nombre="plusSmall" />Registrar otro vehículo</button>
+    <button type="button" disabled={!onRegistrarOtro} onClick={onRegistrarOtro} className={textButtonStyles}><PublicationIcon nombre="plusSmall" />Registrar otro vehículo</button>
   )
 
   return (
     <PublicationSection titulo="Vehículo" numero={!editando && '1'} accion={registrarOtro}>
       {editando ? (
         <div className="flex items-center gap-4 max-[68.75rem]:flex-wrap">
-          <div className="grid place-items-center w-40 h-25 shrink-0 bg-surface rounded-[0.25rem] overflow-hidden max-[68.75rem]:w-25 max-[68.75rem]:h-18">
+          <div className="grid place-items-center w-40 h-25 shrink-0 bg-surface rounded-sm overflow-hidden max-[68.75rem]:w-25 max-[68.75rem]:h-18">
             <PublicationPhoto idVehiculo={vehiculo.idVehiculo} />
           </div>
           <div className="flex-1 min-w-0">

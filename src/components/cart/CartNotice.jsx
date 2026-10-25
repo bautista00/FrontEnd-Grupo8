@@ -24,12 +24,12 @@ export default function CartNotice({ segundosRestantes, idPublicacion }) {
   }
 
   return (
-    <div className={`flex items-center justify-between gap-4 p-4 mb-6 border rounded-[0.375rem] text-[0.75rem] phone:flex-wrap ${clasesAviso}`}>
+    <div className={`flex items-center justify-between gap-4 p-4 mb-6 border rounded-md text-[0.75rem] phone:flex-wrap ${clasesAviso}`}>
       <p>{textoAviso}</p>
       {/* Al vencer volvemos al detalle de la misma publicación. */}
       {estaVencido ? (
         // Esta ruta se completará cuando esté disponible la vista de detalle.
-        <Link to={`/publicaciones/${idPublicacion}`} className="flex shrink-0 items-center justify-center gap-2 w-auto px-3 py-[0.5625rem] bg-ink border border-ink rounded-[0.25rem] text-[0.6875rem] text-white phone:w-full">
+        <Link to={`/publicaciones/${idPublicacion}`} className="flex shrink-0 items-center justify-center gap-2 w-auto px-3 py-2.25 bg-ink border border-ink rounded-sm text-[0.6875rem] text-white phone:w-full">
           Volver a elegir fechas
         </Link>
       ) : (

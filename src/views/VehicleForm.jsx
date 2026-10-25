@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { pageStyles, titleStyles, eyebrowStyles, introStyles, helpStyles, actionsStyles } from '../components/publicaciones/publicationStyles'
 import PublicationMessage from '../components/publicaciones/PublicationMessage'
 import InputField from '../components/ui/InputField'
@@ -20,8 +20,14 @@ export default function VehicleForm(props) {
 
 function VehicleEditor({ modo = 'crear', id }) {
   const navigate = useNavigate()
+  const location = useLocation()
   const token = localStorage.getItem('jwtToken')
   const editando = modo === 'editar'
+  // Alta iniciada desde Crear publicación: al cancelar o terminar se vuelve a ese formulario
+  const desdePublicacion = !editando && location.state?.desdePublicacion === true
+  const volver = desdePublicacion
+    ? { to: '/publicaciones/nueva', state: { retomarBorrador: true }, texto: 'Volver a crear publicación' }
+    : { to: '/mis-vehiculos', texto: 'Volver a mis vehículos' }
 
   const [valores, setValores] = useState(valoresInicialesVehiculo())
   const [tipos, setTipos] = useState([])
@@ -76,18 +82,18 @@ function VehicleEditor({ modo = 'crear', id }) {
     setErrores(encontrados)
     if (Object.keys(encontrados).length > 0) return
     setErrorGeneral('')
-    setDatosParaGuardar({ datos: { ...valoresAVehiculo(valores), idUsuario }, token, id, editando })
+    setDatosParaGuardar({ datos: { ...valoresAVehiculo(valores), idUsuario }, token, id, editando, desdePublicacion })
   }
 
   useEffect(() => {
     if (!datosParaGuardar) return
     let vigente = true
-    const { datos, token: tokenEnvio, id, editando } = datosParaGuardar
+    const { datos, token: tokenEnvio, id, editando, desdePublicacion } = datosParaGuardar
     enviar(editando ? '/vehiculo/' + id : '/vehiculo', editando ? 'PUT' : 'POST', tokenEnvio, datos)
       .then((vehiculo) => {
         if (!vigente || tokenEnvio !== localStorage.getItem('jwtToken')) return
         setDatosParaGuardar(null)
-        navigate(editando ? '/mis-vehiculos' : '/vehiculos/' + vehiculo.idVehiculo + '/fotos')
+        navigate(editando ? '/mis-vehiculos' : '/vehiculos/' + vehiculo.idVehiculo + '/fotos', { state: desdePublicacion ? { desdePublicacion } : null })
       })
       .catch((error) => {
         if (!vigente || tokenEnvio !== localStorage.getItem('jwtToken')) return
@@ -105,7 +111,7 @@ function VehicleEditor({ modo = 'crear', id }) {
     return (
       <main className={pageStyles + ' pb-20'}>
         <PublicationMessage error>{errorGeneral}</PublicationMessage>
-        <Link aria-disabled={guardando} onClick={(event) => { if (guardando) event.preventDefault() }} to="/mis-vehiculos" className="inline-block mt-5 text-gold">Volver a mis vehículos</Link>
+        <Link aria-disabled={guardando} onClick={(event) => { if (guardando) event.preventDefault() }} to={volver.to} state={volver.state} className="inline-block mt-5 text-gold">{volver.texto}</Link>
       </main>
     )
   }
@@ -113,7 +119,7 @@ function VehicleEditor({ modo = 'crear', id }) {
   return (
     <main className={pageStyles + ' pb-20'}>
       <div className="max-w-3xl mx-auto">
-        <Link aria-disabled={guardando} onClick={(event) => { if (guardando) event.preventDefault() }} to="/mis-vehiculos" className="text-[0.75rem] text-soft hover:underline">← Volver a mis vehículos</Link>
+        <Link aria-disabled={guardando} onClick={(event) => { if (guardando) event.preventDefault() }} to={volver.to} state={volver.state} className="text-[0.75rem] text-soft hover:underline">← {volver.texto}</Link>
 
         {!editando && (
           <ol className={eyebrowStyles + ' flex gap-2 mt-4 p-0 list-none'} aria-label="Pasos del alta">
@@ -154,7 +160,7 @@ function VehicleEditor({ modo = 'crear', id }) {
           {errorGeneral && <div className="mt-4"><PublicationMessage error>{errorGeneral}</PublicationMessage></div>}
 
           <div className={actionsStyles + ' justify-end mt-8'}>
-            <Link aria-disabled={guardando} onClick={(event) => { if (guardando) event.preventDefault() }} to="/mis-vehiculos" className={btnBase + ' ' + btnOutline + ' ' + btnSize}>Cancelar</Link>
+            <Link aria-disabled={guardando} onClick={(event) => { if (guardando) event.preventDefault() }} to={volver.to} state={volver.state} className={btnBase + ' ' + btnOutline + ' ' + btnSize}>Cancelar</Link>
             <button type="submit" disabled={guardando} className={btnBase + ' ' + btnDark + ' ' + btnSize}>
               {guardando ? 'Guardando…' : editando ? 'Guardar cambios' : 'Continuar a las fotos'}
             </button>

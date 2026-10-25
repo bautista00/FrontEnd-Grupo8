@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import PhotoDropzone from '../components/vehiculos/PhotoDropzone'
 import PhotoTile from '../components/vehiculos/PhotoTile'
 import PublicationMessage from '../components/publicaciones/PublicationMessage'
@@ -14,7 +14,7 @@ import {
 
 let contadorNuevas = 0
 
-function Fotos({ vehiculo, fotosIniciales, sinPublicacion, aviso, onRecargar }) {
+function Fotos({ vehiculo, fotosIniciales, sinPublicacion, desdePublicacion, aviso, onRecargar }) {
   const navigate = useNavigate()
   const token = localStorage.getItem('jwtToken')
   // Se trabaja sobre una copia: los cambios recién se guardan con "Guardar fotos".
@@ -24,6 +24,10 @@ function Fotos({ vehiculo, fotosIniciales, sinPublicacion, aviso, onRecargar }) 
   const guardando = datosParaGuardar !== null
   // URLs de vista previa creadas en esta pantalla: se liberan al salir de ella
   const vistasPrevias = useRef([])
+  // Si el alta empezó en Crear publicación, cancelar vuelve a ese formulario con su borrador
+  const volver = desdePublicacion
+    ? { to: '/publicaciones/nueva', state: { retomarBorrador: true }, texto: 'Volver a crear publicación' }
+    : { to: '/mis-vehiculos', texto: 'Volver a mis vehículos' }
 
   useEffect(() => {
     const urls = vistasPrevias.current
@@ -86,7 +90,7 @@ function Fotos({ vehiculo, fotosIniciales, sinPublicacion, aviso, onRecargar }) 
   return (
     <main className={pageStyles + ' pb-20 phone:pb-12'}>
       <div className="max-w-4xl mx-auto">
-        <Link aria-disabled={guardando} onClick={(event) => { if (guardando) event.preventDefault() }} to="/mis-vehiculos" className={eyebrowStyles + ' inline-block mb-3'}>← Volver a mis vehículos</Link>
+        <Link aria-disabled={guardando} onClick={(event) => { if (guardando) event.preventDefault() }} to={volver.to} state={volver.state} className={eyebrowStyles + ' inline-block mb-3'}>← {volver.texto}</Link>
         <h1 className={titleStyles}>Fotos del {vehiculo.marca} {vehiculo.modelo}</h1>
         <p className={introStyles}>La primera foto es la portada en el catálogo. Usá las flechas para cambiar el orden.</p>
 
@@ -103,7 +107,7 @@ function Fotos({ vehiculo, fotosIniciales, sinPublicacion, aviso, onRecargar }) 
           </ul>
         )}
 
-        <h2 className="mt-8 text-[18px]">Fotos cargadas ({fotos.length})</h2>
+        <h2 className="mt-8 text-[1.125rem]">Fotos cargadas ({fotos.length})</h2>
         {fotos.length > 0
           ? <ul className="grid grid-cols-3 gap-4 mt-4 p-0 list-none phone:grid-cols-1 tablet:grid-cols-2">
               {fotos.map((foto, indice) => (
@@ -117,12 +121,12 @@ function Fotos({ vehiculo, fotosIniciales, sinPublicacion, aviso, onRecargar }) 
                 />
               ))}
             </ul>
-          : <p className="mt-4 p-6 text-center text-[12px] leading-[1.7] text-muted bg-white border border-border rounded-lg">
+          : <p className="mt-4 p-6 text-center text-[0.75rem] leading-[1.7] text-muted bg-white border border-border rounded-lg">
               Todavía no hay fotos. Sumá al menos una: los vehículos sin foto no se pueden publicar.
             </p>}
 
         <div className={actionsStyles + ' justify-end mt-8'}>
-          <Link aria-disabled={guardando} onClick={(event) => { if (guardando) event.preventDefault() }} to="/mis-vehiculos" className={btnBase + ' ' + btnOutline + ' ' + btnSize}>Cancelar</Link>
+          <Link aria-disabled={guardando} onClick={(event) => { if (guardando) event.preventDefault() }} to={volver.to} state={volver.state} className={btnBase + ' ' + btnOutline + ' ' + btnSize}>Cancelar</Link>
           <button
             type="button"
             disabled={guardando}
@@ -136,7 +140,7 @@ function Fotos({ vehiculo, fotosIniciales, sinPublicacion, aviso, onRecargar }) 
               type="button"
               disabled={guardando || fotos.length === 0}
               title={fotos.length === 0 ? 'Cargá al menos una foto para poder publicar' : undefined}
-              onClick={() => guardar('/publicaciones/nueva', { idVehiculo: vehiculo.idVehiculo })}
+              onClick={() => guardar('/publicaciones/nueva', { idVehiculo: vehiculo.idVehiculo, retomarBorrador: desdePublicacion })}
               className={btnBase + ' ' + btnDark + ' ' + btnSize + ' disabled:opacity-50 disabled:cursor-not-allowed'}
             >
               Guardar y crear publicación
@@ -155,6 +159,7 @@ export default function VehiclePhotos() {
 }
 
 function VehiclePhotosLoader({ id }) {
+  const desdePublicacion = useLocation().state?.desdePublicacion === true
   const token = localStorage.getItem('jwtToken')
   const [datos, setDatos] = useState(null)
   const [errorCarga, setErrorCarga] = useState('')
@@ -207,6 +212,7 @@ function VehiclePhotosLoader({ id }) {
       vehiculo={datos.vehiculo}
       fotosIniciales={datos.fotos}
       sinPublicacion={datos.sinPublicacion}
+      desdePublicacion={desdePublicacion}
       aviso={aviso}
       onRecargar={(mensaje) => { setDatos(null); setAviso(mensaje); setVersion((actual) => actual + 1) }}
     />

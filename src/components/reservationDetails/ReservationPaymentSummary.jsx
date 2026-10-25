@@ -7,7 +7,7 @@ const METODOS_PAGO = {
 
 export default function ReservationPaymentSummary({ reserva, pago }) {
   return (
-    <section className="min-w-0 p-6 bg-card border border-border rounded-lg phone:p-[1.125rem]" aria-labelledby="reservation-payment-summary-title">
+    <section className="min-w-0 p-6 bg-card border border-border rounded-lg phone:p-4.5" aria-labelledby="reservation-payment-summary-title">
       <h2 id="reservation-payment-summary-title" className="mb-5 text-[1.25rem] leading-[1.4] text-ink">
         Resumen del pago
       </h2>
@@ -30,7 +30,7 @@ export default function ReservationPaymentSummary({ reserva, pago }) {
       </div>
 
       {/* El método pertenece a PagoResponse y llega por separado. */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mt-5 p-3 bg-paper border border-border rounded-[0.25rem] text-[0.6875rem] leading-[1.6]">
+      <div className="flex flex-wrap items-center justify-between gap-3 mt-5 p-3 bg-paper border border-border rounded-sm text-[0.6875rem] leading-[1.6]">
         <span className="text-muted">Método de pago</span>
         <span className="text-ink">{pago ? METODOS_PAGO[pago.metodo] : 'No disponible'}</span>
       </div>

@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { CartIcon, UserIcon } from '../icons/Icons'
 import { btnBase, btnDark, btnSize } from '../ui/buttonStyles'
+import ConfirmLogout from './ConfirmLogout'
 
 const APP_NAME = 'Volanta'
 
@@ -29,6 +31,7 @@ export default function Navbar({ carrito }) {
   const cantidadCarrito = conSesion && carrito ? 1 : 0
 
   const [menuAbierto, actualizarMenuAbierto] = useState(false)
+  const [mostrarModalCerrarSesion, actualizarMostrarModalCerrarSesion] = useState(false)
   const menuRef = useRef(null)
 
   // El desplegable se cierra al tocar afuera o con Escape
@@ -52,9 +55,15 @@ export default function Navbar({ carrito }) {
     return isActive || (link.href === '/mis-publicaciones' && pathname.startsWith('/publicaciones/')) ? NAV_LINK_ACTIVE : NAV_LINK_IDLE
   }
 
+  // Los botones de cerrar sesión abren la confirmación; recién "Sí, cerrar sesión" cierra la sesión
+  function pedirCerrarSesion() {
+    actualizarMenuAbierto(false)
+    actualizarMostrarModalCerrarSesion(true)
+  }
+
   // El carrito queda guardado en el backend: al volver a entrar, el login lo vuelve a pedir
   function cerrarSesion() {
-    actualizarMenuAbierto(false)
+    actualizarMostrarModalCerrarSesion(false)
     localStorage.removeItem('jwtToken')
     navigate('/')
   }
@@ -130,13 +139,13 @@ export default function Navbar({ carrito }) {
                     >
                       Mi perfil
                     </NavLink>
-                    <button type="button" role="menuitem" onClick={cerrarSesion} className={`${NAV_LINK_IDLE} ${MENU_ITEM} hidden phone:block`}>
+                    <button type="button" role="menuitem" onClick={pedirCerrarSesion} className={`${NAV_LINK_IDLE} ${MENU_ITEM} hidden phone:block`}>
                       Cerrar sesión
                     </button>
                   </div>
                 )}
               </div>
-              <button type="button" onClick={cerrarSesion} className={`${NAV_LINK_IDLE} bg-transparent border-0 cursor-pointer phone:hidden`}>
+              <button type="button" onClick={pedirCerrarSesion} className={`${NAV_LINK_IDLE} bg-transparent border-0 cursor-pointer phone:hidden`}>
                 Cerrar sesión
               </button>
             </>
@@ -152,6 +161,12 @@ export default function Navbar({ carrito }) {
           )}
         </div>
       </div>
+
+      {/* Va al body: el header tiene su propio z-index y otras barras fijas (como la de cambios pendientes) quedarían encima */}
+      {mostrarModalCerrarSesion && createPortal(
+        <ConfirmLogout alCerrar={() => actualizarMostrarModalCerrarSesion(false)} alConfirmar={cerrarSesion} />,
+        document.body,
+      )}
     </header>
   )
 }

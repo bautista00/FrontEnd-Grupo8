@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import CategoryFilter from '../components/home/CategoryFilter'
 import Hero from '../components/home/Hero'
 import SearchBar from '../components/home/SearchBar'
@@ -6,66 +6,85 @@ import SortSelect from '../components/home/SortSelect'
 import VehicleGrid from '../components/home/VehicleGrid'
 import { RotateCcwIcon } from '../components/icons/Icons'
 import PublicationMessage from '../components/publicaciones/PublicationMessage'
+import PublicationPagination from '../components/publicaciones/PublicationPagination'
 import { obtener } from '../utils/api'
-import { precioFinal } from '../utils/formatters'
-
-const sorters = {
-  recommended: (a, b) => b.fechaPublicacion.localeCompare(a.fechaPublicacion),
-  'price-asc': (a, b) => precioFinal(a) - precioFinal(b),
-  'price-desc': (a, b) => precioFinal(b) - precioFinal(a),
-  'year-desc': (a, b) => b.anio - a.anio,
-}
+import { PUBLICACIONES_POR_PAGINA } from '../utils/catalogo'
 
 export default function Home() {
-  // Publicaciones activas y tipos de vehículo que vienen del backend
-  const [publicaciones, setPublicaciones] = useState(null)
+  // Zonas y tipos de vehículo para los filtros
+  const [zonas, setZonas] = useState([])
   const [tipos, setTipos] = useState([])
-  const [error, setError] = useState('')
-  const [recargar, setRecargar] = useState(0)
-
-  useEffect(() => {
-    // El backend devuelve una página ({ content, ... }); pedimos 100 y filtramos/ordenamos acá
-    Promise.all([
-      obtener('/publicaciones?page=0&size=100'),
-      obtener('/tipo-vehiculo'),
-    ])
-      .then(([pagina, listaTipos]) => {
-        setPublicaciones(pagina.content)
-        setTipos(listaTipos)
-        setError('')
-      })
-      .catch((error) => {
-        console.error('Error al cargar el catálogo', error)
-        setError('No pudimos cargar el catálogo. Intentá nuevamente.')
-      })
-  }, [recargar])
-
-  // Las zonas disponibles salen de las publicaciones cargadas
-  const zonas = useMemo(
-    () => [...new Set((publicaciones ?? []).map((p) => p.zona).filter(Boolean))].sort(),
-    [publicaciones],
-  )
 
   const [zona, setZona] = useState('all')
   const [tipoId, setTipoId] = useState('all')
-  const [sortBy, setSortBy] = useState('recommended')
+  const [sortBy, setSortBy] = useState('recientes')
   const [fechaRetiro, setFechaRetiro] = useState('')
   const [fechaDevolucion, setFechaDevolucion] = useState('')
+  const [pagina, setPagina] = useState(0)
+  const [recargar, setRecargar] = useState(0)
 
-  const vehiculos = (publicaciones ?? []).filter((v) => zona === 'all' || v.zona === zona)
-    .filter((v) => tipoId === 'all' || v.idTipoVehiculo === Number(tipoId))
-    .sort(sorters[sortBy])
+  // Página de resultados del backend, junto con la consulta que la pidió
+  const [resultado, setResultado] = useState(null)
 
-  const hayFiltros = zona !== 'all' || tipoId !== 'all' || sortBy !== 'recommended'
+  useEffect(() => {
+    Promise.all([obtener('/publicaciones/zonas'), obtener('/tipo-vehiculo')])
+      .then(([listaZonas, listaTipos]) => {
+        setZonas(listaZonas)
+        setTipos(listaTipos)
+      })
+      .catch((error) => console.error('Error al cargar los filtros del catálogo', error))
+  }, [])
+
+  // El backend filtra, ordena y pagina sobre todas las publicaciones activas.
+  // Las fechas solo se mandan cuando están elegidas las dos.
+  const parametros = new URLSearchParams({ orden: sortBy, page: pagina, size: PUBLICACIONES_POR_PAGINA })
+  if (zona !== 'all') parametros.set('zona', zona)
+  if (tipoId !== 'all') parametros.set('idTipoVehiculo', tipoId)
+  if (fechaRetiro && fechaDevolucion) {
+    parametros.set('fechaInicio', fechaRetiro)
+    parametros.set('fechaFin', fechaDevolucion)
+  }
+  const consulta = parametros.toString()
+
+  useEffect(() => {
+    let vigente = true
+    obtener(`/publicaciones/buscar?${consulta}`)
+      .then((datos) => { if (vigente) setResultado({ consulta, datos }) })
+      .catch((error) => {
+        console.error('Error al cargar el catálogo', error)
+        if (vigente) setResultado({ consulta, error: error.message })
+      })
+    return () => { vigente = false }
+  }, [consulta, recargar])
+
+  // Mientras llega la consulta nueva se siguen mostrando los resultados anteriores
+  const actualizando = resultado !== null && resultado.consulta !== consulta
+  const catalogo = resultado?.datos
+
+  // Cada filtro nuevo vuelve a la primera página
+  const filtrar = (actualizar) => (valor) => {
+    actualizar(valor)
+    setPagina(0)
+  }
+
+  const hayFiltros = zona !== 'all' || tipoId !== 'all' || sortBy !== 'recientes' || fechaRetiro !== '' || fechaDevolucion !== ''
 
   const resetFiltros = () => {
     setZona('all')
     setTipoId('all')
-    setSortBy('recommended')
+    setSortBy('recientes')
+    setFechaRetiro('')
+    setFechaDevolucion('')
+    setPagina(0)
   }
 
   const scrollToFleet = () => {
     document.getElementById('fleet-results')?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  const cambiarPagina = (nueva) => {
+    setPagina(nueva)
+    scrollToFleet()
   }
 
   return (
@@ -75,23 +94,23 @@ export default function Home() {
       <SearchBar
         zonas={zonas}
         zona={zona}
-        onZonaChange={setZona}
+        onZonaChange={filtrar(setZona)}
         fechaRetiro={fechaRetiro}
         fechaDevolucion={fechaDevolucion}
-        onFechaRetiroChange={setFechaRetiro}
-        onFechaDevolucionChange={setFechaDevolucion}
+        onFechaRetiroChange={filtrar(setFechaRetiro)}
+        onFechaDevolucionChange={filtrar(setFechaDevolucion)}
         onSearch={scrollToFleet}
       />
 
       <section id="fleet-results">
         <div className="flex flex-col items-stretch gap-4 mb-5 min-[56.25rem]:flex-row min-[56.25rem]:items-center min-[56.25rem]:justify-between">
-          <CategoryFilter tipos={tipos} tipoId={tipoId} onChange={setTipoId} />
-          <SortSelect value={sortBy} onChange={setSortBy} />
+          <CategoryFilter tipos={tipos} tipoId={tipoId} onChange={filtrar(setTipoId)} />
+          <SortSelect value={sortBy} onChange={filtrar(setSortBy)} />
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6 text-[0.75rem] text-muted">
           <span>
-            Mostrando <strong className="text-ink">{vehiculos.length}</strong> unidades disponibles bajo estándares de
+            Mostrando <strong className="text-ink">{catalogo?.totalElements ?? 0}</strong> unidades disponibles bajo estándares de
             certificación
           </span>
 
@@ -107,14 +126,23 @@ export default function Home() {
           )}
         </div>
 
-        {error ? (
-          <PublicationMessage error onRetry={() => setRecargar(recargar + 1)}>{error}</PublicationMessage>
-        ) : !publicaciones ? (
+        {resultado?.error && !actualizando ? (
+          <PublicationMessage error onRetry={() => setRecargar(recargar + 1)}>{resultado.error}</PublicationMessage>
+        ) : !catalogo ? (
           <PublicationMessage>Cargando vehículos…</PublicationMessage>
-        ) : vehiculos.length === 0 ? (
+        ) : catalogo.content.length === 0 && !actualizando ? (
           <p className="py-12 text-center text-[0.875rem] text-muted">No se encontraron vehículos para esta selección.</p>
         ) : (
-          <VehicleGrid items={vehiculos} />
+          <div aria-busy={actualizando} className={actualizando ? 'opacity-60 transition-opacity' : undefined}>
+            <VehicleGrid items={catalogo.content} />
+            <PublicationPagination
+              pagina={catalogo.number}
+              totalPages={catalogo.totalPages}
+              totalElements={catalogo.totalElements}
+              onChange={cambiarPagina}
+              disabled={actualizando}
+            />
+          </div>
         )}
       </section>
     </main>

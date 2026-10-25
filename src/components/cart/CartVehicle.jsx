@@ -28,8 +28,8 @@ export default function CartVehicle({
   const vehiculo = carrito.publicacion
 
   return (
-    <section className="flex min-w-0 gap-6 p-6 bg-card border border-border rounded-lg phone:flex-col phone:gap-4 phone:p-[1.125rem]" aria-labelledby="cart-vehicle-title">
-      <div className="flex flex-col self-start shrink-0 items-center justify-center gap-2 w-[32%] h-[13.75rem] bg-surface rounded-[0.25rem] text-disabled phone:w-full phone:h-[10rem]">
+    <section className="flex min-w-0 gap-6 p-6 bg-card border border-border rounded-lg phone:flex-col phone:gap-4 phone:p-4.5" aria-labelledby="cart-vehicle-title">
+      <div className="flex flex-col self-start shrink-0 items-center justify-center gap-2 w-[32%] h-55 bg-surface rounded-sm text-disabled phone:w-full phone:h-40">
         <CarIcon size={36} />
         <span className="text-[0.625rem] text-muted">Portada</span>
       </div>
@@ -54,18 +54,18 @@ export default function CartVehicle({
             mensaje={mensajeFechas}
           />
         ) : (
-          <dl className="grid grid-cols-3 gap-3 mt-5 mb-4 p-3 bg-paper border border-border rounded-[0.25rem] phone:gap-2">
+          <dl className="grid grid-cols-3 gap-3 mt-5 mb-4 p-3 bg-paper border border-border rounded-sm phone:gap-2">
             <div>
               <dt className="mb-1.5 text-[0.5625rem] uppercase text-muted">Retiro</dt>
-              <dd className="m-0 text-[0.6875rem] leading-[1.5]">{formatearFecha(carrito.fechaInicio)}</dd>
+              <dd className="m-0 text-[0.6875rem] leading-normal">{formatearFecha(carrito.fechaInicio)}</dd>
             </div>
             <div>
               <dt className="mb-1.5 text-[0.5625rem] uppercase text-muted">Devolución</dt>
-              <dd className="m-0 text-[0.6875rem] leading-[1.5]">{formatearFecha(carrito.fechaFin)}</dd>
+              <dd className="m-0 text-[0.6875rem] leading-normal">{formatearFecha(carrito.fechaFin)}</dd>
             </div>
             <div>
               <dt className="mb-1.5 text-[0.5625rem] uppercase text-muted">Duración</dt>
-              <dd className="m-0 text-[0.6875rem] leading-[1.5]">{carrito.cantidadDias} días</dd>
+              <dd className="m-0 text-[0.6875rem] leading-normal">{carrito.cantidadDias} días</dd>
             </div>
           </dl>
         )}

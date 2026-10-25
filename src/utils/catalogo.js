@@ -1,7 +1,10 @@
-// Opciones de orden del catálogo (se ordena en el front).
+// Opciones de orden del catálogo. El valor es el parámetro "orden" que entiende el backend.
 export const SORT_OPTIONS = [
-  { value: 'recommended', label: 'Recomendados / Más recientes' },
-  { value: 'price-asc', label: 'Precio: menor a mayor' },
-  { value: 'price-desc', label: 'Precio: mayor a menor' },
-  { value: 'year-desc', label: 'Año: más nuevos' },
+  { value: 'recientes', label: 'Recomendados / Más recientes' },
+  { value: 'precio-asc', label: 'Precio: menor a mayor' },
+  { value: 'precio-desc', label: 'Precio: mayor a menor' },
+  { value: 'anio-desc', label: 'Año: más nuevos' },
 ]
+
+// Publicaciones por página en el catálogo (tres filas de la grilla)
+export const PUBLICACIONES_POR_PAGINA = 9
