@@ -1,13 +1,16 @@
+/**
+ * Funciones auxiliares para comunicarse con el backend y conservar sus mensajes de error.
+ */
+
 export const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
 
-// El backend responde los errores como { "mensaje": "..." }.
-// Si no hay cuerpo (por ejemplo un 401 del filtro JWT), usamos el mensaje por defecto.
+// Lee el mensaje del backend y lo convierte en un Error que recibirá el catch de la vista.
 async function errorDe(respuesta, mensajeError) {
   const cuerpo = await respuesta.json().catch(() => ({}))
   return new Error(cuerpo.mensaje || cuerpo.message || mensajeError)
 }
 
-// GET: devuelve el JSON. El token se manda solo si hay sesión.
+// Hace un GET y devuelve el JSON de la respuesta.
 export async function obtener(ruta, token) {
   const respuesta = await fetch(API_URL + ruta, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -16,7 +19,7 @@ export async function obtener(ruta, token) {
   return respuesta.json()
 }
 
-// POST, PUT o DELETE con JSON.
+// Envía datos en JSON. Una respuesta 204 se devuelve como null porque no tiene cuerpo.
 export async function enviar(ruta, metodo, token, datos, mensajeError = 'No se pudo guardar. Intentá nuevamente.') {
   const respuesta = await fetch(API_URL + ruta, {
     method: metodo,
@@ -27,7 +30,7 @@ export async function enviar(ruta, metodo, token, datos, mensajeError = 'No se p
   return respuesta.status === 204 ? null : respuesta.json()
 }
 
-// Subida de archivos (FormData). No se pone Content-Type: lo arma el navegador.
+// Envía FormData; el navegador agrega el Content-Type correspondiente.
 export async function subirArchivo(ruta, metodo, token, formData, mensajeError = 'No se pudo subir el archivo.') {
   const respuesta = await fetch(API_URL + ruta, {
     method: metodo,

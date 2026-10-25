@@ -1,3 +1,8 @@
+/**
+ * Carga las reservas del usuario y las organiza en próximas e historial.
+ * Entrega los datos a las listas y tarjetas; el filtro utiliza la información ya cargada.
+ */
+
 import ReservationFilters from "../components/myReservations/ReservationFilters"
 import ReservationHistory from "../components/myReservations/ReservationHistory"
 import UpcomingReservations from "../components/myReservations/UpcomingReservations"
@@ -9,12 +14,12 @@ import { API_URL } from '../utils/api'
 export default function MyReservations() {
   const [filtroSeleccionado, actualizarFiltro] = useState('todas')
 
-  // Guarda la lista de reservas del usuario.
   const [reservas, actualizarReservas] = useState([])
   const [publicaciones, actualizarPublicaciones] = useState([])
   const [pagos, actualizarPagos] = useState([])
   const [mensaje, actualizarMensaje] = useState('')
 
+  // Obtiene las reservas del usuario y los datos necesarios para mostrar sus tarjetas.
   useEffect(() => {
     const token = localStorage.getItem('jwtToken')
 
@@ -27,7 +32,6 @@ export default function MyReservations() {
       }
     }
 
-    // El backend identifica al usuario por el token y devuelve sus reservas.
     fetch(`${API_URL}/reservas/mias`, opciones)
       .then((respuesta) => {
         if (!respuesta.ok) {
@@ -43,22 +47,19 @@ export default function MyReservations() {
         return respuesta.json()
       })
       .then((datosReservas) => {
-        // El backend devuelve una página: la lista está en content.
         const listaReservas = datosReservas.content
 
-        // Una misma publicación puede aparecer en varias reservas.
+        // Evita consultar dos veces una publicación que aparece en varias reservas.
         const idsPublicaciones = [
           ...new Set(listaReservas.map((reserva) => reserva.idPublicacion))
         ]
 
         const pedidosPublicaciones = idsPublicaciones.map((idPublicacion) => {
-          // Consultamos cada publicación una sola vez.
           return fetch(
             `${API_URL}/publicaciones/${idPublicacion}`,
             opciones
           )
             .then((respuesta) => {
-              // Una respuesta 204 no tiene un mensaje ni un cuerpo JSON.
               if (respuesta.status === 204) {
                 return Promise.reject(new Error('No se pudo consultar la publicación.'))
               }
@@ -77,14 +78,13 @@ export default function MyReservations() {
             })
         })
 
-        // Cada reserva conserva su propio pago, sin esperar a las publicaciones.
+        // Los pagos se consultan en paralelo con las publicaciones.
         const pedidosPagos = listaReservas.map((reserva) => {
           return fetch(
             `${API_URL}/pagos/reserva/${reserva.idReserva}`,
             opciones
           )
             .then((respuesta) => {
-              // Una reserva sin pago no impide mostrar las demás.
               if (respuesta.status === 404) {
                 return null
               }
@@ -120,7 +120,6 @@ export default function MyReservations() {
           })
       })
       .then((datosCompletos) => {
-        // Guardamos las tres listas para pasarlas a los componentes.
         actualizarReservas(datosCompletos.reservas)
         actualizarPublicaciones(datosCompletos.publicaciones)
         actualizarPagos(datosCompletos.pagos.filter((pago) => pago !== null))
@@ -135,14 +134,13 @@ export default function MyReservations() {
       })
   }, [])
 
-  // Agrupamos las reservas recibidas del backend según su estado.
+  // Estas listas se calculan con los datos cargados; cambiar el filtro no hace otro GET.
   const proximasReservas = reservas.filter((reserva) => reserva.estado === 'CONFIRMADA' || reserva.estado === 'PENDIENTE')
   const reservasHistorial = reservas.filter((reserva) => ['FINALIZADA', 'CANCELADA', 'RECHAZADA'].includes(reserva.estado))
   const hayReservasConfirmadas = proximasReservas.some((reserva) => reserva.estado === 'CONFIRMADA')
 
   return (
     <main className="flex-1 w-full max-w-page mx-auto px-(--gutter) pt-10 pb-16">
-      {/* Cabecera de la vista. */}
       <header className="mb-6">
         <h1 className="text-[2.25rem] leading-[1.2] text-ink">
           Mis reservas
@@ -158,20 +156,16 @@ export default function MyReservations() {
         </p>
       )}
 
-      {/* La vista incorpora el componente que muestra los filtros. */}
       <ReservationFilters hayReservasConfirmadas={hayReservasConfirmadas} filtroSeleccionado={filtroSeleccionado} alCambiar={actualizarFiltro}/>
 
-      {/* Mostramos la lista vacía solo si no hay un error de consulta o sesión. */}
       {!mensaje && (reservas.length === 0 ? (
         <EmptyReservations mensaje="Todavía no tenés reservas." />
       ) : (
         <>
-          {/* Todas y Próximas muestran los próximos alquileres. */}
           {(filtroSeleccionado === 'todas' || filtroSeleccionado === 'proximas') && (
             <UpcomingReservations reservas={proximasReservas} publicaciones={publicaciones} pagos={pagos} />
           )}
 
-          {/* Todas e Historial muestran las reservas anteriores. */}
           {(filtroSeleccionado === 'todas' || filtroSeleccionado === 'historial') && (
             <ReservationHistory reservas={reservasHistorial} publicaciones={publicaciones} pagos={pagos} />
           )}

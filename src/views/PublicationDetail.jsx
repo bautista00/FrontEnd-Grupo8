@@ -1,3 +1,8 @@
+/**
+ * Muestra una publicación con su vehículo, ubicación y períodos disponibles.
+ * Al agregar al carrito guarda la respuesta en App y navega al carrito.
+ */
+
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { pageStyles, titleStyles } from '../components/publicaciones/publicationStyles'
@@ -11,6 +16,7 @@ import DetailSpecs from '../components/detalle/DetailSpecs'
 import { obtener, enviar } from '../utils/api'
 import { formatFechaPublicacion } from '../utils/publicaciones'
 
+// La key inicia un detalle nuevo al cambiar el ID de la publicación.
 export default function PublicationDetail(props) {
   const { id } = useParams()
   return <Detail key={id} {...props} id={id} />
@@ -20,31 +26,27 @@ function Detail({ id, actualizarCarrito, actualizarCarritoConsultado }) {
   const navigate = useNavigate()
   const token = localStorage.getItem('jwtToken')
 
-  // Publicación completa: sus datos (con la ubicación) + vehículo + períodos publicados
   const [publicacion, setPublicacion] = useState(null)
   const [error, setError] = useState('')
   const [recargar, setRecargar] = useState(0)
 
-  // Estado del botón "Agregar al carrito"
   const [agregando, setAgregando] = useState(false)
   const [mensaje, setMensaje] = useState('')
   const [datosParaAgregar, setDatosParaAgregar] = useState(null)
 
+  // Carga la publicación, el vehículo y los períodos disponibles.
   useEffect(() => {
+    // Ignora respuestas de una publicación o sesión anterior.
     let vigente = true
     Promise.all([
-      // 1. La publicación (ya trae la ubicación, aproximada salvo para el dueño o una reserva confirmada);
-      //    con su id de vehículo pedimos el vehículo
       obtener(`/publicaciones/${id}`, token).then((datos) => Promise.all([
         datos,
         obtener(`/vehiculo/${datos.idVehiculo}`, token),
       ])),
-      // Los períodos solo necesitan el id de la URL: se piden al mismo tiempo
       obtener(`/disponibilidades/publicacion/${id}`, token),
     ])
       .then(([[datos, vehiculo], periodos]) => {
         if (!vigente || token !== localStorage.getItem('jwtToken')) return
-        // 2. Juntamos todo en un solo objeto
         setPublicacion({
           ...vehiculo,
           ...datos,
@@ -60,10 +62,10 @@ function Detail({ id, actualizarCarrito, actualizarCarritoConsultado }) {
     return () => { vigente = false }
   }, [id, token, recargar])
 
+  // Se pasa a DetailReservation como onAgregar; prepara el envío de las fechas elegidas.
   function agregarAlCarrito(fechaInicio, fechaFin) {
     if (agregando) return
 
-    // Sin sesión lo mandamos al login, que después lo devuelve a esta publicación
     if (!token) {
       navigate('/login', { state: { volverA: `/publicaciones/${id}` } })
       return
@@ -72,7 +74,6 @@ function Detail({ id, actualizarCarrito, actualizarCarritoConsultado }) {
     setAgregando(true)
     setMensaje('')
 
-    // Registra la selección confirmada para enviarla desde el efecto.
     setDatosParaAgregar({
       idPublicacion: id,
       fechaInicio,
@@ -82,6 +83,7 @@ function Detail({ id, actualizarCarrito, actualizarCarritoConsultado }) {
     })
   }
 
+  // Agrega el vehículo al carrito y guarda la respuesta en App antes de navegar.
   useEffect(() => {
     if (datosParaAgregar === null) return
     let vigente = true
@@ -94,11 +96,9 @@ function Detail({ id, actualizarCarrito, actualizarCarritoConsultado }) {
       token
     } = datosParaAgregar
 
-    // Si el backend explica el problema (por ejemplo, fechas ocupadas), se muestra ese mensaje
     enviar(`/carritos/publicaciones/${idPublicacion}`, 'POST', token, { fechaInicio, fechaFin }, 'No pudimos agregar el vehículo al carrito. Intentá nuevamente.')
       .then((datosCarrito) => {
         if (!vigente || token !== localStorage.getItem('jwtToken')) return
-        // Guardamos en App la respuesta del backend y la publicación ya cargada.
         actualizarCarrito({ ...datosCarrito, publicacion })
         actualizarCarritoConsultado(true)
         navigate('/carrito')

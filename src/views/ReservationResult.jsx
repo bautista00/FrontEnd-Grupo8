@@ -1,3 +1,8 @@
+/**
+ * Muestra el resultado de la reserva usando los datos enviados desde la confirmación.
+ * Consulta la publicación para obtener la ubicación autorizada después de reservar.
+ */
+
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import ReservationResultHeader from '../components/reservationResult/ReservationResultHeader'
@@ -6,7 +11,6 @@ import PickupInstructions from '../components/reservationResult/PickupInstructio
 import { API_URL } from '../utils/api'
 
 export default function ReservationResult() {
-  // Recibimos los datos enviados desde ConfirmReservation.
   const ubicacion = useLocation()
   const carrito = ubicacion.state?.carrito
   const confirmacion = ubicacion.state?.confirmacion
@@ -15,17 +19,16 @@ export default function ReservationResult() {
   const idReserva = confirmacion?.idReserva
   const idPublicacion = carrito?.idPublicacion
 
-  // Solo consultaremos la publicación después de confirmar.
   const [publicacion, actualizarPublicacion] = useState(null)
   const [mensaje, actualizarMensaje] = useState('')
 
+  // Obtiene la ubicación que el backend permite ver después de confirmar.
   useEffect(() => {
     if (!idReserva || !idPublicacion) return
 
     const token = localStorage.getItem('jwtToken')
     actualizarMensaje('')
 
-    // Obtenemos la ubicación que el backend autoriza tras confirmar.
     fetch(`${API_URL}/publicaciones/${idPublicacion}`, {
       method: 'GET',
       headers: {
@@ -62,7 +65,6 @@ export default function ReservationResult() {
       })
   }, [idReserva, idPublicacion])
 
-  // Comprobamos los datos antes de usarlos.
   if (!carrito || !confirmacion || !metodoPago || !publicacion) {
     return (
       <main className="flex-1 w-full max-w-page mx-auto px-(--gutter) py-10">
@@ -78,7 +80,7 @@ export default function ReservationResult() {
     )
   }
 
-  // Combinamos las fechas y precios con el estado confirmado por el backend.
+  // Combina los datos del carrito con los identificadores y estados devueltos al confirmar.
   const reserva = {
     idReserva: confirmacion.idReserva,
     idPublicacion: carrito.idPublicacion,
@@ -90,7 +92,7 @@ export default function ReservationResult() {
     precioTotal: confirmacion.monto
   }
 
-  // El estado y el monto del pago también vienen del backend.
+  // Reutiliza la respuesta de confirmación; no crea ni consulta otro pago.
   const pago = {
     idPago: confirmacion.idPago,
     idReserva: confirmacion.idReserva,
@@ -104,7 +106,6 @@ export default function ReservationResult() {
       <ReservationResultHeader reserva={reserva} pago={pago} />
 
       <div className="grid grid-cols-2 items-start gap-8 mt-10 tablet:grid-cols-1 phone:gap-6 phone:mt-7">
-        {/* La vista pasa a cada componente los datos que necesita. */}
         <ReservedVehicleSummary reserva={reserva} pago={pago} publicacion={publicacion} />
         <PickupInstructions reserva={reserva} publicacion={publicacion} />
       </div>

@@ -1,8 +1,12 @@
+/**
+ * Muestra una reserva próxima y avisa si tiene un pago pendiente de Mercado Pago.
+ * El enlace envía la reserva, la publicación y el pago al detalle.
+ */
+
 import { Link } from 'react-router-dom'
 import { CarIcon, MapPinIcon } from '../icons/Icons'
 import { formatARS as formatearPrecio, formatearFecha } from '../../utils/formatters'
 
-// Los valores coinciden con EstadoReserva del backend.
 const ESTADOS_RESERVA = {
   PENDIENTE: { texto: 'Pendiente', clases: 'bg-amber-50 border-amber-200 text-amber-700' },
   CONFIRMADA: { texto: 'Confirmada', clases: 'bg-emerald-50 border-emerald-200 text-emerald-700' },
@@ -12,7 +16,6 @@ const ESTADOS_RESERVA = {
 }
 
 export default function UpcomingReservationCard({ reserva, publicacion, pago }) {
-  // Recibimos por separado los datos de cada respuesta.
   const estadoVisual = ESTADOS_RESERVA[reserva.estado]
   const horaRetiro = publicacion.horaRetiroDevolucion
   const fechaCreacionTexto = new Intl.DateTimeFormat('es-AR', {
@@ -33,13 +36,11 @@ export default function UpcomingReservationCard({ reserva, publicacion, pago }) 
           <span className="w-1.5 h-1.5 rounded-full bg-current" aria-hidden="true" />
           {estadoVisual.texto}
         </span>
-        {/* El número visible es idReserva; no existe un codigoReserva. */}
         <p className="text-[0.625rem] text-muted">
           Reserva #{reserva.idReserva} · Realizada el {fechaCreacionTexto}
         </p>
       </header>
 
-      {/* Las columnas mantienen la proporción de imagen, datos y resumen. */}
       <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1.8fr)_minmax(13.75rem,1fr)] gap-6 tablet:grid-cols-1">
         <div className="relative grid place-items-center aspect-[8/5] min-h-[12.5rem] bg-surface rounded-[0.25rem] text-disabled tablet:aspect-auto">
           <span className="absolute top-3 left-3 px-2 py-1 bg-card rounded-[0.1875rem] text-[0.5625rem] uppercase text-ink">
@@ -62,7 +63,6 @@ export default function UpcomingReservationCard({ reserva, publicacion, pago }) 
               <dt className="mb-1 text-[0.5625rem] uppercase text-muted">Retiro</dt>
               <dd className="m-0 text-[0.6875rem] leading-[1.6] text-ink">
                 <time dateTime={reserva.fechaInicio}>{formatearFecha(reserva.fechaInicio)}</time>
-                {/* El horario pertenece a la publicación, si está disponible. */}
                 {horaRetiro && <span className="block text-muted">{horaRetiro.slice(0, 5)} hs</span>}
               </dd>
             </div>
@@ -84,7 +84,6 @@ export default function UpcomingReservationCard({ reserva, publicacion, pago }) 
               <strong className="font-serif text-[1.5rem]">{formatearPrecio(reserva.precioTotal)}</strong>
               <span className="ml-1 text-[0.625rem] text-muted">ARS</span>
             </p>
-            {/* El método viene de pago.metodo, no de la reserva. */}
             <p className="mt-2 text-[0.6875rem] leading-[1.6] text-soft">
               {!pago
                 ? 'Sin pago registrado'
@@ -99,7 +98,6 @@ export default function UpcomingReservationCard({ reserva, publicacion, pago }) 
             )}
           </div>
 
-          {/* Enviamos los datos de esta reserva a la vista de detalle. */}
           <Link
             to="/mis-reservas/detalle"
             state={{ reserva, publicacion, pago }}

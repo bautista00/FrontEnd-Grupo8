@@ -1,5 +1,8 @@
+/**
+ * Aviso visual de éxito o error. Las vistas actuales no lo utilizan.
+ */
+
 export default function ReservationToast({ mensaje, tipo = 'exito' }) {
-  // La prop tipo determina el color y el ícono del aviso.
   const esExito = tipo === 'exito'
 
   return (
@@ -23,7 +26,6 @@ export default function ReservationToast({ mensaje, tipo = 'exito' }) {
         {mensaje}
       </p>
 
-      {/* El cierre se configurará junto con los demás botones. */}
       <button type="button" aria-label="Cerrar aviso" className="grid place-items-center shrink-0 w-6 h-6 p-0 bg-transparent border-0 text-[1.375rem] leading-none text-white/80 disabled:cursor-not-allowed" disabled>
         <span aria-hidden="true">×</span>
       </button>

@@ -1,3 +1,8 @@
+/**
+ * Muestra el carrito y permite cambiar fechas o quitar el vehículo.
+ * Recibe los datos de App y coordina las consultas y modificaciones del backend.
+ */
+
 import { Link } from 'react-router-dom'
 import { CartIcon } from '../components/icons/Icons'
 import CartNotice from "../components/cart/CartNotice"
@@ -14,36 +19,30 @@ export default function Cart({
   actualizarCarritoConsultado
 }) {
   const token = localStorage.getItem('jwtToken')
-  //Controla si aparece el modal para quietar la publicacion del carrito. 
   const [mostrarModalQuitar, actualizarModalQuitar]=useState(false)
 
-  // El carrito y la función para actualizarlo llegan desde App por props.
-  // Guarda los errores que mostramos en pantalla.
   const [mensaje, actualizarMensaje] = useState('')
 
-  // El carrito vacío es un aviso normal que llega desde el backend.
   const [mensajeVacio, actualizarMensajeVacio] = useState('')
 
-  // Impide repetir la eliminación mientras esperamos al backend.
   const [quitando, actualizarQuitando] = useState(false)
+  // Datos de la eliminación confirmada, que se enviarán desde el efecto.
   const [datosParaQuitar, actualizarDatosParaQuitar] = useState(null)
 
-  // Controlan el guardado de fechas y los errores que mostrará el editor.
   const [guardandoFechas, actualizarGuardandoFechas] = useState(false)
   const [mensajeFechas, actualizarMensajeFechas] = useState('')
-  // Guarda las fechas que el usuario confirmó para enviar.
+  // Fechas confirmadas por el usuario, junto con los datos necesarios para guardarlas.
   const [fechasParaGuardar, actualizarFechasParaGuardar] = useState(null)
 
-  // Consultamos el carrito, su publicación y sus períodos solo si no conocemos sus datos.
+  // Recupera el carrito, su publicación y sus períodos solo si todavía no los conocemos.
   useEffect(() => {
     if (carritoConsultado) return
 
+    // Permite ignorar la respuesta si el usuario salió de la pantalla o cambió de sesión.
     let vigente = true
 
-    // Sin sesión, no hacemos las consultas.
     if (!token) return
 
-    // 1. Consultamos el carrito del usuario.
     fetch(`${API_URL}/carritos/mio`, {
       method: 'GET',
       headers: {
@@ -65,7 +64,6 @@ export default function Cart({
       })
       .then((datosCarrito) => {
         if (!vigente || token !== localStorage.getItem('jwtToken')) return null
-        // El backend devuelve 200 con un mensaje cuando no hay carrito.
         if (datosCarrito.mensaje && !datosCarrito.idCarrito) {
           actualizarMensajeVacio(datosCarrito.mensaje)
           return null
@@ -73,7 +71,6 @@ export default function Cart({
 
         actualizarMensajeVacio('')
 
-        // 2. La publicación y sus períodos se pueden consultar al mismo tiempo.
         return Promise.all([
           fetch(
             `${API_URL}/publicaciones/${datosCarrito.idPublicacion}`,
@@ -121,7 +118,7 @@ export default function Cart({
             })
         ])
           .then(([publicacion, datosPeriodos]) => {
-            // 3. Conservamos los períodos en el formato que recibe el calendario.
+            // Adapta las fechas del backend al formato que recibe el calendario.
             const periodos = datosPeriodos.map((periodo) => ({
               desde: periodo.fechaInicio,
               hasta: periodo.fechaFin
@@ -144,7 +141,6 @@ export default function Cart({
           return
         }
 
-        // Calculamos el tiempo cuando recibimos el carrito real.
         const vencimiento = new Date(carritoCompleto.fechaExpiracion).getTime()
         const ahora = Date.now()
         const segundosRestantes = Math.max(
@@ -152,13 +148,11 @@ export default function Cart({
           Math.ceil((vencimiento - ahora) / 1000)
         )
 
-        // 4. Guardamos el carrito junto al tiempo calculado en el frontend.
         actualizarCarrito({ ...carritoCompleto, segundosRestantes })
         actualizarCarritoConsultado(true)
       })
       .catch((error) => {
         if (!vigente || token !== localStorage.getItem('jwtToken')) return
-        // Maneja los errores de cualquiera de las consultas.
         console.error('Error al cargar el carrito:', error)
         actualizarMensaje(
           error instanceof TypeError
@@ -169,13 +163,12 @@ export default function Cart({
     return () => { vigente = false }
   }, [carritoConsultado, actualizarCarrito, actualizarCarritoConsultado, token])
 
-  // Obtenemos el vencimiento cuando ya existe un carrito.
   const fechaExpiracion = carrito ? carrito.fechaExpiracion : null
 
+  // Actualiza el contador y detiene el intervalo al salir.
   useEffect(() => {
     if (!fechaExpiracion) return
 
-    // Recalculamos el tiempo restante cada segundo.
     const intervalo = setInterval(() => {
       if (token !== localStorage.getItem('jwtToken')) return
       const vencimiento = new Date(fechaExpiracion).getTime()
@@ -194,7 +187,6 @@ export default function Cart({
       })
     }, 1000)
 
-    // Detenemos el intervalo al salir o cambiar el vencimiento.
     return () => clearInterval(intervalo)
   }, [fechaExpiracion, actualizarCarrito, token])
   
@@ -212,16 +204,17 @@ export default function Cart({
     actualizarModalQuitar(false)
   }
 
+  // Prepara la eliminación después de confirmar el modal.
   const quitarCarrito = () => {
     if (carrito === null || quitando || guardandoFechas) return
 
     actualizarQuitando(true)
     actualizarMensaje('')
 
-    // Registra la eliminación confirmada para que la ejecute el efecto.
     actualizarDatosParaQuitar({ idCarrito: carrito.idCarrito, token })
   }
 
+  // Elimina el carrito confirmado y actualiza los datos de App.
   useEffect(() => {
     if (datosParaQuitar === null) return
 
@@ -246,7 +239,6 @@ export default function Cart({
         }
 
         if (!vigente || token !== localStorage.getItem('jwtToken')) return
-        // El backend confirmó: vaciamos el estado y cerramos el modal.
         actualizarCarrito(null)
         actualizarMensajeVacio('')
         actualizarModalQuitar(false)
@@ -268,6 +260,7 @@ export default function Cart({
     return () => { vigente = false }
   }, [datosParaQuitar, actualizarCarrito])
 
+  // Prepara el guardado. CartVehicle entrega también una función para cerrar el editor si sale bien.
   const guardarFechas = (fechaInicio, fechaFin, alGuardarCorrectamente) => {
     if (carrito === null || guardandoFechas || quitando) return
 
@@ -284,6 +277,7 @@ export default function Cart({
     })
   }
 
+  // Guarda las fechas confirmadas y usa la respuesta para actualizar App.
   useEffect(() => {
     if (fechasParaGuardar === null) return
 
@@ -323,7 +317,6 @@ export default function Cart({
       })
       .then((datosCarrito) => {
         if (!vigente || token !== localStorage.getItem('jwtToken')) return
-        // Guardamos la respuesta y conservamos la publicación ya cargada.
         actualizarCarrito({
           ...datosCarrito,
           publicacion
@@ -347,20 +340,14 @@ export default function Cart({
     return () => { vigente = false }
   }, [fechasParaGuardar, actualizarCarrito])
 
-  // null significa que no hay un carrito. Comprobamos esto antes de acceder a sus datos.
-  // El aviso de carrito vacío se guarda separado de los errores.
   if (carrito === null) {
-    // Este return termina la función: no se calculan tiempos ni se muestran las tarjetas.
-    // Navbar y Footer siguen apareciendo porque App.jsx los muestra fuera de esta vista.
     return (
       <main className="flex flex-1 items-start justify-center w-full max-w-page mx-auto px-(--gutter) pt-16 pb-16 phone:pt-7 phone:pb-10">
         <section className="w-full max-w-[26.25rem] px-8 py-10 bg-card border border-border rounded-lg text-center phone:px-5 phone:py-8" aria-labelledby="cart-empty-title">
-          {/* Reutilizamos el mismo ícono que ya existe para el carrito en Navbar. */}
           <CartIcon size={48} className="block mx-auto mb-5 text-disabled" />
           <h1 id="cart-empty-title" className="text-[1.625rem] leading-[1.3] text-ink phone:text-[1.5rem]">
             {mensaje ? 'No pudimos cargar tu carrito' : mensajeVacio || 'Tu carrito está vacío'}
           </h1>
-          {/* Un error de consulta no significa que el carrito esté vacío. */}
           {mensaje ? (
             <p role="alert" className="mt-3 p-3 bg-red-50 border border-red-200 rounded-[0.25rem] text-[0.75rem] leading-[1.7] text-red-700">{mensaje}</p>
           ) : (
@@ -368,20 +355,17 @@ export default function Cart({
               Cuando elijas un auto y sus fechas, lo retenemos acá por 15 minutos mientras confirmás.
             </p>
           )}
-          {/* Link navega a la ruta del catálogo que ya está registrada en App.jsx. */}
           <Link to="/" className="flex items-center justify-center gap-2 w-full mt-6 px-4 py-3 bg-ink border border-ink rounded-[0.25rem] text-[0.6875rem] text-white">Explorar catálogo de vehículos</Link>
         </section>
       </main>
     )
   }
 
-  // También calculamos el tiempo al entrar con el carrito recibido desde Detalle.
   const segundosRestantes = Math.max(
     0,
     Math.ceil((new Date(carrito.fechaExpiracion).getTime() - Date.now()) / 1000)
   )
 
-  // El resumen también necesita saber si el carrito venció.
   const estaVencido = segundosRestantes === 0
 
   return (
@@ -394,13 +378,11 @@ export default function Cart({
         <span className="text-[0.625rem] tracking-[0.06em] uppercase text-muted">Paso 1 de 2: revisión</span>
       </header>
 
-      {/* El componente decide qué aviso y contador mostrar. */}
       <CartNotice
         segundosRestantes={segundosRestantes}
         idPublicacion={carrito.idPublicacion}
       />
 
-      {/* Conservamos los datos para mostrar qué carrito venció. */}
       <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-start gap-6 tablet:grid-cols-1">
         <CartVehicle
           carrito={{ ...carrito, segundosRestantes }}
@@ -410,7 +392,6 @@ export default function Cart({
           quitando={quitando}
           mensajeFechas={mensajeFechas}
         />
-        {/* Pasamos estaVencido como prop para que el resumen adapte su botón. */}
         <CartSummary
           carrito={carrito}
           estaVencido={estaVencido}
@@ -418,7 +399,6 @@ export default function Cart({
         />
       </div>
 
-      {/* Aparece cuando mostrarModalQuitar es true. */}
       {
         mostrarModalQuitar && (
           <ConfirmCartRemoval

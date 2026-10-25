@@ -1,9 +1,12 @@
+/**
+ * Muestra una reserva del historial y envía sus datos al detalle mediante el enlace.
+ */
+
 import { Link } from 'react-router-dom'
 import { CarIcon } from '../icons/Icons'
 import { formatARS as formatearPrecio, formatearFecha } from '../../utils/formatters'
 
 export default function ReservationHistoryCard({ reserva, publicacion, pago }) {
-  // Canceladas y rechazadas se distinguen de las finalizadas.
   const clasesEstado = ['CANCELADA', 'RECHAZADA'].includes(reserva.estado)
     ? 'bg-red-50 border-red-200 text-red-700'
     : 'bg-surface border-border text-muted'
@@ -29,7 +32,6 @@ export default function ReservationHistoryCard({ reserva, publicacion, pago }) {
           <time dateTime={reserva.fechaFin}>{formatearFecha(reserva.fechaFin)}</time>
           {' · '}{reserva.cantidadDias} días
         </p>
-        {/* Identificamos la reserva con el ID real del backend. */}
         <p className="mt-1 text-[0.625rem] text-muted">
           {publicacion.localidad}, {publicacion.zona} · Reserva #{reserva.idReserva}
         </p>
@@ -40,7 +42,6 @@ export default function ReservationHistoryCard({ reserva, publicacion, pago }) {
           <p className="text-[0.5625rem] uppercase text-muted">Total</p>
           <strong className="text-[0.8125rem] text-ink">{formatearPrecio(reserva.precioTotal)}</strong>
         </div>
-        {/* Enviamos los datos de esta reserva a la vista de detalle. */}
         <Link
           to="/mis-reservas/detalle"
           state={{ reserva, publicacion, pago }}

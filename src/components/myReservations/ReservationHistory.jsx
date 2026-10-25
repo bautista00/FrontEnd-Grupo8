@@ -1,3 +1,7 @@
+/**
+ * Relaciona las reservas del historial con sus publicaciones y pagos y renderiza sus tarjetas.
+ */
+
 import ReservationHistoryCard from "./ReservationHistoryCard"
 import EmptyReservations from "./EmptyReservations"
 
@@ -14,7 +18,6 @@ export default function ReservationHistory({ reservas, publicaciones, pagos }) {
       </header>
 
       <div className="grid gap-3">
-        {/* Repetimos la tarjeta para cada reserva del historial. */}
         {reservas.map((reserva) => {
           const publicacion = publicaciones.find((publicacion) => publicacion.idPublicacion === reserva.idPublicacion)
           const pago = pagos.find((pago) => pago.idReserva === reserva.idReserva)

@@ -1,3 +1,7 @@
+/**
+ * Muestra los importes de la reserva y el método del pago recibido.
+ */
+
 import { formatARS as formatearPrecio } from '../../utils/formatters'
 
 const METODOS_PAGO = {
@@ -12,7 +16,6 @@ export default function ReservationPaymentSummary({ reserva, pago }) {
         Resumen del pago
       </h2>
 
-      {/* Usamos el precio aplicado a la reserva, no el precio actual del auto. */}
       <div className="flex flex-wrap justify-between gap-3 text-[0.6875rem] leading-[1.6] text-soft">
         <span>{reserva.cantidadDias} días × {formatearPrecio(reserva.precioDiaAplicado)}</span>
         <span>{formatearPrecio(reserva.precioTotal)}</span>
@@ -29,8 +32,7 @@ export default function ReservationPaymentSummary({ reserva, pago }) {
         </div>
       </div>
 
-      {/* El método pertenece a PagoResponse y llega por separado. */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mt-5 p-3 bg-paper border border-border rounded-sm text-[0.6875rem] leading-[1.6]">
+      <div className="flex flex-wrap items-center justify-between gap-3 mt-5 p-3 bg-paper border border-border rounded-[0.25rem] text-[0.6875rem] leading-[1.6]">
         <span className="text-muted">Método de pago</span>
         <span className="text-ink">{pago ? METODOS_PAGO[pago.metodo] : 'No disponible'}</span>
       </div>

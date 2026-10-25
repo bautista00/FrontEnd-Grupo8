@@ -1,3 +1,7 @@
+/**
+ * Muestra el punto de retiro y las indicaciones con los datos enviados por la vista de resultado.
+ */
+
 import { Link } from 'react-router-dom'
 import { MapPinIcon } from '../icons/Icons'
 import { formatearFecha } from '../../utils/formatters'
@@ -12,7 +16,6 @@ export default function PickupInstructions({ reserva, publicacion }) {
     <section className="min-w-0 p-7 bg-card border border-border rounded-lg phone:p-5" aria-labelledby="pickup-instructions-title">
       <h2 id="pickup-instructions-title" className="text-[1.5rem] leading-[1.4] text-ink">Dónde retirás el auto</h2>
 
-      {/* Con la reserva confirmada se ve el punto exacto; si no, solo la zona aproximada. */}
       <div className="mt-5">
         <MapaPublicacion latitud={publicacion.latitud} longitud={publicacion.longitud} exacta={estaConfirmada} className="h-[14.375rem]" />
         <div className="flex items-start gap-2 mt-3 p-3 bg-card border border-border rounded-[0.25rem]">
@@ -61,7 +64,6 @@ export default function PickupInstructions({ reserva, publicacion }) {
         <p className="mt-5 text-[0.6875rem] leading-[1.8] text-muted">Podés seguir el estado de tu reserva desde Mis reservas.</p>
       )}
 
-      {/* Estos enlaces navegan a las vistas que ya existen. */}
       <div className="mt-6 pt-5 border-t border-border">
         <Link to="/mis-reservas" className="flex items-center justify-center w-full px-4 py-3 bg-ink rounded-[0.25rem] text-[0.6875rem] text-white">Ver en Mis reservas</Link>
         <Link to="/" className="block mt-4 text-center text-[0.6875rem] text-soft hover:underline">Volver a explorar vehículos</Link>

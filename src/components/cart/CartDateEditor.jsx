@@ -1,3 +1,8 @@
+/**
+ * Permite elegir otro rango de fechas usando el calendario compartido.
+ * Mantiene la selección temporal y llama a las funciones recibidas para guardar o cancelar.
+ */
+
 import { useState } from 'react'
 import DetailCalendar from '../detalle/DetailCalendar'
 import DetailPeriod from '../detalle/DetailPeriod'
@@ -10,15 +15,13 @@ export default function CartDateEditor({
   guardando = false,
   mensaje = '',
 }) {
-  // Empezamos mostrando las fechas actuales del carrito.
   const [inicio, actualizarInicio] = useState(carrito.fechaInicio)
   const [fin, actualizarFin] = useState(carrito.fechaFin)
 
-  // Guardamos temporalmente las fechas que el usuario elige.
+  // Cambia la selección temporal; todavía no guarda en el backend.
   const elegirDia = (fecha) => {
     if (guardando) return
 
-    // Si ya había un rango completo, empezamos una nueva selección.
     if (!inicio || fin || fecha <= inicio) {
       actualizarInicio(fecha)
       actualizarFin('')
@@ -38,7 +41,6 @@ export default function CartDateEditor({
     }
   }
 
-  // Comprobamos que haya un rango completo dentro de un período.
   const rangoValido = Boolean(
     inicio &&
     fin &&
@@ -54,10 +56,8 @@ export default function CartDateEditor({
         Cambiar fechas
       </h3>
 
-      {/* Reutilizamos el bloque que muestra retiro y devolución. */}
       <DetailPeriod inicio={inicio} fin={fin} />
 
-      {/* Reutilizamos el calendario del detalle de publicación. */}
       <DetailCalendar
         periodos={periodos}
         inicio={inicio}
