@@ -25,7 +25,8 @@ export default function Home() {
 
   // Página de resultados del backend, junto con la consulta que la pidió
   const [resultado, setResultado] = useState(null)
-
+  //Promise hace una petición a la API para obtener las zonas y tipos de vehículo, y 
+  // luego actualiza el estado con los resultados. Operacion de manera asincrona, esperando a que se resuelvan las promesas de la API antes de actualizar el estado.
   useEffect(() => {
     Promise.all([obtener('/publicaciones/zonas'), obtener('/tipo-vehiculo')])
       .then(([listaZonas, listaTipos]) => {
@@ -46,6 +47,8 @@ export default function Home() {
   }
   const consulta = parametros.toString()
 
+  //En este caso useEffect hace una petición a la API para obtener las publicaciones que 
+  //coinciden con los filtros seleccionados por el usuario.
   useEffect(() => {
     let vigente = true
     obtener(`/publicaciones/buscar?${consulta}`)
