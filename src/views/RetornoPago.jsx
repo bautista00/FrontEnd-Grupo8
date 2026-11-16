@@ -1,0 +1,96 @@
+/**
+ * Verifica en el backend el estado del pago al volver de Mercado Pago.
+ */
+
+import { useEffect } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
+import { Link, useParams } from 'react-router-dom'
+import { fetchPagoReserva } from '../components/Redux/reservasSlice'
+
+const MENSAJES = {
+  APROBADO: {
+    titulo: '¡Pago aprobado!',
+    texto: 'Tu reserva está confirmada. Ya podés ver dónde retirar el auto en Mis reservas.',
+    color: 'bg-emerald-50 text-emerald-700',
+  },
+  PENDIENTE: {
+    titulo: 'Pago pendiente',
+    texto: 'Mercado Pago todavía está procesando el pago. Te avisaremos el resultado en Mis reservas.',
+    color: 'bg-amber-50 text-amber-700',
+  },
+  RECHAZADO: {
+    titulo: 'Pago rechazado',
+    texto: 'Mercado Pago no aprobó el pago. Volvé al carrito para intentar una nueva reserva.',
+    color: 'bg-red-50 text-red-700',
+  },
+}
+
+export default function RetornoPago() {
+  const { idReserva } = useParams()
+  const dispatch = useDispatch()
+  const { pago: pagoGuardado, loadingPago, errorPago } = useSelector((state) => state.reservas)
+  // El store puede tener el pago de otra reserva consultada antes
+  const pago = pagoGuardado && String(pagoGuardado.idReserva) === String(idReserva) ? pagoGuardado : null
+
+  // Consulta el estado real del pago al volver de Mercado Pago.
+  useEffect(() => {
+    if (idReserva) dispatch(fetchPagoReserva(idReserva))
+  }, [dispatch, idReserva])
+
+  const mensaje = idReserva ? errorPago : 'No pudimos identificar la reserva.'
+  const verificando = Boolean(idReserva) && (loadingPago || (!pago && !errorPago))
+
+  // El resultado se decide con la respuesta del backend, no con un estado escrito en la URL.
+  const estadoPago = pago?.estado
+  const datos = MENSAJES[estadoPago]
+
+  if (verificando || mensaje || !datos) {
+    return (
+      <main className="flex-1 w-full max-w-page mx-auto px-(--gutter) pt-10 pb-16">
+        <h1 className="text-[2.25rem] text-ink">
+          {verificando
+            ? 'Verificando el pago…'
+            : 'No pudimos verificar el pago'}
+        </h1>
+
+        {mensaje && (
+          <p role="alert" className="mt-4 text-[0.75rem] text-error">
+            {mensaje}
+          </p>
+        )}
+
+        <Link
+          to="/mis-reservas"
+          className="inline-block mt-6 text-soft hover:underline"
+        >
+          Ir a Mis reservas
+        </Link>
+      </main>
+    )
+  }
+
+  return (
+    <main className="flex-1 w-full max-w-page mx-auto px-(--gutter) pt-10 pb-16 phone:pt-7 phone:pb-10">
+      <header className="flex flex-col items-center text-center">
+        <div className={`grid place-items-center w-14 h-14 mb-5 rounded-full text-[1.625rem] ${datos.color}`} aria-hidden="true">
+          {estadoPago === 'APROBADO' ? '✓' : '!'}
+        </div>
+        <h1 className="text-[2.25rem] leading-[1.3] text-ink phone:text-[1.75rem]">{datos.titulo}</h1>
+        <p className="max-w-[40rem] mt-3 text-[0.75rem] leading-[1.8] text-soft">{datos.texto}</p>
+
+        {idReserva && (
+          <div className="mt-6 px-5 py-3 bg-card border border-border rounded-lg text-[0.6875rem] phone:px-4">
+            <span className="text-muted">Reserva <strong className="ml-2 text-ink">#{idReserva}</strong></span>
+          </div>
+        )}
+
+        <div className="flex flex-wrap justify-center gap-4 mt-6 text-[0.6875rem]">
+          <Link to="/mis-reservas" className="text-soft hover:underline">Ir a Mis reservas</Link>
+          <Link to={estadoPago === 'RECHAZADO' ? '/carrito' : '/'} className="text-soft hover:underline">
+            {estadoPago === 'RECHAZADO' ? 'Volver al carrito' : 'Volver al inicio'}
+          </Link>
+        </div>
+      </header>
+    </main>
+  )
+}

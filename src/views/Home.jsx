@@ -1,19 +1,22 @@
 import { useEffect, useState } from 'react'
-import CategoryFilter from '../components/home/CategoryFilter'
+import { useDispatch, useSelector } from 'react-redux'
+import FiltroCategoria from '../components/home/FiltroCategoria'
 import Hero from '../components/home/Hero'
-import SearchBar from '../components/home/SearchBar'
-import SortSelect from '../components/home/SortSelect'
-import VehicleGrid from '../components/home/VehicleGrid'
-import { RotateCcwIcon } from '../components/icons/Icons'
-import PublicationMessage from '../components/publicaciones/PublicationMessage'
-import PublicationPagination from '../components/publicaciones/PublicationPagination'
+import BarraBusqueda from '../components/home/BarraBusqueda'
+import SelectorOrden from '../components/home/SelectorOrden'
+import GrillaVehiculos from '../components/home/GrillaVehiculos'
+import { RotateCcwIcon } from '../components/iconos/Iconos'
+import MensajePublicacion from '../components/publicaciones/MensajePublicacion'
+import PaginacionPublicaciones from '../components/publicaciones/PaginacionPublicaciones'
 import { obtener } from '../utils/api'
 import { PUBLICACIONES_POR_PAGINA } from '../utils/catalogo'
+import { fetchTiposVehiculo } from '../components/Redux/vehiculosSlice'
 
 export default function Home() {
   // Zonas y tipos de vehículo para los filtros
+  const dispatch = useDispatch()
   const [zonas, setZonas] = useState([])
-  const [tipos, setTipos] = useState([])
+  const tipos = useSelector((state) => state.vehiculos.tiposVehiculo)
 
   const [zona, setZona] = useState('all')
   const [tipoId, setTipoId] = useState('all')
@@ -25,16 +28,13 @@ export default function Home() {
 
   // Página de resultados del backend, junto con la consulta que la pidió
   const [resultado, setResultado] = useState(null)
-  //Promise hace una petición a la API para obtener las zonas y tipos de vehículo, y 
-  // luego actualiza el estado con los resultados. Operacion de manera asincrona, esperando a que se resuelvan las promesas de la API antes de actualizar el estado.
+  // Pide las zonas para el filtro. Los tipos de vehículo se piden al store de Redux.
   useEffect(() => {
-    Promise.all([obtener('/publicaciones/zonas'), obtener('/tipo-vehiculo')])
-      .then(([listaZonas, listaTipos]) => {
-        setZonas(listaZonas)
-        setTipos(listaTipos)
-      })
+    obtener('/publicaciones/zonas')
+      .then((listaZonas) => setZonas(listaZonas))
       .catch((error) => console.error('Error al cargar los filtros del catálogo', error))
-  }, [])
+    dispatch(fetchTiposVehiculo())
+  }, [dispatch])
 
   // El backend filtra, ordena y pagina sobre todas las publicaciones activas.
   // Las fechas solo se mandan cuando están elegidas las dos.
@@ -94,7 +94,7 @@ export default function Home() {
     <main className="flex-1 w-full max-w-page mx-auto px-(--gutter) pt-10 pb-14 lg:pt-14">
       <Hero />
 
-      <SearchBar
+      <BarraBusqueda
         zonas={zonas}
         zona={zona}
         onZonaChange={filtrar(setZona)}
@@ -107,8 +107,8 @@ export default function Home() {
 
       <section id="fleet-results">
         <div className="flex flex-col items-stretch gap-4 mb-5 min-[56.25rem]:flex-row min-[56.25rem]:items-center min-[56.25rem]:justify-between">
-          <CategoryFilter tipos={tipos} tipoId={tipoId} onChange={filtrar(setTipoId)} />
-          <SortSelect value={sortBy} onChange={filtrar(setSortBy)} />
+          <FiltroCategoria tipos={tipos} tipoId={tipoId} onChange={filtrar(setTipoId)} />
+          <SelectorOrden value={sortBy} onChange={filtrar(setSortBy)} />
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6 text-[0.75rem] text-muted">
@@ -130,15 +130,15 @@ export default function Home() {
         </div>
 
         {resultado?.error && !actualizando ? (
-          <PublicationMessage error onRetry={() => setRecargar(recargar + 1)}>{resultado.error}</PublicationMessage>
+          <MensajePublicacion error onRetry={() => setRecargar(recargar + 1)}>{resultado.error}</MensajePublicacion>
         ) : !catalogo ? (
-          <PublicationMessage>Cargando vehículos…</PublicationMessage>
+          <MensajePublicacion>Cargando vehículos…</MensajePublicacion>
         ) : catalogo.content.length === 0 && !actualizando ? (
           <p className="py-12 text-center text-[0.875rem] text-muted">No se encontraron vehículos para esta selección.</p>
         ) : (
           <div aria-busy={actualizando} className={actualizando ? 'opacity-60 transition-opacity' : undefined}>
-            <VehicleGrid items={catalogo.content} />
-            <PublicationPagination
+            <GrillaVehiculos items={catalogo.content} />
+            <PaginacionPublicaciones
               pagina={catalogo.number}
               totalPages={catalogo.totalPages}
               totalElements={catalogo.totalElements}

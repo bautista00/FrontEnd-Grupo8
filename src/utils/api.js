@@ -4,6 +4,14 @@
 
 export const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
 
+// Configuración de axios con el token del usuario para los thunks de Redux (sin sesión no manda el header).
+export const conToken = (token) => (token ? { headers: { Authorization: `Bearer ${token}` } } : {})
+
+// Mensaje de un error de axios: el que mandó el backend o, si no hay, el indicado.
+export function mensajeDe(error, porDefecto) {
+  return error.response?.data?.mensaje || error.response?.data?.message || porDefecto
+}
+
 // Lee el mensaje del backend y lo convierte en un Error que recibirá el catch de la vista.
 async function errorDe(respuesta, mensajeError) {
   const cuerpo = await respuesta.json().catch(() => ({}))

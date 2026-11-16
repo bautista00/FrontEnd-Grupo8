@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useMapsLibrary } from '@vis.gl/react-google-maps'
-import { inputStyles } from '../ui/FormField'
-import PublicationIcon from './PublicationIcon'
+import { inputStyles } from '../ui/CampoFormulario'
+import IconoPublicacion from './IconoPublicacion'
 import { tieneCoordenadas } from './ubicacion'
 
 // devuelve el texto de la parte de la dirección que tenga ese tipo (ej: 'route', 'postal_code')
@@ -66,7 +66,7 @@ export default function SelectorUbicacion({ valores, onChange, onUbicacionSelecc
   }
 
   return <div className="relative">
-    <PublicationIcon nombre="pinInput" className="absolute top-[1.3125rem] left-3 -translate-y-1/2" />
+    <IconoPublicacion nombre="pinInput" className="absolute top-[1.3125rem] left-3 -translate-y-1/2" />
     <input id="direccion" name="direccion" required autoComplete="off" className={inputStyles + ' pl-9'}
       placeholder="Escribí la calle y la altura" value={valores.direccion} onChange={escribir}
       onBlur={() => setSugerencias([])} onKeyDown={(event) => event.key === 'Escape' && setSugerencias([])}

@@ -1,5 +1,5 @@
 import enviar from './enviarPublicacion'
-import { cambiaronDatos, datosPublicacion, datosUbicacion, periodoDesdeApi } from './publicationFormData'
+import { cambiaronDatos, datosPublicacion, datosUbicacion, periodoDesdeApi } from './datosFormularioPublicacion'
 
 export default function guardarPublicacion({ valores, publicacion, token }) {
   let guardada = { ...publicacion, periodos: [...(publicacion?.periodos ?? [])] }

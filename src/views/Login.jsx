@@ -1,16 +1,19 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { pageStyles } from '../components/publicaciones/publicationStyles'
-import PublicationMessage from '../components/publicaciones/PublicationMessage'
-import AuthCard from '../components/auth/AuthCard'
-import AuthSwitch from '../components/auth/AuthSwitch'
-import InputField from '../components/ui/InputField'
-import PasswordField from '../components/ui/PasswordField'
-import { btnBase, btnDark } from '../components/ui/buttonStyles'
+import { useDispatch } from 'react-redux'
+import { logout, setToken } from '../components/Redux/userSlice'
+import { pageStyles } from '../components/publicaciones/estilosPublicacion'
+import MensajePublicacion from '../components/publicaciones/MensajePublicacion'
+import TarjetaAuth from '../components/auth/TarjetaAuth'
+import CambioAuth from '../components/auth/CambioAuth'
+import CampoTexto from '../components/ui/CampoTexto'
+import CampoContrasena from '../components/ui/CampoContrasena'
+import { btnBase, btnDark } from '../components/ui/estilosBoton'
 import { enviar } from '../utils/api'
 
-export default function Login({ reiniciarCarrito }) {
+export default function Login() {
   const navigate = useNavigate()
+  const dispatch = useDispatch()
   // Si llegó desde otra pantalla (por ejemplo, al agregar al carrito), vuelve ahí al entrar
   const volverA = useLocation().state?.volverA ?? '/'
   const [valores, setValores] = useState({ email: '', password: '' })
@@ -29,45 +32,45 @@ export default function Login({ reiniciarCarrito }) {
     if (enviando) return
     setError('')
 
-    setDatosParaEnviar({ datos: { email: valores.email.trim(), password: valores.password }, tokenInicial: localStorage.getItem('jwtToken'), volverA, reiniciarCarrito })
+    setDatosParaEnviar({ datos: { email: valores.email.trim(), password: valores.password }, volverA })
   }
 
   useEffect(() => {
     if (!datosParaEnviar) return
     let vigente = true
-    const { datos, tokenInicial, volverA, reiniciarCarrito } = datosParaEnviar
+    const { datos, volverA } = datosParaEnviar
     enviar('/auth/login', 'POST', null, datos, 'El correo o la contraseña no son correctos.')
       .then((respuesta) => {
-        if (!vigente || tokenInicial !== localStorage.getItem('jwtToken')) return
+        if (!vigente) return
         setDatosParaEnviar(null)
         setValores((actuales) => ({ ...actuales, password: '' }))
-        localStorage.setItem('jwtToken', respuesta.token)
-        reiniciarCarrito()
+        dispatch(logout())
+        dispatch(setToken(respuesta.token))
         navigate(volverA)
       })
       .catch((error) => {
-        if (!vigente || tokenInicial !== localStorage.getItem('jwtToken')) return
+        if (!vigente) return
         setError(error.message)
         setDatosParaEnviar(null)
       })
     return () => { vigente = false }
-  }, [datosParaEnviar, navigate])
+  }, [datosParaEnviar, navigate, dispatch])
 
   return (
     <main className={pageStyles + ' pb-16'}>
-      <AuthCard titulo="Iniciar sesión" subtitulo="Ingresá con tu email y tu contraseña.">
+      <TarjetaAuth titulo="Iniciar sesión" subtitulo="Ingresá con tu email y tu contraseña.">
         <form onSubmit={iniciarSesion} className="grid gap-4">
-          <InputField disabled={enviando} id="email" type="email" label="Correo electrónico" autoComplete="email" required value={valores.email} onChange={cambiarCampo} />
-          <PasswordField disabled={enviando} id="password" label="Contraseña" autoComplete="current-password" required value={valores.password} onChange={cambiarCampo} />
+          <CampoTexto disabled={enviando} id="email" type="email" label="Correo electrónico" autoComplete="email" required value={valores.email} onChange={cambiarCampo} />
+          <CampoContrasena disabled={enviando} id="password" label="Contraseña" autoComplete="current-password" required value={valores.password} onChange={cambiarCampo} />
 
-          {error && <PublicationMessage error>{error}</PublicationMessage>}
+          {error && <MensajePublicacion error>{error}</MensajePublicacion>}
 
           <button type="submit" disabled={enviando} className={btnBase + ' ' + btnDark + ' w-full mt-2 px-4 py-3 rounded-[0.25rem]'}>
             {enviando ? 'Ingresando…' : 'Iniciar sesión'}
           </button>
         </form>
-        <AuthSwitch pregunta="¿No tenés cuenta?" texto="Registrate" to="/registro" state={{ volverA }} />
-      </AuthCard>
+        <CambioAuth pregunta="¿No tenés cuenta?" texto="Registrate" to="/registro" state={{ volverA }} />
+      </TarjetaAuth>
     </main>
   )
 }

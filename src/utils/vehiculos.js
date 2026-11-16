@@ -120,7 +120,7 @@ export const portadaDe = (vehiculo) => {
 export const tieneFotos = (vehiculo) => vehiculo.fotos.length > 0
 export const puedePublicar = (vehiculo) => tieneFotos(vehiculo)
 
-// Fotos guardadas de un vehículo, con la forma que usan PhotoTile y las funciones de arriba.
+// Fotos guardadas de un vehículo, con la forma que usan MiniaturaFoto y las funciones de arriba.
 // El backend ya las devuelve ordenadas por "orden"; la primera es la portada.
 export async function fotosDeVehiculo(idVehiculo) {
   const imagenes = await obtener(`/imagen-vehiculo/por-vehiculo/${idVehiculo}`)
@@ -147,22 +147,6 @@ export async function publicacionActualDe(token, idVehiculo) {
 }
 
 export const VEHICULOS_POR_PAGINA = 9
-// Arma lo que necesita MyVehicleCard. El backend no manda las fotos ni la publicación
-// dentro del vehículo, así que se piden aparte y se unen por idVehiculo.
-export async function cargarMisVehiculos(token, pagina) {
-  const [vehiculos, publicaciones] = await Promise.all([
-    obtener(`/vehiculo/mios?page=${pagina}&size=${VEHICULOS_POR_PAGINA}`, token),
-    publicacionesVigentes(token),
-  ])
-
-  const content = await Promise.all(vehiculos.content.map(async (vehiculo) => ({
-    ...vehiculo,
-    fotos: await fotosDeVehiculo(vehiculo.idVehiculo),
-    publicacionActual: publicacionDe(publicaciones, vehiculo.idVehiculo),
-  })))
-
-  return { ...vehiculos, content }
-}
 
 // Lleva al backend las diferencias entre las fotos guardadas (`originales`) y las de la pantalla (`actuales`):
 // borra las quitadas, sube las nuevas y actualiza el orden de las que cambiaron de lugar.

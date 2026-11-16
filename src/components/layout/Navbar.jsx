@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { CartIcon, UserIcon } from '../icons/Icons'
-import { btnBase, btnDark, btnSize } from '../ui/buttonStyles'
-import ConfirmLogout from './ConfirmLogout'
+import { useDispatch, useSelector } from 'react-redux'
+import { logout } from '../Redux/userSlice'
+import { CartIcon, UserIcon } from '../iconos/Iconos'
+import { btnBase, btnDark, btnSize } from '../ui/estilosBoton'
+import ConfirmarCerrarSesion from './ConfirmarCerrarSesion'
 
 const APP_NAME = 'Volanta'
 
@@ -23,11 +25,12 @@ const NAV_LINKS = [
   { label: 'Mis vehículos', href: '/mis-vehiculos' },
 ]
 
-export default function Navbar({ carrito }) {
+export default function Navbar() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
-  // Se vuelve a leer en cada navegación, así cambia apenas se entra o se sale
-  const conSesion = Boolean(localStorage.getItem('jwtToken'))
+  const dispatch = useDispatch()
+  const conSesion = Boolean(useSelector((state) => state.users.token))
+  const carrito = useSelector((state) => state.carrito.carrito)
   const cantidadCarrito = conSesion && carrito ? 1 : 0
 
   const [menuAbierto, actualizarMenuAbierto] = useState(false)
@@ -64,7 +67,7 @@ export default function Navbar({ carrito }) {
   // El carrito queda guardado en el backend: al volver a entrar, el login lo vuelve a pedir
   function cerrarSesion() {
     actualizarMostrarModalCerrarSesion(false)
-    localStorage.removeItem('jwtToken')
+    dispatch(logout())
     navigate('/')
   }
 
@@ -164,7 +167,7 @@ export default function Navbar({ carrito }) {
 
       {/* Va al body: el header tiene su propio z-index y otras barras fijas (como la de cambios pendientes) quedarían encima */}
       {mostrarModalCerrarSesion && createPortal(
-        <ConfirmLogout alCerrar={() => actualizarMostrarModalCerrarSesion(false)} alConfirmar={cerrarSesion} />,
+        <ConfirmarCerrarSesion alCerrar={() => actualizarMostrarModalCerrarSesion(false)} alConfirmar={cerrarSesion} />,
         document.body,
       )}
     </header>
