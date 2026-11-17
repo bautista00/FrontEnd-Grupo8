@@ -1,38 +1,24 @@
 import { useEffect, useState } from 'react'
-import { useSelector } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import PaginacionPublicaciones from './PaginacionPublicaciones'
 import MensajePublicacion from './MensajePublicacion'
 import FotoPublicacion from './FotoPublicacion'
-import { API_URL } from '../../utils/api'
+import { fetchVehiculosParaPublicar } from '../Redux/vehiculosSlice'
 
 // Lista de vehículos del usuario para elegir cuál publicar
 export default function OpcionesVehiculoPublicacion({ seleccionado, onChange }) {
-  const [datos, setDatos] = useState(null)
-  const [error, setError] = useState('')
+  const dispatch = useDispatch()
+  const { paraPublicar: datos, loadingParaPublicar: loading, errorParaPublicar: error } = useSelector((state) => state.vehiculos)
   const [pagina, setPagina] = useState(0)
   const [recargar, setRecargar] = useState(0)
   const token = useSelector((state) => state.users.token)
 
   useEffect(() => {
-    fetch(`${API_URL}/vehiculo/mios?page=${pagina}&size=10`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((respuesta) => {
-        if (!respuesta.ok) throw new Error('No se pudieron cargar tus vehículos')
-        return respuesta.json()
-      })
-      .then((resultado) => {
-        setDatos(resultado)
-        setError('')
-      })
-      .catch((error) => {
-        console.error('Error al cargar', error)
-        setError('No se pudieron cargar tus vehículos. Intentá nuevamente.')
-      })
-  }, [pagina, recargar, token])
+    if (token) dispatch(fetchVehiculosParaPublicar(pagina))
+  }, [dispatch, pagina, recargar, token])
 
   if (error) return <MensajePublicacion error onRetry={() => setRecargar(recargar + 1)}>{error}</MensajePublicacion>
-  if (!datos) return <MensajePublicacion>Cargando tus vehículos…</MensajePublicacion>
+  if (loading || !datos) return <MensajePublicacion>Cargando tus vehículos…</MensajePublicacion>
   if (datos.content.length === 0) return <MensajePublicacion>Todavía no tenés vehículos registrados.</MensajePublicacion>
 
   return (

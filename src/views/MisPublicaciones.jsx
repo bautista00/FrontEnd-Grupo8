@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import { pageStyles, headingStyles, titleStyles, eyebrowStyles, introStyles } from '../components/publicaciones/estilosPublicacion'
@@ -8,8 +8,7 @@ import MensajePublicacion from '../components/publicaciones/MensajePublicacion'
 import PaginacionPublicaciones from '../components/publicaciones/PaginacionPublicaciones'
 import { btnBase, btnDark, btnSize } from '../components/ui/estilosBoton'
 import { ESTADOS_PUBLICACION } from '../utils/publicaciones'
-import { actualizarPublicacionEnLista, fetchMisPublicaciones } from '../components/Redux/publicacionesSlice'
-import enviar from '../components/publicaciones/enviarPublicacion'
+import { cambiarEstadoPublicacion, fetchMisPublicaciones, limpiarEditor, limpiarErrorGuardado } from '../components/Redux/publicacionesSlice'
 
 // Botones para filtrar por estado: "Todas" + uno por cada estado
 const FILTROS = [
@@ -20,8 +19,14 @@ const FILTROS = [
 export default function MisPublicaciones() {
   const dispatch = useDispatch()
   // Página de resultados que devuelve el backend ({ content, totalPages, totalElements })
-  const { misPublicaciones: datos, loading, error } = useSelector((state) => state.publicaciones)
-  const [aviso, setAviso] = useState('')
+  const { misPublicaciones: datos, loading, error, guardando: procesando, errorGuardado, incierto } = useSelector((state) => state.publicaciones)
+  const vigente = useRef(false)
+
+  useEffect(() => {
+    vigente.current = true
+    dispatch(limpiarEditor())
+    return () => { vigente.current = false }
+  }, [dispatch])
 
   // Filtros de la consulta
   const [pagina, setPagina] = useState(0)
@@ -30,48 +35,14 @@ export default function MisPublicaciones() {
   const [busqueda, setBusqueda] = useState('')
 
   const [recargar, setRecargar] = useState(0)
-  const [accionPendiente, setAccionPendiente] = useState(null)
-  const [incierto, setIncierto] = useState(false)
-  const procesando = accionPendiente !== null
 
   const token = useSelector((state) => state.users.token)
 
   // Cada vez que cambia un filtro, la página o "recargar", volvemos a consultar
   useEffect(() => {
     if (!token) return
-    let vigente = true
     dispatch(fetchMisPublicaciones({ pagina, estado, busqueda }))
-      .unwrap()
-      .then(() => { if (vigente) setIncierto(false) })
-      .catch(() => {})
-    return () => { vigente = false }
   }, [dispatch, token, pagina, estado, busqueda, recargar])
-
-  useEffect(() => {
-    if (!accionPendiente) return
-    let vigente = true
-    const { publicacion, accion, token: tokenEnvio, filtro, paginaActual, total } = accionPendiente
-    const ruta = accion === 'desactivar' ? '' : `/${accion}`
-    enviar(`/publicaciones/${publicacion.idPublicacion}${ruta}`, accion === 'desactivar' ? 'DELETE' : 'PUT', tokenEnvio)
-      .then((respuesta) => {
-        if (!vigente) return
-        const guardada = respuesta ?? { ...publicacion, estado: 'DESACTIVADA' }
-        const sigueEnFiltro = filtro === 'TODAS' || filtro === guardada.estado
-        dispatch(actualizarPublicacionEnLista({ publicacion: guardada, filtro }))
-        if (!sigueEnFiltro) {
-          setPagina(Math.min(paginaActual, Math.max(0, Math.ceil((total - 1) / 10) - 1)))
-          setRecargar((actual) => actual + 1)
-        }
-      })
-      .catch((error) => {
-        if (!vigente) return
-        const sinConfirmacion = !error.status || error.status >= 500
-        setIncierto(sinConfirmacion)
-        setAviso(error.message + (sinConfirmacion ? ' Comprobá el estado antes de volver a guardar.' : ''))
-      })
-      .finally(() => { if (vigente) setAccionPendiente(null) })
-    return () => { vigente = false }
-  }, [accionPendiente, dispatch])
 
   function cambiarFiltro(valor) {
     if (procesando || incierto) return
@@ -89,15 +60,23 @@ export default function MisPublicaciones() {
   }
 
   // Pausar y reactivar son PUT a su propia ruta; desactivar es un DELETE
-  function cambiarEstado(publicacion, accion) {
+  async function cambiarEstado(publicacion, accion) {
     if (procesando || incierto) return
     if (accion === 'desactivar' && !window.confirm('¿Desactivar esta publicación? No vas a poder reactivarla.')) return
-    setAviso('')
-    setAccionPendiente({ publicacion, accion, token, filtro: estado, paginaActual: pagina, total: datos.totalElements })
+    try {
+      const guardada = await dispatch(cambiarEstadoPublicacion({ publicacion, accion })).unwrap()
+      if (!vigente.current) return
+      if (estado !== 'TODAS' && estado !== guardada.estado) {
+        setPagina(Math.min(pagina, Math.max(0, Math.ceil((datos.totalElements - 1) / 10) - 1)))
+        setRecargar((actual) => actual + 1)
+      }
+    } catch {
+      // El error se muestra desde el slice.
+    }
   }
 
   function consultarDeNuevo() {
-    setAviso('')
+    dispatch(limpiarErrorGuardado())
     setRecargar((actual) => actual + 1)
   }
 
@@ -193,8 +172,10 @@ export default function MisPublicaciones() {
         </form>
       </div>
 
-      {aviso && <MensajePublicacion error>{aviso}</MensajePublicacion>}
-      {incierto && <button type="button" onClick={consultarDeNuevo} className="text-xs underline">Comprobar estado</button>}
+      {errorGuardado && <MensajePublicacion error>{errorGuardado.message}{incierto ? ' Comprobá el estado antes de volver a guardar.' : ''}</MensajePublicacion>}
+      {incierto && (errorGuardado?.tipo === 'guardar' && errorGuardado.idPublicacion
+        ? <Link to={`/publicaciones/${errorGuardado.idPublicacion}/editar`} className="text-xs underline">Revisar publicación pendiente</Link>
+        : <button type="button" onClick={consultarDeNuevo} className="text-xs underline">Comprobar estado</button>)}
       {procesando && <MensajePublicacion>Guardando estado…</MensajePublicacion>}
       {resultados}
     </main>

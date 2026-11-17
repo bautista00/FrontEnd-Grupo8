@@ -1,53 +1,24 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import IconoPublicacion from './IconoPublicacion'
-import { API_URL } from '../../utils/api'
-
-// Portadas ya pedidas, por idVehiculo. Si dos componentes muestran el mismo auto
-// (por ejemplo, en Editar publicación) o se vuelve a la misma página, se reusa el pedido.
-const portadas = new Map()
-
-function obtenerPortada(idVehiculo) {
-  if (!portadas.has(idVehiculo)) {
-    const pedido = fetch(`${API_URL}/imagen-vehiculo/por-vehiculo/${idVehiculo}`)
-      .then((respuesta) => {
-        if (!respuesta.ok) throw new Error('No se pudieron cargar las fotos')
-        return respuesta.json()
-      })
-      .then((imagenes) => {
-        // La portada es la imagen con menor "orden"
-        const primera = [...imagenes].sort((a, b) => a.orden - b.orden).find((imagen) => imagen.file)
-        return primera ? `data:image/jpeg;base64,${primera.file}` : null
-      })
-      .catch((error) => {
-        // Si falla, lo olvidamos para poder reintentar la próxima vez
-        portadas.delete(idVehiculo)
-        throw error
-      })
-    portadas.set(idVehiculo, pedido)
-  }
-  return portadas.get(idVehiculo)
-}
+import { fetchFotosVehiculo, olvidarFotosVehiculo } from '../Redux/vehiculosSlice'
+import { store } from '../Redux/store'
 
 // Muestra la primera foto del vehículo; si no tiene, muestra un ícono de auto
 export default function FotoPublicacion({ idVehiculo, alt = '', large = false }) {
-  const [portada, setPortada] = useState(null)
+  const dispatch = useDispatch()
+  const entrada = useSelector((state) => state.vehiculos.fotosPorVehiculo[idVehiculo])
 
   useEffect(() => {
-    if (!idVehiculo) return
+    if (idVehiculo) dispatch(fetchFotosVehiculo(idVehiculo))
+  }, [dispatch, idVehiculo, entrada?.requestId])
 
-    let vigente = true
-    obtenerPortada(idVehiculo)
-      .then((imagen) => { if (vigente) setPortada(imagen) })
-      .catch((error) => console.error('Error al cargar la foto', error))
-    // Si cambia el vehículo antes de que llegue la respuesta, ignoramos la anterior
-    return () => { vigente = false }
-  }, [idVehiculo])
-
-  if (!portada) return <IconoPublicacion nombre={large ? 'carLarge' : 'car'} />
+  const portada = entrada?.fotos?.find((foto) => foto.url)?.url
+  if (!portada) return <span title={entrada?.error || undefined}><IconoPublicacion nombre={large ? 'carLarge' : 'car'} /></span>
   return <img src={portada} alt={alt} className="w-full h-full object-cover" />
 }
 
 // Borra la portada guardada para que se vuelva a pedir al back.
 export function olvidarPortada(idVehiculo) {
-  portadas.delete(idVehiculo)
+  store.dispatch(olvidarFotosVehiculo(idVehiculo))
 }

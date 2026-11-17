@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { pageStyles, headingStyles, titleStyles, eyebrowStyles, introStyles, descriptionStyles, actionsStyles, textButtonStyles, smallButtonStyles } from '../components/publicaciones/estilosPublicacion'
@@ -14,30 +14,18 @@ import VistaPreviaPublicacion from '../components/publicaciones/VistaPreviaPubli
 import BarraCambiosPendientes from '../components/publicaciones/BarraCambiosPendientes'
 import MensajePublicacion from '../components/publicaciones/MensajePublicacion'
 import { tieneCoordenadas } from '../components/publicaciones/ubicacion'
-import { valoresIniciales, periodoDesdeApi, completarIds, cambiaronDatos, cambiaronPeriodos, validarFormulario } from '../components/publicaciones/datosFormularioPublicacion'
-import guardarPublicacion from '../components/publicaciones/guardarPublicacion'
+import { valoresIniciales, datosUbicacion, completarIds, cambiaronDatos, cambiaronPeriodos, validarFormulario } from '../components/publicaciones/datosFormularioPublicacion'
+import {
+  abrirEditor, bloquearGuardado, cambiarEstadoPublicacion, descartarBorradorAlta, fetchEdicionPublicacion, guardarBorradorAlta,
+  guardarCambiosPublicacion, limpiarErrorGuardado,
+} from '../components/Redux/publicacionesSlice'
+import { elegirVehiculoPublicacion, fetchVehiculoParaPublicar } from '../components/Redux/vehiculosSlice'
 import { fetchUser } from '../components/Redux/userSlice'
-
-import { obtener } from '../utils/api'
-import enviar from '../components/publicaciones/enviarPublicacion'
-
-// Borrador del alta mientras se registra otro vehículo desde el formulario
-const BORRADOR_ALTA = 'borradorPublicacion'
-
-// Solo se retoma si se vuelve del alta de vehículo y es de la misma sesión
-function leerBorrador(state, idUsuario) {
-  if (!state?.retomarBorrador) return null
-  try {
-    const borrador = JSON.parse(sessionStorage.getItem(BORRADOR_ALTA))
-    return borrador?.idUsuario === idUsuario ? borrador.valores : null
-  } catch {
-    return null
-  }
-}
 
 export default function FormularioPublicacion(props) {
   const { id } = useParams()
-  return <PublicationEditor key={props.modo === 'editar' ? id : 'nueva'} {...props} id={id} />
+  const token = useSelector((state) => state.users.token)
+  return <PublicationEditor key={`${token}:${props.modo === 'editar' ? id : 'nueva'}`} {...props} id={id} />
 }
 
 function PublicationEditor({ modo = 'crear', id }) {
@@ -48,178 +36,79 @@ function PublicationEditor({ modo = 'crear', id }) {
   const { token, user: usuario, error: errorUsuario } = useSelector((state) => state.users)
   const idUsuario = usuario?.idUsuario
 
-  // Publicación tal como está guardada en el backend (solo al editar)
-  const [publicacion, setPublicacion] = useState(null)
-  // Al volver de registrar un vehículo se retoma lo que ya estaba completo
-  const [borrador] = useState(() => (editando ? null : leerBorrador(location.state, idUsuario)))
-  // Lo que el usuario va completando en el formulario
+  const {
+    edicion, editorActual, loadingEdicion: cargandoEditor, errorEdicion: errorEditor,
+    guardando, errorGuardado, incierto, borradorAlta,
+  } = useSelector((state) => state.publicaciones)
+  const { vehiculoElegido, loadingElegido, errorElegido } = useSelector((state) => state.vehiculos)
+  const [regreso] = useState(location.state)
+  const [claveEditor] = useState(location.key)
+  const [usarGuardada] = useState(() => editando && regreso?.usarGuardada
+    && String(edicion?.idPublicacion) === String(id))
+  const esEditorActual = editorActual === claveEditor
+  const publicacion = (esEditorActual || (usarGuardada && String(edicion?.idPublicacion) === String(id)))
+    ? edicion : null
+  const cargando = esEditorActual && cargandoEditor
+  const errorCarga = esEditorActual ? errorEditor : null
   const [valores, setValores] = useState(() => {
-    const idVehiculo = location.state?.idVehiculo ?? borrador?.idVehiculo
+    if (usarGuardada) return regreso.borrador ?? valoresIniciales(publicacion)
+    const borrador = !editando && regreso?.retomarBorrador && borradorAlta?.idUsuario === idUsuario
+      ? borradorAlta.valores : null
+    const idVehiculo = regreso?.idVehiculo ?? borrador?.idVehiculo
     return { ...valoresIniciales(), ...borrador, idVehiculo: idVehiculo ? String(idVehiculo) : '' }
   })
-  // Vehículo elegido en la lista (solo al crear)
-  const [vehiculoElegido, setVehiculoElegido] = useState(null)
-
-  const [cargando, setCargando] = useState(editando)
-  const [errorCarga, setErrorCarga] = useState('')
-  const [accionPendiente, setAccionPendiente] = useState(null)
-  const [incierto, setIncierto] = useState(false)
-  const [regreso] = useState(location.state)
-  const guardando = accionPendiente !== null
-  const ubicacionFija = editando || Boolean(publicacion?.idPublicacion)
-  // Mensaje de arriba del formulario. Puede venir de la pantalla de crear (location.state)
-  const [mensaje, setMensaje] = useState(location.state?.mensaje ?? '')
-  const [esError, setEsError] = useState(location.state?.error ?? false)
-
-  // Primer día elegido en el calendario mientras se arma un período
+  const [idVehiculoRecibido] = useState(editando ? '' : valores.idVehiculo)
+  const [mensaje, setMensaje] = useState(regreso?.mensaje ?? '')
+  const [esError, setEsError] = useState(regreso?.error ?? false)
   const [inicioPeriodo, setInicioPeriodo] = useState('')
-  // Se incrementa para "reiniciar" el calendario
   const [versionCalendario, setVersionCalendario] = useState(0)
-  // Se incrementa para volver a pedir la publicación al backend
   const [recargar, setRecargar] = useState(0)
+  const vigente = useRef(false)
+  const ubicacionFija = editando || Boolean(publicacion?.idPublicacion)
 
-  // El mensaje que viene de crear ya quedó en el estado: lo sacamos del historial
-  // para que, como los demás errores, no vuelva a aparecer al recargar la página
+  useEffect(() => {
+    vigente.current = true
+    dispatch(abrirEditor({ clave: claveEditor, conservar: usarGuardada }))
+    if (!editando) {
+      dispatch(elegirVehiculoPublicacion(null))
+      dispatch(descartarBorradorAlta())
+    }
+    return () => { vigente.current = false }
+  }, [dispatch, editando, claveEditor, usarGuardada])
+
   useEffect(() => {
     if (location.state) navigate(location.pathname, { replace: true, state: null })
   }, [location.state, location.pathname, navigate])
 
-  // El borrador ya quedó en el estado (o no corresponde retomarlo): se descarta
   useEffect(() => {
-    if (!editando) sessionStorage.removeItem(BORRADOR_ALTA)
-  }, [editando])
-
-  // El usuario logueado se usa para comprobar que el vehículo o la publicación sean suyos
-  useEffect(() => {
-    if (!usuario?.idUsuario) dispatch(fetchUser())
-  }, [usuario, dispatch])
-
-  // Al crear: si llega un vehículo (desde Mis vehículos, sus fotos o el borrador), se pide para dejarlo elegido
-  const [idVehiculoRecibido] = useState(editando ? '' : valores.idVehiculo)
-  useEffect(() => {
-    if (!idVehiculoRecibido || !token || !idUsuario) return
-    let vigente = true
-
-    obtener(`/vehiculo/${idVehiculoRecibido}`, token)
-      .then((vehiculo) => {
-        if (!vigente) return
-        if (vehiculo.idUsuario !== idUsuario) throw new Error('El vehículo no pertenece a tu cuenta.')
-        // Si mientras tanto se eligió otro de la lista, se respeta esa elección
-        setVehiculoElegido((actual) => actual ?? vehiculo)
-      })
-      .catch(() => {
-        if (!vigente) return
-        setValores((actuales) => (actuales.idVehiculo === idVehiculoRecibido ? { ...actuales, idVehiculo: '' } : actuales))
-        setMensaje('No pudimos seleccionar el vehículo. Elegilo de la lista.')
-        setEsError(true)
-      })
-    return () => { vigente = false }
-  }, [idVehiculoRecibido, token, idUsuario])
-
-  // Al editar: pedimos la publicación con su vehículo, su ubicación y sus períodos
-  useEffect(() => {
-    if (!editando || !token || !idUsuario) return
-    let vigente = true
-
-    obtener(`/publicaciones/${id}`, token)
-      .then((datos) =>
-        Promise.all([
-          obtener(`/vehiculo/${datos.idVehiculo}`, token),
-          obtener(`/ubicaciones/${datos.idUbicacion}`, token),
-          obtener(`/disponibilidades/publicacion/${id}`, token),
-        ]).then(([vehiculo, ubicacion, periodos]) => {
-          if (!vigente) return
-          if (vehiculo.idUsuario !== idUsuario) throw new Error('Esta publicación no pertenece a tu cuenta.')
-          const completa = {
-            ...vehiculo,
-            ...ubicacion,
-            ...datos,
-            codigoPostal: ubicacion.codigoPostal,
-            placeId: ubicacion.placeId,
-            periodos: periodos.map(periodoDesdeApi),
-          }
-          const pendiente = regreso?.idPublicacion === datos.idPublicacion && regreso.idUsuario === idUsuario
-            ? regreso.borrador : null
-          const iniciales = pendiente ? { ...pendiente, periodos: completarIds(pendiente.periodos, completa.periodos,
-            regreso.periodosAnteriores, true) } : valoresIniciales(completa)
-          setPublicacion(completa)
-          setValores(iniciales)
-          setVersionCalendario((version) => version + 1)
-          setErrorCarga('')
-        }),
-      )
-      .catch((error) => {
-        if (vigente) setErrorCarga(error.message)
-      })
-      .finally(() => { if (vigente) setCargando(false) })
-    return () => { vigente = false }
-  }, [editando, id, token, recargar, regreso, idUsuario])
+    if (token && !usuario?.idUsuario) dispatch(fetchUser())
+  }, [token, usuario, dispatch])
 
   useEffect(() => {
-    if (!accionPendiente) return
-    let vigente = true
-    const { tipo, token: tokenEnvio, publicacion: anterior } = accionPendiente
-    let peticion
-    if (tipo === 'guardar') {
-      peticion = guardarPublicacion(accionPendiente)
-    } else if (tipo === 'comprobar') {
-      peticion = Promise.all([
-        obtener(`/publicaciones/${anterior.idPublicacion}`, tokenEnvio),
-        obtener(`/disponibilidades/publicacion/${anterior.idPublicacion}`, tokenEnvio),
-      ]).then(([datos, periodos]) => ({ ...anterior, ...datos, periodos: periodos.map(periodoDesdeApi) }))
-    } else {
-      const { accion } = accionPendiente
-      const ruta = accion === 'desactivar' ? '' : `/${accion}`
-      peticion = enviar(`/publicaciones/${anterior.idPublicacion}${ruta}`, accion === 'desactivar' ? 'DELETE' : 'PUT', tokenEnvio)
-        .then((datos) => ({ ...anterior, ...(datos ?? { estado: 'DESACTIVADA' }) }))
-    }
-    peticion.then((guardada) => {
-      if (!vigente) return
-      const nuevosValores = tipo === 'comprobar'
-        ? { ...accionPendiente.valores, periodos: completarIds(accionPendiente.valores.periodos,
-          guardada.periodos, anterior.periodos, true) }
-        : valoresIniciales(guardada)
-      setPublicacion(guardada)
-      setValores(nuevosValores)
-      setIncierto(false)
-      setEsError(false)
-      setAccionPendiente(null)
-      setInicioPeriodo('')
+    if (idVehiculoRecibido && token && idUsuario) dispatch(fetchVehiculoParaPublicar(idVehiculoRecibido))
+  }, [dispatch, idVehiculoRecibido, token, idUsuario])
+
+  useEffect(() => {
+    if (!editando || !token || !idUsuario || (usarGuardada && recargar === 0)) return
+    let actual = true
+    dispatch(fetchEdicionPublicacion(id)).unwrap().then((completa) => {
+      if (!actual) return
+      const pendiente = regreso?.idPublicacion === completa.idPublicacion && regreso.idUsuario === idUsuario
+        ? regreso.borrador : null
+      setValores(pendiente ? {
+        ...pendiente, periodos: completarIds(pendiente.periodos, completa.periodos, regreso.periodosAnteriores, true),
+      } : valoresIniciales(completa))
       setVersionCalendario((version) => version + 1)
-      setMensaje(tipo === 'comprobar' ? 'Ya comprobamos los datos guardados. Revisá lo que sigue pendiente.'
-        : tipo === 'estado' ? 'El estado de la publicación se actualizó.' : 'Los cambios se guardaron.')
-      if (tipo === 'guardar' && !accionPendiente.editando) {
-        navigate(`/publicaciones/${guardada.idPublicacion}/editar`, { replace: true, state: { mensaje: 'La publicación se creó.' } })
-      }
     }).catch((error) => {
-      if (!vigente) return
-      const sinConfirmacion = !error.status || error.status >= 500
-      const guardada = error.guardada
-      const borrador = guardada ? { ...accionPendiente.valores, periodos: completarIds(accionPendiente.valores.periodos,
-        guardada.periodos, anterior?.periodos) } : accionPendiente.valores
-      if (guardada) {
-        setPublicacion(guardada)
-        setValores(borrador)
-      }
-      const detalle = (error.parcial ? `Se guardó una parte de los cambios. Queda pendiente: ${error.recurso}. ` : '') + error.message
-      if (tipo === 'guardar' && !accionPendiente.editando && guardada?.idPublicacion && !sinConfirmacion) {
-        navigate(`/publicaciones/${guardada.idPublicacion}/editar`, { replace: true, state: {
-          mensaje: detalle, error: true, borrador, idPublicacion: guardada.idPublicacion,
-          idUsuario: accionPendiente.idUsuario, periodosAnteriores: anterior?.periodos ?? [],
-        } })
-        return
-      }
-      setMensaje(detalle + (sinConfirmacion ? ' No recibimos una confirmación. Comprobá lo guardado antes de intentar otra vez.' : ''))
-      setEsError(true)
-      setIncierto(sinConfirmacion)
-      setAccionPendiente(null)
+      if (actual && error instanceof Error) dispatch(bloquearGuardado(error.message))
     })
-    return () => { vigente = false }
-  }, [accionPendiente, navigate])
+    return () => { actual = false }
+  }, [dispatch, editando, id, token, idUsuario, regreso, recargar, usarGuardada])
 
   function mostrarMensaje(texto, error = false) {
     setMensaje(texto)
     setEsError(error)
+    dispatch(limpiarErrorGuardado())
   }
 
   function cambiarCampo(event) {
@@ -247,20 +136,20 @@ function PublicationEditor({ modo = 'crear', id }) {
 
   function elegirVehiculo(vehiculo) {
     if (guardando || ubicacionFija) return
-    setVehiculoElegido(vehiculo)
+    dispatch(elegirVehiculoPublicacion(vehiculo))
     setValores({ ...valores, idVehiculo: String(vehiculo.idVehiculo) })
   }
 
   // Guarda lo completado y va al alta de vehículo; al terminar, las fotos vuelven acá con el vehículo nuevo
   function registrarOtroVehiculo() {
     if (guardando || incierto) return
-    sessionStorage.setItem(BORRADOR_ALTA, JSON.stringify({ idUsuario, valores }))
+    dispatch(guardarBorradorAlta({ idUsuario, valores }))
     navigate('/vehiculos/nuevo', { state: { desdePublicacion: true } })
   }
 
-  function guardar(event) {
+  async function guardar(event) {
     event.preventDefault()
-    if (guardando || incierto || publicacion?.estado === 'DESACTIVADA') return
+    if (guardando || cargando || incierto || publicacion?.estado === 'DESACTIVADA') return
     if (inicioPeriodo) {
       mostrarMensaje('Terminá de elegir el período o cancelá la selección antes de guardar.', true)
       return
@@ -271,19 +160,51 @@ function PublicationEditor({ modo = 'crear', id }) {
       return
     }
     mostrarMensaje('')
-    setAccionPendiente({
-      tipo: 'guardar', valores: structuredClone(valores), publicacion: structuredClone(publicacion),
-      token, editando, idUsuario: vehiculoElegido?.idUsuario,
-    })
+    if (!idUsuario || loadingElegido || (!publicacion?.idPublicacion && !vehiculoElegido)) {
+      mostrarMensaje('Esperá a que termine de cargar el vehículo y los datos de tu cuenta.', true)
+      return
+    }
+    const anteriores = publicacion
+    const datos = {
+      valores: structuredClone(valores),
+      publicacion: structuredClone(publicacion ?? { ...vehiculoElegido, ...datosUbicacion(valores), periodos: [] }),
+    }
+    try {
+      const guardada = await dispatch(guardarCambiosPublicacion(datos)).unwrap()
+      if (!vigente.current) return
+      setValores(valoresIniciales(guardada))
+      setInicioPeriodo('')
+      setVersionCalendario((version) => version + 1)
+      mostrarMensaje('Los cambios se guardaron.')
+      if (!editando) navigate(`/publicaciones/${guardada.idPublicacion}/editar`, {
+        replace: true, state: { mensaje: 'La publicación se creó.', usarGuardada: true },
+      })
+    } catch (error) {
+      if (!vigente.current || error.sesionCambiada || error.name === 'ConditionError') return
+      const guardada = error.guardada
+      if (guardada) {
+        const borrador = { ...valores, periodos: completarIds(valores.periodos, guardada.periodos, anteriores?.periodos) }
+        setValores(borrador)
+        if (!editando && guardada.idPublicacion && !error.incierto) {
+          navigate(`/publicaciones/${guardada.idPublicacion}/editar`, { replace: true, state: {
+            usarGuardada: true, borrador, idUsuario, idPublicacion: guardada.idPublicacion,
+          } })
+        }
+      }
+    }
   }
 
-  // Pausar y reactivar son PUT a su propia ruta; desactivar es un DELETE
-  function cambiarEstado(accion) {
+  async function cambiarEstado(accion) {
     if (guardando || incierto || !publicacion?.idPublicacion || publicacion.estado === 'DESACTIVADA'
       || cambiaronDatos(valores, publicacion) || cambiaronPeriodos(valores, publicacion)) return
     if (accion === 'desactivar' && !window.confirm('¿Desactivar esta publicación? No vas a poder reactivarla.')) return
     mostrarMensaje('')
-    setAccionPendiente({ tipo: 'estado', accion, publicacion, token })
+    try {
+      await dispatch(cambiarEstadoPublicacion({ publicacion, accion })).unwrap()
+      if (vigente.current) mostrarMensaje('El estado de la publicación se actualizó.')
+    } catch {
+      // El error se muestra desde el slice.
+    }
   }
 
   // Vuelve el formulario a lo que está guardado
@@ -297,21 +218,27 @@ function PublicationEditor({ modo = 'crear', id }) {
 
   function reintentarCarga() {
     if (!usuario?.idUsuario) dispatch(fetchUser())
-    setErrorCarga('')
-    setCargando(true)
-    setRecargar(recargar + 1)
+    setRecargar((actual) => actual + 1)
   }
 
-  function comprobarGuardado() {
-    if (guardando || !publicacion?.idPublicacion) return
-    setAccionPendiente({ tipo: 'comprobar', publicacion, valores: structuredClone(valores), token })
+  async function comprobarGuardado() {
+    if (guardando || cargando || !publicacion?.idPublicacion) return
+    try {
+      const guardada = await dispatch(fetchEdicionPublicacion(publicacion.idPublicacion)).unwrap()
+      if (!vigente.current) return
+      setValores({ ...valores, periodos: completarIds(valores.periodos, guardada.periodos, publicacion.periodos, true) })
+      setVersionCalendario((version) => version + 1)
+      mostrarMensaje('Ya comprobamos los datos guardados. Revisá lo que sigue pendiente.')
+    } catch (error) {
+      if (vigente.current && error instanceof Error) dispatch(bloquearGuardado(error.message))
+    }
   }
 
   // Pantallas antes de mostrar el formulario
   const tituloPagina = editando ? 'Editar publicación' : 'Crear publicación'
   // Si no se pudo traer el usuario, se muestra el error del slice
   const errorPrevio = editando && !usuario?.idUsuario ? errorUsuario : null
-  if (cargando && !errorPrevio) {
+  if ((cargando || (editando && !publicacion && !errorCarga)) && !errorPrevio) {
     return <main className={pageStyles}><MensajePublicacion>Cargando la publicación…</MensajePublicacion></main>
   }
   if (editando && !publicacion) {
@@ -326,6 +253,7 @@ function PublicationEditor({ modo = 'crear', id }) {
 
   const vehiculo = editando ? publicacion : vehiculoElegido
   const desactivada = publicacion?.estado === 'DESACTIVADA'
+  const idPendiente = errorGuardado?.idPublicacion
   const hayCambios = editando && (cambiaronDatos(valores, publicacion) || cambiaronPeriodos(valores, publicacion))
   // Pausar/desactivar solo se puede si no hay cambios sin guardar
   const estadoBloqueado = guardando || hayCambios || desactivada || incierto
@@ -393,14 +321,24 @@ function PublicationEditor({ modo = 'crear', id }) {
       )}
 
       {mensaje && <MensajePublicacion error={esError}>{mensaje}</MensajePublicacion>}
-      {!editando && idVehiculoRecibido && !usuario?.idUsuario && errorUsuario && (
+      {!editando && !usuario?.idUsuario && errorUsuario && (
         <MensajePublicacion error>{errorUsuario}</MensajePublicacion>
       )}
       {errorCarga && <MensajePublicacion error onRetry={reintentarCarga}>{errorCarga}</MensajePublicacion>}
+      {errorElegido && <MensajePublicacion error>{errorElegido}</MensajePublicacion>}
+      {errorGuardado && <MensajePublicacion error>
+        {errorGuardado.parcial ? `Se guardó una parte de los cambios. Queda pendiente: ${errorGuardado.recurso}. ` : ''}
+        {errorGuardado.message}
+        {incierto ? ' No recibimos una confirmación. Comprobá lo guardado antes de intentar otra vez.' : ''}
+      </MensajePublicacion>}
       {guardando && <MensajePublicacion>Guardando cambios…</MensajePublicacion>}
-      {incierto && (publicacion?.idPublicacion
+      {incierto && (publicacion?.idPublicacion && idPendiente === publicacion.idPublicacion
         ? <button type="button" disabled={guardando} onClick={comprobarGuardado} className={smallButtonStyles}>Comprobar guardado</button>
-        : <MensajePublicacion>Revisá <Link to="/mis-publicaciones" className="underline">Mis publicaciones</Link> antes de intentar otra alta.</MensajePublicacion>)}
+        : <MensajePublicacion>
+            Revisá <Link to={idPendiente ? `/publicaciones/${idPendiente}/editar` : '/mis-publicaciones'} className="underline">
+              {idPendiente ? 'la publicación pendiente' : 'Mis publicaciones'}
+            </Link> antes de volver a guardar.
+          </MensajePublicacion>)}
       {desactivada && <MensajePublicacion>Esta publicación está desactivada. No se puede modificar ni reactivar.</MensajePublicacion>}
 
       <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-8 mt-8 items-start tablet:grid-cols-1">
