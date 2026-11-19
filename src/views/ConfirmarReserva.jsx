@@ -14,16 +14,16 @@ import ResumenPago from "../components/confirmarReserva/ResumenPago"
 import VehiculoSeleccionado from "../components/reservas/compartidos/VehiculoSeleccionado"
 
 // La key inicia una confirmación nueva si cambia el carrito seleccionado.
-export default function ConfirmarReserva(props) {
+export default function ConfirmarReserva() {
   const ubicacion = useLocation()
-  return <ReservationConfirmation key={ubicacion.state?.carrito?.idCarrito ?? 'sin-carrito'} {...props} ubicacion={ubicacion} />
+  return <ReservationConfirmation key={ubicacion.state?.carrito?.idCarrito ?? 'sin-carrito'} ubicacion={ubicacion} />
 }
 
-function ReservationConfirmation() {
+function ReservationConfirmation({ ubicacion }) {
   const navegar = useNavigate()
   const dispatch = useDispatch()
   const token = useSelector((state) => state.users.token)
-  const { carrito: carritoGuardado, carritoConsultado, loading: cargandoCarrito, error: errorCarrito, mensajeVacio } = useSelector((state) => state.carrito)
+  const { carrito: carritoGuardado, carritoConfirmado, metodoPagoConfirmado, carritoConsultado, loading: cargandoCarrito, error: errorCarrito, mensajeVacio } = useSelector((state) => state.carrito)
   const {
     confirmacion: confirmacionGuardada,
     idCarritoConfirmacion,
@@ -34,16 +34,16 @@ function ReservationConfirmation() {
     errorCheckout
   } = useSelector((state) => state.reservas)
   const vigente = useRef(false)
-  // Conserva el resumen cuando el backend confirma y Redux vacía el carrito.
-  const [carritoAlConfirmar, guardarCarritoAlConfirmar] = useState(null)
   const [ahora, actualizarAhora] = useState(() => Date.now())
 
   const [metodoPago, actualizarMetodoPago] = useState('MERCADO_PAGO')
 
-  const idCarrito = carritoGuardado?.idCarrito ?? carritoAlConfirmar?.idCarrito
+  const idCarrito = ubicacion.state?.carrito?.idCarrito ?? carritoGuardado?.idCarrito ?? carritoConfirmado?.idCarrito
   const esEsteCarrito = String(idCarritoConfirmacion) === String(idCarrito)
   const confirmacion = esEsteCarrito ? confirmacionGuardada : null
-  const datosCarrito = carritoGuardado ?? (confirmacion ? carritoAlConfirmar : null)
+  const datosCarrito = confirmacion ? carritoConfirmado : carritoGuardado
+  const metodoMostrado = confirmacion ? metodoPagoConfirmado : metodoPago
+  const reservaCreada = confirmacion !== null
   const carrito = datosCarrito ? {
     ...datosCarrito,
     segundosRestantes: Math.max(0, Math.ceil((new Date(datosCarrito.fechaExpiracion).getTime() - ahora) / 1000))
@@ -67,19 +67,19 @@ function ReservationConfirmation() {
 
   // Mantiene el vencimiento del carrito y detiene el contador al salir.
   useEffect(() => {
+    if (reservaCreada) return
     const intervalo = setInterval(() => {
       actualizarAhora(Date.now())
     }, 1000)
 
     return () => clearInterval(intervalo)
-  }, [])
+  }, [reservaCreada])
 
   // Se pasa a ResumenPago como alConfirmar; crea la reserva y luego abre su resultado o checkout.
   const confirmarReserva = async () => {
     if (!carritoGuardado || cargandoCarrito || errorCarrito || confirmando || confirmacion !== null) return
     if (new Date(carrito.fechaExpiracion).getTime() <= Date.now()) return
 
-    guardarCarritoAlConfirmar(carrito)
     try {
       const datosConfirmacion = await dispatch(confirmarCarrito({
         idCarrito: carrito.idCarrito,
@@ -136,7 +136,7 @@ function ReservationConfirmation() {
       <header className="mb-6">
         <p className="text-[0.625rem] leading-[1.5] tracking-[0.05em] uppercase text-muted">Reserva · Paso 2 de 2: pago y confirmación</p>
         <h1 className="mt-1.5 text-[2.25rem] leading-[1.2] text-ink phone:text-[1.875rem]">Confirmar reserva</h1>
-        <p className="mt-2 text-[0.75rem] leading-[1.7] text-muted">Revisá los datos del alquiler y elegí cómo pagar.</p>
+        <p className="mt-2 text-[0.75rem] leading-[1.7] text-muted">{reservaCreada ? 'Esta reserva ya fue creada. Podés consultar su estado en Mis reservas.' : 'Revisá los datos del alquiler y elegí cómo pagar.'}</p>
       </header>
 
       <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-start gap-6 tablet:grid-cols-1">
@@ -144,9 +144,10 @@ function ReservationConfirmation() {
           <VehiculoSeleccionado vehiculo={carrito.publicacion} />
           <ItinerarioReserva datos={carrito} publicacion={carrito.publicacion} />
           <MetodoPago
-            metodoPago={metodoPago}
+            metodoPago={metodoMostrado}
             alCambiar={actualizarMetodoPago}
             bloqueado={confirmando || confirmacion !== null}
+            reservaCreada={reservaCreada}
           />
 
           {mensaje && (
@@ -158,10 +159,10 @@ function ReservationConfirmation() {
 
         <ResumenPago
           carrito={carrito}
-          metodoPago={metodoPago}
+          metodoPago={metodoMostrado}
           alConfirmar={confirmarReserva}
           confirmando={confirmando}
-          reservaCreada={confirmacion !== null}
+          reservaCreada={reservaCreada}
         />
       </div>
     </main>

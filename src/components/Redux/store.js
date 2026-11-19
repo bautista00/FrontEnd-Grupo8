@@ -1,5 +1,5 @@
 import { configureStore } from "@reduxjs/toolkit"
-import { persistReducer, persistStore } from "redux-persist"
+import { persistReducer, persistStore, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from "redux-persist"
 import storage from "redux-persist/es/storage" // la versión ES: con Vite, "lib/storage" no se importa bien
 import userReducer from "./userSlice"
 import vehiculosReducer from "./vehiculosSlice"
@@ -22,6 +22,11 @@ export const store = configureStore({
     carrito: carritoReducer,
     reservas: reservasReducer,
   },
+  middleware: (getDefaultMiddleware) => getDefaultMiddleware({
+    serializableCheck: {
+      ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
+    },
+  }),
 })
 
 export const persistor = persistStore(store)

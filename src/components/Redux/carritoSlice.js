@@ -139,6 +139,8 @@ export const eliminarCarrito = createAsyncThunk(
 
 const initialState = {
   carrito: null,
+  carritoConfirmado: null,
+  metodoPagoConfirmado: null,
   // Distingue un carrito todavía no consultado de uno que ya sabemos que está vacío
   carritoConsultado: false,
   mensajeVacio: "",
@@ -283,7 +285,13 @@ const carritoSlice = createSlice({
       })
       .addCase(confirmarCarrito.fulfilled, (state, action) => {
         if (String(state.carrito?.idCarrito) !== String(action.meta.arg.idCarrito)) return;
-        return { ...initialState, carritoConsultado: true };
+        return {
+          ...initialState,
+          carritoConsultado: true,
+          // Ya no es un carrito activo: se conserva solo para revisar la reserva creada.
+          carritoConfirmado: state.carrito,
+          metodoPagoConfirmado: action.meta.arg.metodoPago,
+        };
       })
       .addCase(logout, () => initialState);
   },

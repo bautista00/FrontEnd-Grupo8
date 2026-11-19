@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { Link, NavLink, matchPath, useLocation, useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { logout } from '../Redux/userSlice'
 import { CartIcon, UserIcon } from '../iconos/Iconos'
@@ -55,7 +55,10 @@ export default function Navbar() {
   }, [menuAbierto])
 
   function claseLink(link, isActive) {
-    return isActive || (link.href === '/mis-publicaciones' && pathname.startsWith('/publicaciones/')) ? NAV_LINK_ACTIVE : NAV_LINK_IDLE
+    const esFormulario = pathname === '/publicaciones/nueva' || Boolean(matchPath('/publicaciones/:id/editar', pathname))
+    const esDetallePublico = !esFormulario && Boolean(matchPath('/publicaciones/:id', pathname))
+    const activo = isActive || (link.href === '/mis-publicaciones' && esFormulario) || (link.href === '/' && esDetallePublico)
+    return activo ? NAV_LINK_ACTIVE : NAV_LINK_IDLE
   }
 
   // Los botones de cerrar sesión abren la confirmación; recién "Sí, cerrar sesión" cierra la sesión

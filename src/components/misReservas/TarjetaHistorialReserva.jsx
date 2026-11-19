@@ -30,7 +30,7 @@ export default function TarjetaHistorialReserva({ reserva, publicacion, pago }) 
           <time dateTime={reserva.fechaInicio}>{formatearFecha(reserva.fechaInicio)}</time>
           {' — '}
           <time dateTime={reserva.fechaFin}>{formatearFecha(reserva.fechaFin)}</time>
-          {' · '}{reserva.cantidadDias} días
+          {' · '}{reserva.cantidadDias} {reserva.cantidadDias === 1 ? 'día' : 'días'}
         </p>
         <p className="mt-1 text-[0.625rem] text-muted">
           {publicacion.localidad}, {publicacion.zona} · Reserva #{reserva.idReserva}

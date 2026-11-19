@@ -73,7 +73,7 @@ export default function ResumenVehiculoReservado({ reserva, pago, publicacion })
             {esEfectivo ? 'Total a pagar al retirar' : pagoAprobado ? 'Total abonado' : 'Total de la reserva'}
           </strong>
           <p className="mt-1 text-[0.625rem] leading-[1.6] text-muted">
-            {reserva.cantidadDias} días × {formatearPrecio(reserva.precioDiaAplicado)}
+            {reserva.cantidadDias} {reserva.cantidadDias === 1 ? 'día' : 'días'} × {formatearPrecio(reserva.precioDiaAplicado)}
           </p>
         </div>
         <div className="text-right">

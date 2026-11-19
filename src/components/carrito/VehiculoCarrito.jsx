@@ -68,7 +68,7 @@ export default function VehiculoCarrito({
             </div>
             <div>
               <dt className="mb-1.5 text-[0.5625rem] uppercase text-muted">Duración</dt>
-              <dd className="m-0 text-[0.6875rem] leading-normal">{carrito.cantidadDias} días</dd>
+              <dd className="m-0 text-[0.6875rem] leading-normal">{carrito.cantidadDias} {carrito.cantidadDias === 1 ? 'día' : 'días'}</dd>
             </div>
           </dl>
         )}

@@ -20,7 +20,7 @@ export default function ResumenCarrito({ carrito, estaVencido, bloqueado = false
       <h2 id="cart-summary-title" className="mb-6 text-[1.25rem] text-ink">Resumen de reserva</h2>
 
       <div className="flex justify-between gap-4 text-[0.6875rem] leading-[1.6] text-soft">
-        <span>{carrito.cantidadDias} días × {formatearPrecio(carrito.precioDiaAplicado)}</span>
+        <span>{carrito.cantidadDias} {carrito.cantidadDias === 1 ? 'día' : 'días'} × {formatearPrecio(carrito.precioDiaAplicado)}</span>
         <span>{formatearPrecio(carrito.precioTotal)}</span>
       </div>
 

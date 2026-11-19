@@ -16,11 +16,11 @@ export default function ResumenPago({ carrito, metodoPago, alConfirmar, confirma
     <aside className="min-w-0 p-6 bg-card border border-border rounded-lg phone:p-4.5" aria-labelledby="payment-summary-title">
       <header className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <h2 id="payment-summary-title" className="text-[1.25rem] leading-[1.4] text-ink">Resumen del pago</h2>
-        <span className="text-[0.6875rem] text-muted">{carrito.cantidadDias} días</span>
+        <span className="text-[0.6875rem] text-muted">{carrito.cantidadDias} {carrito.cantidadDias === 1 ? 'día' : 'días'}</span>
       </header>
 
       <div className="flex flex-wrap justify-between gap-3 text-[0.6875rem] leading-[1.6] text-soft">
-        <span>{carrito.cantidadDias} días × {formatearPrecio(carrito.precioDiaAplicado)}</span>
+        <span>{carrito.cantidadDias} {carrito.cantidadDias === 1 ? 'día' : 'días'} × {formatearPrecio(carrito.precioDiaAplicado)}</span>
         <span>{formatearPrecio(carrito.precioTotal)}</span>
       </div>
 
@@ -33,15 +33,19 @@ export default function ResumenPago({ carrito, metodoPago, alConfirmar, confirma
       </div>
 
       <p className="p-3 bg-paper border border-border rounded-[0.25rem] text-[0.6875rem] leading-[1.6] text-soft">
-        {esMercadoPago
-          ? 'Al confirmar, te llevaremos a Mercado Pago para completar el pago.'
-          : 'Al confirmar, tu reserva quedará confirmada automáticamente. Pagás el total en efectivo al retirar el auto.'}
+        {reservaCreada
+          ? esMercadoPago
+            ? 'La reserva ya se creó con Mercado Pago. Consultá el estado del pago en Mis reservas.'
+            : 'La reserva ya se creó en efectivo. Pagás el total al retirar el auto.'
+          : esMercadoPago
+            ? 'Al confirmar, te llevaremos a Mercado Pago para completar el pago.'
+            : 'Al confirmar, tu reserva quedará confirmada automáticamente. Pagás el total en efectivo al retirar el auto.'}
       </p>
-      <p className="mt-3 p-3 border border-border rounded-sm text-[0.6875rem] leading-[1.6] text-soft">
+      {!reservaCreada && <p className="mt-3 p-3 border border-border rounded-sm text-[0.6875rem] leading-[1.6] text-soft">
         {estaVencido
           ? 'Tus fechas se liberaron. Volvé al carrito para retenerlas nuevamente.'
           : `Tus fechas siguen retenidas ${minutos}:${segundosDelMinuto} min.`}
-      </p>
+      </p>}
 
       <button type="button" onClick={alConfirmar} className="w-full mt-4 px-4 py-3 bg-ink border-0 rounded-[0.25rem] text-[0.6875rem] leading-[1.6] text-card disabled:cursor-not-allowed disabled:opacity-65" disabled={estaVencido || confirmando || reservaCreada}>
         {confirmando

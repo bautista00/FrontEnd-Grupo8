@@ -104,7 +104,7 @@ export default function MisPublicaciones() {
   } else {
     resultados = (
       <>
-        <p className="mb-4 text-[0.75rem] text-muted">{datos.totalElements} publicaciones encontradas</p>
+        <p className="mb-4 text-[0.75rem] text-muted">{datos.totalElements} {datos.totalElements === 1 ? 'publicación encontrada' : 'publicaciones encontradas'}</p>
         <div className="grid gap-6">
           {datos.content.map((publicacion) => (
             <FilaPublicacion

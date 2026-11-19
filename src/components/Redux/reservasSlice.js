@@ -46,23 +46,34 @@ export const fetchMisReservas = createAsyncThunk("reservas/fetchMisReservas", as
   }
 });
 
-// Estado del pago de una reserva, al volver de Mercado Pago
+// Verifica juntos el pago y la reserva al volver de Mercado Pago.
 export const fetchPagoReserva = createAsyncThunk(
   "reservas/fetchPagoReserva",
   async (idReserva, { getState, requestId, rejectWithValue }) => {
     const token = getState().users.token;
     try {
-      const { data } = await axios.get(`${API_URL}/pagos/reserva/${idReserva}`, conToken(token));
+      const config = conToken(token);
+      const [{ data: pago }, { data: reserva }] = await Promise.all([
+        axios.get(`${API_URL}/pagos/reserva/${idReserva}`, config),
+        axios.get(`${API_URL}/reservas/${idReserva}`, config),
+      ]);
       if (getState().users.token !== token || getState().reservas.requestIdPago !== requestId) {
         return rejectWithValue({ solicitudVencida: true });
       }
-      return data;
+      if (String(pago?.idReserva) !== String(idReserva) || String(reserva?.idReserva) !== String(idReserva)) {
+        throw new Error("No se pudo identificar el pago y su reserva.");
+      }
+      return { pago, reserva };
     } catch (error) {
       if (getState().users.token !== token || getState().reservas.requestIdPago !== requestId) {
         return rejectWithValue({ solicitudVencida: true });
       }
       throw new Error(mensajeDeError(error, "No se pudo consultar el pago."), { cause: error });
     }
+  },
+  {
+    condition: (idReserva, { getState }) => Boolean(idReserva) && Boolean(getState().users.token)
+      && !(getState().reservas.loadingPago && String(getState().reservas.idReservaPago) === String(idReserva)),
   },
 );
 
@@ -197,6 +208,7 @@ const initialState = {
   idPublicacionResultado: null,
   requestIdResultado: null,
   pago: null,
+  reservaPago: null,
   loadingPago: false,
   errorPago: null,
   idReservaPago: null,
@@ -250,6 +262,7 @@ const reservasSlice = createSlice({
         state.loadingPago = true;
         state.errorPago = null;
         state.pago = null;
+        state.reservaPago = null;
         state.idReservaPago = action.meta.arg;
         state.requestIdPago = action.meta.requestId;
       })
@@ -257,7 +270,8 @@ const reservasSlice = createSlice({
         if (state.requestIdPago !== action.meta.requestId) return;
         state.loadingPago = false;
         state.requestIdPago = null;
-        state.pago = action.payload;
+        state.pago = action.payload.pago;
+        state.reservaPago = action.payload.reserva;
       })
       .addCase(fetchPagoReserva.rejected, (state, action) => {
         if (state.requestIdPago !== action.meta.requestId) return;

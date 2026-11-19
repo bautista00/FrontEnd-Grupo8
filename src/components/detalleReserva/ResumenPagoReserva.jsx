@@ -17,7 +17,7 @@ export default function ResumenPagoReserva({ reserva, pago }) {
       </h2>
 
       <div className="flex flex-wrap justify-between gap-3 text-[0.6875rem] leading-[1.6] text-soft">
-        <span>{reserva.cantidadDias} días × {formatearPrecio(reserva.precioDiaAplicado)}</span>
+        <span>{reserva.cantidadDias} {reserva.cantidadDias === 1 ? 'día' : 'días'} × {formatearPrecio(reserva.precioDiaAplicado)}</span>
         <span>{formatearPrecio(reserva.precioTotal)}</span>
       </div>
       <p className="mt-2 text-[0.625rem] leading-[1.6] text-muted">

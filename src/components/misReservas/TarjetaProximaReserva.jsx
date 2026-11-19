@@ -74,7 +74,7 @@ export default function TarjetaProximaReserva({ reserva, publicacion, pago }) {
               </dd>
             </div>
           </dl>
-          <p className="mt-2 text-[0.6875rem] text-muted">Duración: {reserva.cantidadDias} días</p>
+          <p className="mt-2 text-[0.6875rem] text-muted">Duración: {reserva.cantidadDias} {reserva.cantidadDias === 1 ? 'día' : 'días'}</p>
         </div>
 
         <div className="flex flex-col justify-between gap-6 pl-6 border-l border-border tablet:pl-0 tablet:pt-4 tablet:border-l-0 tablet:border-t">

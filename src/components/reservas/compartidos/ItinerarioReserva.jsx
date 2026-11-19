@@ -18,7 +18,7 @@ export default function ItinerarioReserva({ datos, publicacion, mostrarMapa = fa
           <CalendarIcon size={16} className="shrink-0 text-gold" />
           Itinerario y entrega
         </h2>
-        <span className="text-[0.6875rem] text-muted">Duración: {datos.cantidadDias} días</span>
+        <span className="text-[0.6875rem] text-muted">Duración: {datos.cantidadDias} {datos.cantidadDias === 1 ? 'día' : 'días'}</span>
       </header>
 
       <dl className="grid grid-cols-2 gap-4 m-0 phone:grid-cols-1">

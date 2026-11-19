@@ -2,11 +2,11 @@
  * Permite elegir efectivo o Mercado Pago y comunica la elección a la vista de confirmación.
  */
 
-export default function MetodoPago({ metodoPago, alCambiar, bloqueado = false }) {
+export default function MetodoPago({ metodoPago, alCambiar, bloqueado = false, reservaCreada = false }) {
   return (
     <section className="min-w-0 mt-6 p-6 bg-card border border-border rounded-lg phone:p-4.5">
       <h2 id="payment-method-title" className="text-[1.25rem] leading-[1.4] text-ink">Método de pago</h2>
-      <p className="mt-2 text-[0.6875rem] leading-[1.6] text-muted">Elegí cómo querés pagar la reserva.</p>
+      <p className="mt-2 text-[0.6875rem] leading-[1.6] text-muted">{reservaCreada ? 'Método elegido para esta reserva.' : 'Elegí cómo querés pagar la reserva.'}</p>
 
       <fieldset disabled={bloqueado} className="grid gap-3 min-w-0 mt-4 mx-0 mb-0 p-0 border-0" aria-labelledby="payment-method-title">
         <label className={`flex items-start gap-3 p-4 border rounded-sm cursor-pointer focus-within:outline-2 focus-within:outline-gold focus-within:outline-offset-2 ${metodoPago === 'MERCADO_PAGO' ? 'bg-paper border-soft' : 'border-border'}`}>
@@ -21,7 +21,7 @@ export default function MetodoPago({ metodoPago, alCambiar, bloqueado = false })
           <span className="min-w-0">
             <span className="block text-[0.75rem] font-semibold leading-[1.6] text-ink">Mercado Pago</span>
             <span className="block mt-1 text-[0.6875rem] leading-[1.6] text-muted">
-              Tarjeta de crédito, débito o dinero en cuenta. Te llevaremos al checkout de Mercado Pago para completar el pago.
+              {reservaCreada ? 'Tarjeta de crédito, débito o dinero en cuenta.' : 'Tarjeta de crédito, débito o dinero en cuenta. Te llevaremos al checkout de Mercado Pago para completar el pago.'}
             </span>
           </span>
         </label>
