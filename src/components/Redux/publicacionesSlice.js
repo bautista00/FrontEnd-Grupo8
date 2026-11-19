@@ -26,6 +26,26 @@ export const fetchPublicacion = createAsyncThunk("publicaciones/fetchPublicacion
   }
 });
 
+// Zonas de las publicaciones activas, para el filtro de Home
+export const fetchZonas = createAsyncThunk("publicaciones/fetchZonas", async () => {
+  try {
+    const { data } = await axios.get(`${API_URL}/publicaciones/zonas`);
+    return data;
+  } catch (error) {
+    throw new Error(mensajeDe(error, "No se pudieron cargar las zonas."), { cause: error });
+  }
+});
+
+// Catálogo de Home: el backend filtra, ordena y pagina; se guarda la página completa que devuelve
+export const buscarPublicaciones = createAsyncThunk("publicaciones/buscarPublicaciones", async (consulta) => {
+  try {
+    const { data } = await axios.get(`${API_URL}/publicaciones/buscar?${consulta}`);
+    return data;
+  } catch (error) {
+    throw new Error(mensajeDe(error, "No se pudo obtener la información del servidor."), { cause: error });
+  }
+});
+
 // Mis publicaciones: el backend filtra por estado y búsqueda, y pagina de a 10
 export const fetchMisPublicaciones = createAsyncThunk(
   "publicaciones/fetchMisPublicaciones",
@@ -139,6 +159,16 @@ function completarComprobacion(state, action) {
 }
 
 const initialState = {
+  zonas: [],
+  loadingZonas: false,
+  errorZonas: null,
+  busqueda: null,
+  loadingBusqueda: false,
+  errorBusqueda: null,
+  // Pedido de la última búsqueda: si cambia un filtro o la página, se ignora la respuesta anterior
+  requestIdBusqueda: null,
+  // Consulta a la que corresponde la búsqueda (o el error) guardada
+  consultaBusqueda: null,
   publicacion: null,
   loadingPublicacion: false,
   errorPublicacion: null,
@@ -193,6 +223,36 @@ const publicacionesSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      .addCase(fetchZonas.pending, (state) => {
+        state.loadingZonas = true;
+        state.errorZonas = null;
+      })
+      .addCase(fetchZonas.fulfilled, (state, action) => {
+        state.loadingZonas = false;
+        state.zonas = action.payload;
+      })
+      .addCase(fetchZonas.rejected, (state, action) => {
+        state.loadingZonas = false;
+        state.errorZonas = action.error.message;
+      })
+      .addCase(buscarPublicaciones.pending, (state, action) => {
+        state.loadingBusqueda = true;
+        state.errorBusqueda = null;
+        state.requestIdBusqueda = action.meta.requestId;
+      })
+      .addCase(buscarPublicaciones.fulfilled, (state, action) => {
+        if (action.meta.requestId !== state.requestIdBusqueda) return;
+        state.loadingBusqueda = false;
+        state.busqueda = action.payload;
+        state.consultaBusqueda = action.meta.arg;
+      })
+      .addCase(buscarPublicaciones.rejected, (state, action) => {
+        if (action.meta.requestId !== state.requestIdBusqueda) return;
+        state.loadingBusqueda = false;
+        state.busqueda = null;
+        state.errorBusqueda = action.error.message;
+        state.consultaBusqueda = action.meta.arg;
+      })
       .addCase(fetchPublicacion.pending, (state, action) => {
         state.loadingPublicacion = true;
         state.errorPublicacion = null;
@@ -302,7 +362,13 @@ const publicacionesSlice = createSlice({
         state.incierto = Boolean(action.payload?.incierto);
         state.requestIdComprobacion = null;
       })
-      .addCase(logout, () => initialState);
+      // Las zonas y la búsqueda de Home son públicas: se conservan al cerrar sesión, que vuelve a Home
+      .addCase(logout, (state) => ({
+        ...initialState,
+        zonas: state.zonas, loadingZonas: state.loadingZonas, errorZonas: state.errorZonas,
+        busqueda: state.busqueda, loadingBusqueda: state.loadingBusqueda, errorBusqueda: state.errorBusqueda,
+        requestIdBusqueda: state.requestIdBusqueda, consultaBusqueda: state.consultaBusqueda,
+      }));
   },
 });
 

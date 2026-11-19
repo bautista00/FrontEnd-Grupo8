@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { useDispatch } from 'react-redux'
-import { logout, setToken } from '../components/Redux/userSlice'
+import { useDispatch, useSelector } from 'react-redux'
+import { limpiarErrorAuth, loginUser } from '../components/Redux/userSlice'
 import { pageStyles } from '../components/publicaciones/estilosPublicacion'
 import MensajePublicacion from '../components/publicaciones/MensajePublicacion'
 import TarjetaAuth from '../components/auth/TarjetaAuth'
@@ -9,7 +9,6 @@ import CambioAuth from '../components/auth/CambioAuth'
 import CampoTexto from '../components/ui/CampoTexto'
 import CampoContrasena from '../components/ui/CampoContrasena'
 import { btnBase, btnDark } from '../components/ui/estilosBoton'
-import { enviar } from '../utils/api'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -17,9 +16,15 @@ export default function Login() {
   // Si llegó desde otra pantalla (por ejemplo, al agregar al carrito), vuelve ahí al entrar
   const volverA = useLocation().state?.volverA ?? '/'
   const [valores, setValores] = useState({ email: '', password: '' })
-  const [error, setError] = useState('')
-  const [datosParaEnviar, setDatosParaEnviar] = useState(null)
-  const enviando = datosParaEnviar !== null
+  const { loadingAuth: enviando, errorAuth: error } = useSelector((state) => state.users)
+  const vigente = useRef(false)
+
+  // Evita navegar desde una pantalla que ya se desmontó y no muestra el error del registro
+  useEffect(() => {
+    vigente.current = true
+    dispatch(limpiarErrorAuth())
+    return () => { vigente.current = false }
+  }, [dispatch])
 
   function cambiarCampo(event) {
     if (enviando) return
@@ -27,34 +32,19 @@ export default function Login() {
     setValores({ ...valores, [name]: value })
   }
 
-  function iniciarSesion(event) {
+  async function iniciarSesion(event) {
     event.preventDefault()
     if (enviando) return
-    setError('')
 
-    setDatosParaEnviar({ datos: { email: valores.email.trim(), password: valores.password }, volverA })
+    try {
+      await dispatch(loginUser({ email: valores.email.trim(), password: valores.password })).unwrap()
+      if (!vigente.current) return
+      setValores((actuales) => ({ ...actuales, password: '' }))
+      navigate(volverA)
+    } catch {
+      // El error del backend queda en Redux y se muestra en el formulario
+    }
   }
-
-  useEffect(() => {
-    if (!datosParaEnviar) return
-    let vigente = true
-    const { datos, volverA } = datosParaEnviar
-    enviar('/auth/login', 'POST', null, datos, 'El correo o la contraseña no son correctos.')
-      .then((respuesta) => {
-        if (!vigente) return
-        setDatosParaEnviar(null)
-        setValores((actuales) => ({ ...actuales, password: '' }))
-        dispatch(logout())
-        dispatch(setToken(respuesta.token))
-        navigate(volverA)
-      })
-      .catch((error) => {
-        if (!vigente) return
-        setError(error.message)
-        setDatosParaEnviar(null)
-      })
-    return () => { vigente = false }
-  }, [datosParaEnviar, navigate, dispatch])
 
   return (
     <main className={pageStyles + ' pb-16'}>

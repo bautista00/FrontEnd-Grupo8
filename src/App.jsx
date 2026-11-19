@@ -5,6 +5,9 @@
 
 import { useEffect } from 'react'
 import { Link, Route, Routes, useLocation } from 'react-router-dom'
+import { useDispatch, useSelector } from 'react-redux'
+import { logout } from './components/Redux/userSlice'
+import { vencimientoToken } from './utils/api'
 import RequireAuth from './components/auth/RequireAuth'
 import Footer from './components/layout/Footer'
 import Navbar from './components/layout/Navbar'
@@ -29,6 +32,15 @@ export default function App() {
   const { pathname } = useLocation()
   // Lleva la pantalla al inicio al cambiar de ruta.
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }) }, [pathname])
+
+  const dispatch = useDispatch()
+  const token = useSelector((state) => state.users.token)
+  // Cierra la sesión cuando vence el token; si el guardado ya venció, la cierra al abrir la app
+  useEffect(() => {
+    if (!token) return
+    const temporizador = setTimeout(() => dispatch(logout()), vencimientoToken(token) - Date.now())
+    return () => clearTimeout(temporizador)
+  }, [token, dispatch])
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />

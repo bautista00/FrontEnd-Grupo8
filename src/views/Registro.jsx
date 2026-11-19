@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { useDispatch } from 'react-redux'
-import { logout, setToken } from '../components/Redux/userSlice'
+import { useDispatch, useSelector } from 'react-redux'
+import { limpiarErrorAuth, registerUser } from '../components/Redux/userSlice'
 import { pageStyles } from '../components/publicaciones/estilosPublicacion'
 import MensajePublicacion from '../components/publicaciones/MensajePublicacion'
 import TarjetaAuth from '../components/auth/TarjetaAuth'
@@ -9,7 +9,6 @@ import CambioAuth from '../components/auth/CambioAuth'
 import CampoTexto from '../components/ui/CampoTexto'
 import CampoContrasena from '../components/ui/CampoContrasena'
 import { btnBase, btnDark } from '../components/ui/estilosBoton'
-import { enviar } from '../utils/api'
 
 const MINIMO_PASSWORD = 6
 
@@ -36,9 +35,18 @@ export default function Registro() {
   // Si viene del login con una pantalla pendiente, vuelve ahí al crear la cuenta
   const volverA = useLocation().state?.volverA ?? '/'
   const [valores, setValores] = useState(VALORES_INICIALES)
-  const [error, setError] = useState('')
-  const [datosParaEnviar, setDatosParaEnviar] = useState(null)
-  const enviando = datosParaEnviar !== null
+  // Las validaciones del formulario quedan locales; el error del backend viene de Redux
+  const [errorValidacion, setErrorValidacion] = useState('')
+  const { loadingAuth: enviando, errorAuth } = useSelector((state) => state.users)
+  const error = errorValidacion || errorAuth
+  const vigente = useRef(false)
+
+  // Evita navegar desde una pantalla que ya se desmontó y no muestra el error del login
+  useEffect(() => {
+    vigente.current = true
+    dispatch(limpiarErrorAuth())
+    return () => { vigente.current = false }
+  }, [dispatch])
 
   function cambiarCampo(event) {
     if (enviando) return
@@ -46,16 +54,16 @@ export default function Registro() {
     setValores({ ...valores, [name]: value })
   }
 
-  function crearCuenta(event) {
+  async function crearCuenta(event) {
     event.preventDefault()
     if (enviando) return
     const problema = validar(valores)
     if (problema) {
-      setError(problema)
+      setErrorValidacion(problema)
       return
     }
 
-    setError('')
+    setErrorValidacion('')
     // El teléfono es opcional: si está vacío no lo mandamos
     const datos = {
       nombre: valores.nombre.trim(),
@@ -66,29 +74,15 @@ export default function Registro() {
       password: valores.password,
     }
 
-    setDatosParaEnviar({ datos: datos, volverA })
+    try {
+      await dispatch(registerUser(datos)).unwrap()
+      if (!vigente.current) return
+      setValores((actuales) => ({ ...actuales, password: '', repetirPassword: '' }))
+      navigate(volverA)
+    } catch {
+      // El error del backend queda en Redux y se muestra en el formulario
+    }
   }
-
-  useEffect(() => {
-    if (!datosParaEnviar) return
-    let vigente = true
-    const { datos, volverA } = datosParaEnviar
-    enviar('/auth/register', 'POST', null, datos, 'No pudimos crear la cuenta. Intentá nuevamente.')
-      .then((respuesta) => {
-        if (!vigente) return
-        setDatosParaEnviar(null)
-        setValores((actuales) => ({ ...actuales, password: '', repetirPassword: '' }))
-        dispatch(logout())
-        dispatch(setToken(respuesta.token))
-        navigate(volverA)
-      })
-      .catch((error) => {
-        if (!vigente) return
-        setError(error.message)
-        setDatosParaEnviar(null)
-      })
-    return () => { vigente = false }
-  }, [datosParaEnviar, navigate, dispatch])
 
   const hoy = new Date().toISOString().slice(0, 10)
 

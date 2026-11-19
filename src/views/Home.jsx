@@ -8,15 +8,16 @@ import GrillaVehiculos from '../components/home/GrillaVehiculos'
 import { RotateCcwIcon } from '../components/iconos/Iconos'
 import MensajePublicacion from '../components/publicaciones/MensajePublicacion'
 import PaginacionPublicaciones from '../components/publicaciones/PaginacionPublicaciones'
-import { obtener } from '../utils/api'
 import { PUBLICACIONES_POR_PAGINA } from '../utils/catalogo'
 import { fetchTiposVehiculo } from '../components/Redux/vehiculosSlice'
+import { buscarPublicaciones, fetchZonas } from '../components/Redux/publicacionesSlice'
 
 export default function Home() {
-  // Zonas y tipos de vehículo para los filtros
+  // Zonas y tipos de vehículo para los filtros, y la búsqueda del catálogo, desde el store de Redux
   const dispatch = useDispatch()
-  const [zonas, setZonas] = useState([])
-  const tipos = useSelector((state) => state.vehiculos.tiposVehiculo)
+  const { zonas, loadingZonas, errorZonas, busqueda: catalogo, loadingBusqueda, errorBusqueda, consultaBusqueda } =
+    useSelector((state) => state.publicaciones)
+  const { tiposVehiculo: tipos, loadingTipos, errorTipos } = useSelector((state) => state.vehiculos)
 
   const [zona, setZona] = useState('all')
   const [tipoId, setTipoId] = useState('all')
@@ -26,13 +27,9 @@ export default function Home() {
   const [pagina, setPagina] = useState(0)
   const [recargar, setRecargar] = useState(0)
 
-  // Página de resultados del backend, junto con la consulta que la pidió
-  const [resultado, setResultado] = useState(null)
-  // Pide las zonas para el filtro. Los tipos de vehículo se piden al store de Redux.
+  // Pide las zonas y los tipos de vehículo para los filtros
   useEffect(() => {
-    obtener('/publicaciones/zonas')
-      .then((listaZonas) => setZonas(listaZonas))
-      .catch((error) => console.error('Error al cargar los filtros del catálogo', error))
+    dispatch(fetchZonas())
     dispatch(fetchTiposVehiculo())
   }, [dispatch])
 
@@ -49,20 +46,14 @@ export default function Home() {
 
   //En este caso useEffect hace una petición a la API para obtener las publicaciones que 
   //coinciden con los filtros seleccionados por el usuario.
+  // El slice ignora las respuestas de consultas anteriores que lleguen tarde.
   useEffect(() => {
-    let vigente = true
-    obtener(`/publicaciones/buscar?${consulta}`)
-      .then((datos) => { if (vigente) setResultado({ consulta, datos }) })
-      .catch((error) => {
-        console.error('Error al cargar el catálogo', error)
-        if (vigente) setResultado({ consulta, error: error.message })
-      })
-    return () => { vigente = false }
-  }, [consulta, recargar])
+    dispatch(buscarPublicaciones(consulta))
+  }, [dispatch, consulta, recargar])
 
   // Mientras llega la consulta nueva se siguen mostrando los resultados anteriores
-  const actualizando = resultado !== null && resultado.consulta !== consulta
-  const catalogo = resultado?.datos
+  const actualizando = catalogo !== null && (loadingBusqueda || consultaBusqueda !== consulta)
+  const errorCatalogo = consultaBusqueda === consulta ? errorBusqueda : null
 
   // Cada filtro nuevo vuelve a la primera página
   const filtrar = (actualizar) => (valor) => {
@@ -106,6 +97,10 @@ export default function Home() {
       />
 
       <section id="fleet-results">
+        {(loadingZonas || loadingTipos) && <MensajePublicacion>Cargando filtros…</MensajePublicacion>}
+        {errorZonas && <MensajePublicacion error>{errorZonas}</MensajePublicacion>}
+        {errorTipos && <MensajePublicacion error>{errorTipos}</MensajePublicacion>}
+
         <div className="flex flex-col items-stretch gap-4 mb-5 min-[56.25rem]:flex-row min-[56.25rem]:items-center min-[56.25rem]:justify-between">
           <FiltroCategoria tipos={tipos} tipoId={tipoId} onChange={filtrar(setTipoId)} />
           <SelectorOrden value={sortBy} onChange={filtrar(setSortBy)} />
@@ -129,8 +124,8 @@ export default function Home() {
           )}
         </div>
 
-        {resultado?.error && !actualizando ? (
-          <MensajePublicacion error onRetry={() => setRecargar(recargar + 1)}>{resultado.error}</MensajePublicacion>
+        {errorCatalogo ? (
+          <MensajePublicacion error onRetry={() => setRecargar(recargar + 1)}>{errorCatalogo}</MensajePublicacion>
         ) : !catalogo ? (
           <MensajePublicacion>Cargando vehículos…</MensajePublicacion>
         ) : catalogo.content.length === 0 && !actualizando ? (

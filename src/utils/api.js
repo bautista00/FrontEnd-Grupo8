@@ -7,6 +7,19 @@ export const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
 // Configuración de axios con el token del usuario para los thunks de Redux (sin sesión no manda el header).
 export const conToken = (token) => (token ? { headers: { Authorization: `Bearer ${token}` } } : {})
 
+// Momento (en ms) en que vence el token JWT, según su campo "exp". Si no se puede leer, se toma como vencido.
+export function vencimientoToken(token) {
+  try {
+    const { exp } = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+    return Number.isFinite(exp) ? exp * 1000 : 0
+  } catch {
+    return 0
+  }
+}
+
+// Hay sesión solo si hay token y todavía no venció
+export const tokenVigente = (token) => Boolean(token) && vencimientoToken(token) > Date.now()
+
 // Mensaje de un error de axios: el que mandó el backend o, si no hay, el indicado.
 export function mensajeDe(error, porDefecto) {
   return error.response?.data?.mensaje || error.response?.data?.message || porDefecto
