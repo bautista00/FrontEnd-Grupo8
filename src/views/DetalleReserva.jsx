@@ -1,17 +1,17 @@
 /**
  * Muestra la reserva elegida en Mis reservas y permite cancelarla o continuar su pago.
- * Recibe la reserva, la publicación y el pago mediante la navegación.
+ * Recibe la selección por navegación y lee la reserva actualizada en Redux.
  */
 
-import { useEffect, useState } from 'react'
-import { useSelector } from 'react-redux'
+import { useEffect, useRef, useState } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import { Link, useLocation } from 'react-router-dom'
 import VehiculoSeleccionado from "../components/reservas/compartidos/VehiculoSeleccionado"
 import ItinerarioReserva from "../components/reservas/compartidos/ItinerarioReserva"
 import ResumenPagoReserva from "../components/detalleReserva/ResumenPagoReserva"
 import GestionReserva from "../components/detalleReserva/GestionReserva"
 import ConfirmarCancelacion from '../components/detalleReserva/ConfirmarCancelacion'
-import { API_URL } from '../utils/api'
+import { cancelarReserva, crearCheckout, limpiarErrorCancelar } from '../components/Redux/reservasSlice'
 
 const ESTADOS_RESERVA = {
   PENDIENTE: { texto: 'Pendiente', clases: 'bg-amber-50 border-amber-200 text-amber-700' },
@@ -28,32 +28,36 @@ export default function DetalleReserva() {
 }
 
 function ReservationDetailsContent({ ubicacion }) {
-  const token = useSelector((state) => state.users.token)
+  const dispatch = useDispatch()
+  const { reservas, loadingCheckout, errorCheckout, idPagoCheckout, cancelando, errorCancelar, idReservaCancelar } = useSelector((state) => state.reservas)
+  const vigente = useRef(false)
 
-  const [reserva, actualizarReserva] = useState(ubicacion.state?.reserva ?? null)
+  const reservaRecibida = ubicacion.state?.reserva
+  const idReserva = reservaRecibida?.idReserva
+  const reserva = reservas.find((item) => String(item.idReserva) === String(idReserva)) ?? reservaRecibida ?? null
   const vehiculo = ubicacion.state?.publicacion
   const pago = ubicacion.state?.pago
-  const idReserva = reserva?.idReserva
   const [mensaje, actualizarMensaje] = useState('')
 
   const [mostrarModalCancelar, actualizarModalCancelar] = useState(false)
-  const [cancelando, actualizarCancelando] = useState(false)
-  const [mensajeCancelar, actualizarMensajeCancelar] = useState('')
-  // Reserva y sesión con las que se confirmó la cancelación.
-  const [datosParaCancelar, actualizarDatosParaCancelar] = useState(null)
+  const mensajeCancelar = String(idReservaCancelar) === String(idReserva) ? errorCancelar : null
 
-  // Pago existente que se abrirá en Mercado Pago al confirmar la acción.
-  const [datosParaContinuarPago, actualizarDatosParaContinuarPago] = useState(null)
-  const [continuandoPago, actualizarContinuandoPago] = useState(false)
-  const [mensajePago, actualizarMensajePago] = useState('')
+  const continuandoPago = loadingCheckout
+  const mensajePago = String(idPagoCheckout) === String(pago?.idPago) ? errorCheckout : null
+
+  // Evita abrir Mercado Pago o cerrar el modal si el usuario ya salió de este detalle.
+  useEffect(() => {
+    vigente.current = true
+    return () => { vigente.current = false }
+  }, [])
 
   const puedeContinuarPago =
     reserva?.estado === 'PENDIENTE' &&
     pago?.metodo === 'MERCADO_PAGO' &&
     pago?.estado === 'PENDIENTE'
 
-  // Se pasa a GestionReserva como alContinuarPago y prepara la solicitud del checkout.
-  const continuarPago = () => {
+  // Se pasa a GestionReserva como alContinuarPago y usa el pago que ya existe.
+  const continuarPago = async () => {
     if (
       !puedeContinuarPago ||
       continuandoPago ||
@@ -61,134 +65,42 @@ function ReservationDetailsContent({ ubicacion }) {
       mostrarModalCancelar
     ) return
 
-    actualizarContinuandoPago(true)
-    actualizarMensajePago('')
-    actualizarDatosParaContinuarPago({ idPago: pago.idPago, token })
+    try {
+      const checkout = await dispatch(crearCheckout({ idPago: pago.idPago })).unwrap()
+      if (vigente.current) window.location.href = checkout.initPoint
+    } catch {
+      // GestionReserva muestra el mensaje del backend guardado en el slice.
+    }
   }
-
-  // Obtiene el checkout del pago existente y abre Mercado Pago.
-  useEffect(() => {
-    if (datosParaContinuarPago === null) return
-
-    let vigente = true
-    const { idPago, token } = datosParaContinuarPago
-
-    fetch(`${API_URL}/pagos/${idPago}/checkout`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    })
-      .then((respuesta) => {
-        if (!respuesta.ok) {
-          return respuesta.json()
-            .catch(() => ({}))
-            .then((datosError) => {
-              return Promise.reject(new Error(
-                datosError.mensaje || 'No se pudo continuar el pago.'
-              ))
-            })
-        }
-
-        return respuesta.json()
-      })
-      .then((checkout) => {
-        if (!vigente) return
-        window.location.href = checkout.initPoint
-      })
-      .catch((error) => {
-        if (!vigente) return
-        actualizarMensajePago(
-          error instanceof TypeError
-            ? 'No pudimos conectar con el servidor. Intentá nuevamente.'
-            : error.message || 'No se pudo continuar el pago.'
-        )
-      })
-      .finally(() => {
-        if (!vigente) return
-        actualizarContinuandoPago(false)
-        actualizarDatosParaContinuarPago(null)
-      })
-    return () => { vigente = false }
-  }, [datosParaContinuarPago])
 
   const abrirModalCancelar = () => {
     if (cancelando || continuandoPago) return
 
     actualizarMensaje('')
-    actualizarMensajeCancelar('')
+    dispatch(limpiarErrorCancelar())
     actualizarModalCancelar(true)
   }
 
   const cerrarModalCancelar = () => {
     if (cancelando) return
 
-    actualizarMensajeCancelar('')
+    dispatch(limpiarErrorCancelar())
     actualizarModalCancelar(false)
   }
 
-  // Se pasa al modal como alConfirmar y prepara el pedido de cancelación.
-  const cancelarReserva = () => {
-    if (cancelando || continuandoPago) return
+  // Se pasa al modal como alConfirmar; Redux guarda la reserva devuelta por el backend.
+  const confirmarCancelacion = async () => {
+    if (!idReserva || cancelando || continuandoPago) return
 
-    actualizarCancelando(true)
-    actualizarMensajeCancelar('')
-
-    actualizarDatosParaCancelar({ idReserva, token })
+    try {
+      await dispatch(cancelarReserva({ idReserva })).unwrap()
+      if (!vigente.current) return
+      actualizarModalCancelar(false)
+      actualizarMensaje('Tu reserva se canceló correctamente.')
+    } catch {
+      // El modal conserva el mensaje de error guardado en Redux.
+    }
   }
-
-  // Cancela la reserva y muestra su nuevo estado con la respuesta del backend.
-  useEffect(() => {
-    if (datosParaCancelar === null) return
-
-    // Evita aplicar la cancelación a una pantalla o sesión que ya cambió.
-    let vigente = true
-    const { token, idReserva } = datosParaCancelar
-
-    fetch(`${API_URL}/reservas/${idReserva}/cancelar`, {
-      method: 'PUT',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-      .then((respuesta) => {
-        if (respuesta.status === 204) {
-          return Promise.reject(new Error('No se pudo cancelar la reserva.'))
-        }
-        if (!respuesta.ok) {
-          return respuesta.json()
-            .catch(() => ({}))
-            .then((datosError) => {
-              return Promise.reject(new Error(
-                datosError.mensaje || 'No se pudo cancelar la reserva.'
-              ))
-            })
-        }
-
-        return respuesta.json()
-      })
-      .then((reservaCancelada) => {
-        if (!vigente) return
-        actualizarReserva(reservaCancelada)
-        actualizarModalCancelar(false)
-        actualizarMensaje('Tu reserva se canceló correctamente.')
-      })
-      .catch((error) => {
-        if (!vigente) return
-        console.error('Error al cancelar la reserva:', error)
-        actualizarMensajeCancelar(
-          error instanceof TypeError
-            ? 'No pudimos conectar con el servidor. Intentá nuevamente.'
-            : error.message || 'No pudimos cancelar tu reserva.'
-        )
-      })
-      .finally(() => {
-        if (!vigente) return
-        actualizarCancelando(false)
-        actualizarDatosParaCancelar(null)
-      })
-    return () => { vigente = false }
-  }, [datosParaCancelar])
 
   if (!idReserva || !reserva || !vehiculo) {
     return (
@@ -269,7 +181,7 @@ function ReservationDetailsContent({ ubicacion }) {
         <ConfirmarCancelacion
           reserva={reserva}
           alCerrar={cerrarModalCancelar}
-          alConfirmar={cancelarReserva}
+          alConfirmar={confirmarCancelacion}
           cancelando={cancelando}
           mensaje={mensajeCancelar}
         />

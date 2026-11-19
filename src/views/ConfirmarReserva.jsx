@@ -3,15 +3,14 @@
  * Recibe el carrito por navegación y vacía el carrito del store después de crear la reserva.
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { vaciarCarrito } from '../components/Redux/carritoSlice'
+import { confirmarCarrito, crearCheckout } from '../components/Redux/reservasSlice'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import ItinerarioReserva from "../components/reservas/compartidos/ItinerarioReserva"
 import MetodoPago from "../components/confirmarReserva/MetodoPago"
 import ResumenPago from "../components/confirmarReserva/ResumenPago"
 import VehiculoSeleccionado from "../components/reservas/compartidos/VehiculoSeleccionado"
-import { API_URL } from '../utils/api'
 
 // La key inicia una confirmación nueva si cambia el carrito seleccionado.
 export default function ConfirmarReserva(props) {
@@ -22,7 +21,16 @@ export default function ConfirmarReserva(props) {
 function ReservationConfirmation({ ubicacion }) {
   const navegar = useNavigate()
   const dispatch = useDispatch()
-  const token = useSelector((state) => state.users.token)
+  const {
+    confirmacion: confirmacionGuardada,
+    idCarritoConfirmacion,
+    confirmando: confirmandoReserva,
+    errorConfirmar,
+    idPagoCheckout,
+    loadingCheckout,
+    errorCheckout
+  } = useSelector((state) => state.reservas)
+  const vigente = useRef(false)
   const [carrito, actualizarCarrito] = useState(() => {
     const carritoRecibido = ubicacion.state?.carrito
     if (!carritoRecibido) return null
@@ -36,13 +44,18 @@ function ReservationConfirmation({ ubicacion }) {
 
   const [metodoPago, actualizarMetodoPago] = useState('MERCADO_PAGO')
 
-  const [confirmacion, actualizarConfirmacion] = useState(null)
+  const esEsteCarrito = String(idCarritoConfirmacion) === String(carrito?.idCarrito)
+  const confirmacion = esEsteCarrito ? confirmacionGuardada : null
+  const confirmando = confirmandoReserva || loadingCheckout
+  const mensaje = confirmacion && String(idPagoCheckout) === String(confirmacion.idPago) && errorCheckout
+    ? `La reserva se creó. ${errorCheckout} Podés revisarla en Mis reservas.`
+    : esEsteCarrito ? errorConfirmar : null
 
-  const [confirmando, actualizarConfirmando] = useState(false)
-  // Datos elegidos al confirmar; el efecto los utiliza para crear la reserva.
-  const [datosParaConfirmar, actualizarDatosParaConfirmar] = useState(null)
-
-  const [mensaje, actualizarMensaje] = useState('')
+  // Las respuestas actualizan Redux; esta limpieza evita navegar desde una vista que ya salió.
+  useEffect(() => {
+    vigente.current = true
+    return () => { vigente.current = false }
+  }, [])
 
   const fechaExpiracion = carrito ? carrito.fechaExpiracion : null
 
@@ -61,118 +74,31 @@ function ReservationConfirmation({ ubicacion }) {
     return () => clearInterval(intervalo)
   }, [fechaExpiracion])
 
-  // Se pasa a ResumenPago como alConfirmar; valida y prepara la creación.
-  const confirmarReserva = () => {
+  // Se pasa a ResumenPago como alConfirmar; crea la reserva y luego abre su resultado o checkout.
+  const confirmarReserva = async () => {
     if (carrito === null || confirmando || confirmacion !== null) return
     if (new Date(carrito.fechaExpiracion).getTime() <= Date.now()) return
 
-    actualizarConfirmando(true)
-    actualizarMensaje('')
+    try {
+      const datosConfirmacion = await dispatch(confirmarCarrito({
+        idCarrito: carrito.idCarrito,
+        metodoPago
+      })).unwrap()
+      if (!vigente.current) return
 
-    actualizarDatosParaConfirmar({
-      carrito,
-      metodoPago,
-      token
-    })
-  }
-
-  // Crea la reserva y el pago; después muestra el resultado o abre Mercado Pago.
-  useEffect(() => {
-    if (datosParaConfirmar === null) return
-
-    // Evita aplicar una respuesta después de salir o cambiar de sesión.
-    let vigente = true
-    const { carrito, metodoPago, token } = datosParaConfirmar
-
-    // Permite avisar si la reserva se creó aunque después falle el checkout.
-    let reservaCreada = false
-
-    fetch(
-      `${API_URL}/carritos/${carrito.idCarrito}/confirmar`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ metodoPago })
+      if (metodoPago === 'EFECTIVO') {
+        navegar('/reservas/resultado', {
+          state: { carrito, confirmacion: datosConfirmacion, metodoPago }
+        })
+        return
       }
-    )
-      .then((respuesta) => {
-        if (!respuesta.ok) {
-          return respuesta.json()
-            .catch(() => ({}))
-            .then((datosError) => {
-              return Promise.reject(new Error(
-                datosError.mensaje || 'No se pudo crear la reserva.'
-              ))
-            })
-        }
 
-        return respuesta.json()
-      })
-      .then((datosConfirmacion) => {
-        if (!vigente) return
-        reservaCreada = true
-        actualizarConfirmacion(datosConfirmacion)
-        dispatch(vaciarCarrito())
-
-        if (metodoPago === 'EFECTIVO') {
-          navegar('/reservas/resultado', {
-            state: {
-              carrito,
-              confirmacion: datosConfirmacion,
-              metodoPago
-            }
-          })
-          return
-        }
-
-        return fetch(
-          `${API_URL}/pagos/${datosConfirmacion.idPago}/checkout`,
-          {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${token}` }
-          }
-        )
-          .then((respuesta) => {
-            if (!respuesta.ok) {
-              return respuesta.json()
-                .catch(() => ({}))
-                .then((datosError) => {
-                  return Promise.reject(new Error(
-                    datosError.mensaje || 'No se pudo iniciar el pago.'
-                  ))
-                })
-            }
-
-            return respuesta.json()
-          })
-          .then((checkout) => {
-            if (!vigente) return
-            window.location.href = checkout.initPoint
-          })
-      })
-      .catch((error) => {
-        if (!vigente) return
-        console.error('Error al confirmar la reserva:', error)
-        const mensajeError = error instanceof TypeError
-          ? 'No pudimos conectar con el servidor. Intentá nuevamente.'
-          : error.message || 'No se pudo completar la operación.'
-
-        actualizarMensaje(
-          reservaCreada
-            ? `La reserva se creó. ${mensajeError} Podés revisarla en Mis reservas.`
-            : mensajeError
-        )
-      })
-      .finally(() => {
-        if (!vigente) return
-        actualizarConfirmando(false)
-        actualizarDatosParaConfirmar(null)
-      })
-    return () => { vigente = false }
-  }, [datosParaConfirmar, navegar, dispatch])
+      const checkout = await dispatch(crearCheckout({ idPago: datosConfirmacion.idPago })).unwrap()
+      if (vigente.current) window.location.href = checkout.initPoint
+    } catch {
+      // Los errores de confirmación y checkout se muestran desde el slice.
+    }
+  }
 
   if (carrito === null) {
     return (
@@ -205,7 +131,7 @@ function ReservationConfirmation({ ubicacion }) {
           />
 
           {mensaje && (
-            <p className="mt-4 p-3 bg-amber-50 border border-border rounded-[0.25rem] text-[0.6875rem] leading-[1.6] text-amber-700">{mensaje}</p>
+            <p role="alert" className="mt-4 p-3 bg-amber-50 border border-border rounded-[0.25rem] text-[0.6875rem] leading-[1.6] text-amber-700">{mensaje}</p>
           )}
 
           <Link to="/carrito" className="inline-block mt-6 text-[0.6875rem] text-soft hover:underline">← Volver al carrito</Link>

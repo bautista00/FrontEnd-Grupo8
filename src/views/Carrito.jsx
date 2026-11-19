@@ -8,30 +8,27 @@ import { CartIcon } from '../components/iconos/Iconos'
 import AvisoCarrito from "../components/carrito/AvisoCarrito"
 import ResumenCarrito from "../components/carrito/ResumenCarrito"
 import VehiculoCarrito from "../components/carrito/VehiculoCarrito"
-import { useState,useEffect } from 'react'   
+import { useState, useEffect, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { fetchCarrito, guardarCarrito, vaciarCarrito } from '../components/Redux/carritoSlice'
+import { fetchCarrito, modificarFechasCarrito, eliminarCarrito, limpiarErrorQuitar } from '../components/Redux/carritoSlice'
 import ConfirmarQuitarCarrito from '../components/carrito/ConfirmarQuitarCarrito'
-import { API_URL } from '../utils/api'
 
 export default function Carrito() {
   const dispatch = useDispatch()
   const token = useSelector((state) => state.users.token)
-  const { carrito, carritoConsultado, mensajeVacio, error } = useSelector((state) => state.carrito)
-  // Solo sirve para volver a dibujar el contador del vencimiento
-  const [, actualizarTick] = useState(0)
+  const { carrito, carritoConsultado, mensajeVacio, loading, error, guardandoFechas, errorFechas, idCarritoFechas, quitando, errorQuitar, idCarritoQuitar } = useSelector((state) => state.carrito)
+  const mensajeFechas = String(idCarritoFechas) === String(carrito?.idCarrito) ? errorFechas : null
+  const mensajeQuitar = String(idCarritoQuitar) === String(carrito?.idCarrito) ? errorQuitar : null
+  const vigente = useRef(false)
+  // Hora local usada para calcular cuánto falta hasta el vencimiento del backend.
+  const [ahora, actualizarAhora] = useState(() => Date.now())
   const [mostrarModalQuitar, actualizarModalQuitar]=useState(false)
 
-  const [mensaje, actualizarMensaje] = useState('')
-
-  const [quitando, actualizarQuitando] = useState(false)
-  // Datos de la eliminación confirmada, que se enviarán desde el efecto.
-  const [datosParaQuitar, actualizarDatosParaQuitar] = useState(null)
-
-  const [guardandoFechas, actualizarGuardandoFechas] = useState(false)
-  const [mensajeFechas, actualizarMensajeFechas] = useState('')
-  // Fechas confirmadas por el usuario, junto con los datos necesarios para guardarlas.
-  const [fechasParaGuardar, actualizarFechasParaGuardar] = useState(null)
+  // Evita cerrar el editor o el modal desde una pantalla que ya se desmontó.
+  useEffect(() => {
+    vigente.current = true
+    return () => { vigente.current = false }
+  }, [])
 
   // Recupera el carrito, su publicación y sus períodos solo si todavía no los conocemos.
   useEffect(() => {
@@ -39,167 +36,64 @@ export default function Carrito() {
     dispatch(fetchCarrito())
   }, [carritoConsultado, token, dispatch])
 
-  const fechaExpiracion = carrito ? carrito.fechaExpiracion : null
-
-  // Vuelve a dibujar el contador cada segundo y detiene el intervalo al salir.
+  // Actualiza la hora cada segundo y detiene el intervalo al salir de la vista.
   useEffect(() => {
-    if (!fechaExpiracion) return
-
     const intervalo = setInterval(() => {
-      actualizarTick((tick) => tick + 1)
+      actualizarAhora(Date.now())
     }, 1000)
 
     return () => clearInterval(intervalo)
-  }, [fechaExpiracion])
+  }, [])
   
   const abrirModalQuitar =()=>{
     if (quitando || guardandoFechas) return
 
-    actualizarMensaje('')
+    dispatch(limpiarErrorQuitar())
     actualizarModalQuitar(true)
   }
 
   const cerrarModalQuitar = () => {
     if (quitando) return
 
-    actualizarMensaje('')
+    dispatch(limpiarErrorQuitar())
     actualizarModalQuitar(false)
   }
 
-  // Prepara la eliminación después de confirmar el modal.
-  const quitarCarrito = () => {
+  // Despacha la eliminación después de confirmar el modal.
+  const quitarCarrito = async () => {
     if (carrito === null || quitando || guardandoFechas) return
 
-    actualizarQuitando(true)
-    actualizarMensaje('')
-
-    actualizarDatosParaQuitar({ idCarrito: carrito.idCarrito, token })
+    try {
+      await dispatch(eliminarCarrito({ idCarrito: carrito.idCarrito })).unwrap()
+      if (vigente.current) actualizarModalQuitar(false)
+    } catch {
+      // El modal permanece abierto y muestra el error guardado en Redux.
+    }
   }
 
-  // Elimina el carrito confirmado y actualiza los datos de App.
-  useEffect(() => {
-    if (datosParaQuitar === null) return
-
-    let vigente = true
-    const { idCarrito, token } = datosParaQuitar
-
-    fetch(`${API_URL}/carritos/${idCarrito}`, {
-      method: 'DELETE',
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    })
-      .then((respuesta) => {
-        if (!respuesta.ok) {
-          return respuesta.json()
-            .catch(() => ({}))
-            .then((datosError) => {
-              return Promise.reject(new Error(
-                datosError.mensaje || 'No se pudo quitar el carrito'
-              ))
-            })
-        }
-
-        if (!vigente) return
-        dispatch(vaciarCarrito())
-        actualizarModalQuitar(false)
-      })
-      .catch((error) => {
-        if (!vigente) return
-        console.error('Error al quitar el carrito:', error)
-        actualizarMensaje(
-          error instanceof TypeError
-            ? 'No pudimos conectar con el servidor. Intentá nuevamente.'
-            : error.message || 'No pudimos quitar el vehículo. Intentá nuevamente.'
-        )
-      })
-      .finally(() => {
-        if (!vigente) return
-        actualizarQuitando(false)
-        actualizarDatosParaQuitar(null)
-      })
-    return () => { vigente = false }
-  }, [datosParaQuitar, dispatch])
-
-  // Prepara el guardado. VehiculoCarrito entrega también una función para cerrar el editor si sale bien.
-  const guardarFechas = (fechaInicio, fechaFin, alGuardarCorrectamente) => {
+  // Guarda mediante Redux y cierra el editor después de recibir la confirmación.
+  const guardarFechas = async (fechaInicio, fechaFin, alGuardarCorrectamente) => {
     if (carrito === null || guardandoFechas || quitando) return
 
-    actualizarGuardandoFechas(true)
-    actualizarMensajeFechas('')
-
-    actualizarFechasParaGuardar({
-      idCarrito: carrito.idCarrito,
-      fechaInicio,
-      fechaFin,
-      publicacion: carrito.publicacion,
-      alGuardarCorrectamente,
-      token
-    })
+    try {
+      await dispatch(modificarFechasCarrito({
+        idCarrito: carrito.idCarrito,
+        fechaInicio,
+        fechaFin
+      })).unwrap()
+      if (vigente.current) alGuardarCorrectamente()
+    } catch {
+      // El error del slice llega al editor mediante mensajeFechas.
+    }
   }
 
-  // Guarda las fechas confirmadas y usa la respuesta para actualizar App.
-  useEffect(() => {
-    if (fechasParaGuardar === null) return
-
-    let vigente = true
-    const {
-      token,
-      idCarrito,
-      fechaInicio,
-      fechaFin,
-      publicacion,
-      alGuardarCorrectamente
-    } = fechasParaGuardar
-
-    fetch(
-      `${API_URL}/carritos/${idCarrito}/fechas`,
-      {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ fechaInicio, fechaFin })
-      }
+  if (carrito === null && (loading || (!carritoConsultado && !error))) {
+    return (
+      <main className="flex-1 w-full max-w-page mx-auto px-(--gutter) pt-10 pb-16">
+        <p role="status" className="text-[0.75rem] text-muted">Cargando tu carrito…</p>
+      </main>
     )
-      .then((respuesta) => {
-        if (!respuesta.ok) {
-          return respuesta.json()
-            .catch(() => ({}))
-            .then((datosError) => {
-              return Promise.reject(new Error(
-                datosError.mensaje || 'No se pudieron modificar las fechas.'
-              ))
-            })
-        }
-
-        return respuesta.json()
-      })
-      .then((datosCarrito) => {
-        if (!vigente) return
-        dispatch(guardarCarrito({
-          ...datosCarrito,
-          publicacion
-        }))
-
-        alGuardarCorrectamente()
-      })
-      .catch((error) => {
-        if (!vigente) return
-        actualizarMensajeFechas(
-          error instanceof TypeError
-            ? 'No pudimos conectar con el servidor. Intentá nuevamente.'
-            : error.message || 'No se pudieron modificar las fechas.'
-        )
-      })
-      .finally(() => {
-        if (!vigente) return
-        actualizarGuardandoFechas(false)
-        actualizarFechasParaGuardar(null)
-      })
-    return () => { vigente = false }
-  }, [fechasParaGuardar, dispatch])
+  }
 
   if (carrito === null) {
     return (
@@ -224,7 +118,7 @@ export default function Carrito() {
 
   const segundosRestantes = Math.max(
     0,
-    Math.ceil((new Date(carrito.fechaExpiracion).getTime() - Date.now()) / 1000)
+    Math.ceil((new Date(carrito.fechaExpiracion).getTime() - ahora) / 1000)
   )
 
   const estaVencido = segundosRestantes === 0
@@ -267,7 +161,7 @@ export default function Carrito() {
             alCerrar={cerrarModalQuitar}
             alConfirmar={quitarCarrito}
             quitando={quitando}
-            mensaje={mensaje}
+            mensaje={mensajeQuitar}
           />
         )}
     </main>

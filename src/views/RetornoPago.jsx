@@ -28,17 +28,20 @@ const MENSAJES = {
 export default function RetornoPago() {
   const { idReserva } = useParams()
   const dispatch = useDispatch()
-  const { pago: pagoGuardado, loadingPago, errorPago } = useSelector((state) => state.reservas)
-  // El store puede tener el pago de otra reserva consultada antes
-  const pago = pagoGuardado && String(pagoGuardado.idReserva) === String(idReserva) ? pagoGuardado : null
+  const token = useSelector((state) => state.users.token)
+  const { pago: pagoGuardado, loadingPago, errorPago, idReservaPago } = useSelector((state) => state.reservas)
+  const esEstaReserva = String(idReservaPago) === String(idReserva)
+  const pago = esEstaReserva && pagoGuardado && String(pagoGuardado.idReserva) === String(idReserva) ? pagoGuardado : null
+  const errorActual = esEstaReserva ? errorPago : null
 
   // Consulta el estado real del pago al volver de Mercado Pago.
   useEffect(() => {
-    if (idReserva) dispatch(fetchPagoReserva(idReserva))
-  }, [dispatch, idReserva])
+    if (!idReserva || !token) return
+    dispatch(fetchPagoReserva(idReserva))
+  }, [dispatch, idReserva, token])
 
-  const mensaje = idReserva ? errorPago : 'No pudimos identificar la reserva.'
-  const verificando = Boolean(idReserva) && (loadingPago || (!pago && !errorPago))
+  const mensaje = idReserva ? errorActual : 'No pudimos identificar la reserva.'
+  const verificando = Boolean(idReserva) && (!esEstaReserva || loadingPago || (!pago && !errorActual))
 
   // El resultado se decide con la respuesta del backend, no con un estado escrito en la URL.
   const estadoPago = pago?.estado

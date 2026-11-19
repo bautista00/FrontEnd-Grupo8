@@ -3,7 +3,7 @@
  * Al agregar al carrito guarda la respuesta en el store de Redux y navega al carrito.
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { pageStyles, titleStyles } from '../components/publicaciones/estilosPublicacion'
@@ -14,9 +14,8 @@ import GaleriaDetalle from '../components/detalle/GaleriaDetalle'
 import UbicacionDetalle from '../components/detalle/UbicacionDetalle'
 import ReservaDetalle from '../components/detalle/ReservaDetalle'
 import EspecificacionesDetalle from '../components/detalle/EspecificacionesDetalle'
-import { enviar } from '../utils/api'
 import { fetchPublicacion } from '../components/Redux/publicacionesSlice'
-import { guardarCarrito } from '../components/Redux/carritoSlice'
+import { agregarCarrito } from '../components/Redux/carritoSlice'
 import { formatFechaPublicacion } from '../utils/publicaciones'
 
 // La key inicia un detalle nuevo al cambiar el ID de la publicación.
@@ -30,20 +29,25 @@ function Detail({ id }) {
   const dispatch = useDispatch()
   const token = useSelector((state) => state.users.token)
   const { publicacion: guardada, loadingPublicacion: loading, errorPublicacion: error } = useSelector((state) => state.publicaciones)
+  const { agregando, errorAgregar, idPublicacionAgregar } = useSelector((state) => state.carrito)
   // Mientras llega la nueva, el store puede tener la publicación que se vio antes
   const publicacion = guardada && String(guardada.idPublicacion) === String(id) ? guardada : null
+  const mensaje = String(idPublicacionAgregar) === String(id) ? errorAgregar : null
+  const vigente = useRef(false)
 
-  const [agregando, setAgregando] = useState(false)
-  const [mensaje, setMensaje] = useState('')
-  const [datosParaAgregar, setDatosParaAgregar] = useState(null)
+  // Evita navegar desde un detalle que el usuario ya abandonó.
+  useEffect(() => {
+    vigente.current = true
+    return () => { vigente.current = false }
+  }, [])
 
   // Carga la publicación, el vehículo y los períodos disponibles.
   useEffect(() => {
     dispatch(fetchPublicacion(id))
   }, [dispatch, id, token])
 
-  // Se pasa a ReservaDetalle como onAgregar; prepara el envío de las fechas elegidas.
-  function agregarAlCarrito(fechaInicio, fechaFin) {
+  // Se pasa a ReservaDetalle como onAgregar y espera la confirmación antes de navegar.
+  async function agregarAlCarrito(fechaInicio, fechaFin) {
     if (agregando) return
 
     if (!token) {
@@ -51,54 +55,23 @@ function Detail({ id }) {
       return
     }
 
-    setAgregando(true)
-    setMensaje('')
-
-    setDatosParaAgregar({
-      idPublicacion: id,
-      fechaInicio,
-      fechaFin,
-      publicacion,
-      token
-    })
+    try {
+      await dispatch(agregarCarrito({
+        idPublicacion: id,
+        fechaInicio,
+        fechaFin,
+        publicacion
+      })).unwrap()
+      if (vigente.current) navigate('/carrito')
+    } catch {
+      // El error de la operación se muestra desde el slice.
+    }
   }
-
-  // Agrega el vehículo al carrito y guarda la respuesta en el store antes de navegar.
-  useEffect(() => {
-    if (datosParaAgregar === null) return
-    let vigente = true
-
-    const {
-      idPublicacion,
-      fechaInicio,
-      fechaFin,
-      publicacion,
-      token
-    } = datosParaAgregar
-
-    enviar(`/carritos/publicaciones/${idPublicacion}`, 'POST', token, { fechaInicio, fechaFin }, 'No pudimos agregar el vehículo al carrito. Intentá nuevamente.')
-      .then((datosCarrito) => {
-        if (!vigente) return
-        dispatch(guardarCarrito({ ...datosCarrito, publicacion }))
-        navigate('/carrito')
-      })
-      .catch((error) => {
-        if (!vigente) return
-        console.error('Error al agregar al carrito', error)
-        setMensaje(error.message)
-      })
-      .finally(() => {
-        if (!vigente) return
-        setAgregando(false)
-        setDatosParaAgregar(null)
-      })
-    return () => { vigente = false }
-  }, [datosParaAgregar, dispatch, navigate])
 
   if (error) {
     return (
       <main className={pageStyles + ' pb-20'}>
-        <MensajePublicacion error onRetry={() => dispatch(fetchPublicacion(id))}>No pudimos cargar la publicación. Intentá nuevamente.</MensajePublicacion>
+        <MensajePublicacion error onRetry={() => dispatch(fetchPublicacion(id))}>{error}</MensajePublicacion>
         <Link to="/" className="text-[0.75rem] text-soft hover:underline">← Volver al catálogo</Link>
       </main>
     )

@@ -3,17 +3,19 @@
  * Consulta la publicación para obtener la ubicación autorizada después de reservar.
  */
 
-import { useEffect, useState } from 'react'
-import { useSelector } from 'react-redux'
+import { useEffect } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import { useLocation } from 'react-router-dom'
 import EncabezadoResultadoReserva from '../components/resultadoReserva/EncabezadoResultadoReserva'
 import ResumenVehiculoReservado from '../components/resultadoReserva/ResumenVehiculoReservado'
 import InstruccionesRetiro from '../components/resultadoReserva/InstruccionesRetiro'
-import { API_URL } from '../utils/api'
+import { fetchPublicacionResultado } from '../components/Redux/reservasSlice'
 
 export default function ResultadoReserva() {
   const ubicacion = useLocation()
+  const dispatch = useDispatch()
   const token = useSelector((state) => state.users.token)
+  const { publicacionResultado, loadingResultado, errorResultado, idReservaResultado, idPublicacionResultado } = useSelector((state) => state.reservas)
   const carrito = ubicacion.state?.carrito
   const confirmacion = ubicacion.state?.confirmacion
   const metodoPago = ubicacion.state?.metodoPago
@@ -21,57 +23,28 @@ export default function ResultadoReserva() {
   const idReserva = confirmacion?.idReserva
   const idPublicacion = carrito?.idPublicacion
 
-  const [publicacion, actualizarPublicacion] = useState(null)
-  const [mensaje, actualizarMensaje] = useState('')
+  const esEsteResultado = String(idReservaResultado) === String(idReserva)
+    && String(idPublicacionResultado) === String(idPublicacion)
+  const publicacion = esEsteResultado ? publicacionResultado : null
+  const mensaje = esEsteResultado ? errorResultado : null
+  const cargando = Boolean(idReserva && idPublicacion && metodoPago)
+    && (!esEsteResultado || loadingResultado || (!publicacion && !mensaje))
 
   // Obtiene la ubicación que el backend permite ver después de confirmar.
   useEffect(() => {
-    if (!idReserva || !idPublicacion) return
+    if (!idReserva || !idPublicacion || !metodoPago || !token) return
+    dispatch(fetchPublicacionResultado({ idReserva, idPublicacion }))
+  }, [dispatch, idReserva, idPublicacion, metodoPago, token])
 
-    actualizarMensaje('')
-
-    fetch(`${API_URL}/publicaciones/${idPublicacion}`, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    })
-      .then((respuesta) => {
-        if (respuesta.status === 204) {
-          return Promise.reject(new Error('No se pudo consultar la publicación.'))
-        }
-
-        if (!respuesta.ok) {
-          return respuesta.json()
-            .catch(() => ({}))
-            .then((datosError) => {
-              return Promise.reject(new Error(
-                datosError.mensaje || 'No se pudo consultar la publicación.'
-              ))
-            })
-        }
-
-        return respuesta.json()
-      })
-      .then((datosPublicacion) => {
-        actualizarPublicacion(datosPublicacion)
-      })
-      .catch((error) => {
-        console.error('Error al cargar la publicación:', error)
-        actualizarMensaje(
-          error instanceof TypeError
-            ? 'No pudimos conectar con el servidor. Intentá nuevamente.'
-            : error.message || 'No pudimos cargar la publicación.'
-        )
-      })
-  }, [idReserva, idPublicacion, token])
-
-  if (!carrito || !confirmacion || !metodoPago || !publicacion) {
+  if (!carrito || !confirmacion || !metodoPago || cargando || mensaje || !publicacion) {
     return (
       <main className="flex-1 w-full max-w-page mx-auto px-(--gutter) py-10">
         <h1 className="text-[1.875rem] text-ink">
           {idReserva ? 'Resultado de tu reserva' : 'No hay una reserva para mostrar.'}
         </h1>
+        {cargando && (
+          <p role="status" className="mt-4 text-[0.75rem] text-muted">Cargando los datos de retiro…</p>
+        )}
         {mensaje && (
           <p role="alert" className="mt-4 p-3 bg-red-50 border border-red-200 rounded-[0.25rem] text-[0.75rem] leading-[1.7] text-red-700">
             {mensaje}
