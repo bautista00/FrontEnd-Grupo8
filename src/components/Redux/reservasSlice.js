@@ -212,6 +212,7 @@ const initialState = {
   errorCheckout: null,
   requestIdCheckout: null,
   cancelando: false,
+  reservaCancelada: null,
   errorCancelar: null,
   idReservaCancelar: null,
   requestIdCancelar: null,
@@ -332,9 +333,11 @@ const reservasSlice = createSlice({
         if (state.requestIdCancelar !== action.meta.requestId) return;
         state.cancelando = false;
         state.requestIdCancelar = null;
+        state.reservaCancelada = action.payload;
         const indice = state.reservas.findIndex((reserva) => String(reserva.idReserva) === String(action.payload.idReserva));
         if (indice !== -1) state.reservas[indice] = action.payload;
-        else state.reservas.push(action.payload);
+        // El detalle puede haberse recargado sin cargar el listado y sus publicaciones.
+        // En ese caso conservamos la respuesta, sin insertar una tarjeta incompleta.
         // Una consulta anterior no debe reemplazar la reserva recién cancelada.
         state.requestIdReservas = null;
         state.loading = false;

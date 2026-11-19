@@ -29,12 +29,13 @@ export default function DetalleReserva() {
 
 function ReservationDetailsContent({ ubicacion }) {
   const dispatch = useDispatch()
-  const { reservas, loadingCheckout, errorCheckout, idPagoCheckout, cancelando, errorCancelar, idReservaCancelar } = useSelector((state) => state.reservas)
+  const { reservas, reservaCancelada, loadingCheckout, errorCheckout, idPagoCheckout, cancelando, errorCancelar, idReservaCancelar } = useSelector((state) => state.reservas)
   const vigente = useRef(false)
 
   const reservaRecibida = ubicacion.state?.reserva
   const idReserva = reservaRecibida?.idReserva
-  const reserva = reservas.find((item) => String(item.idReserva) === String(idReserva)) ?? reservaRecibida ?? null
+  const cancelada = String(reservaCancelada?.idReserva) === String(idReserva) ? reservaCancelada : null
+  const reserva = reservas.find((item) => String(item.idReserva) === String(idReserva)) ?? cancelada ?? reservaRecibida ?? null
   const vehiculo = ubicacion.state?.publicacion
   const pago = ubicacion.state?.pago
   const [mensaje, actualizarMensaje] = useState('')

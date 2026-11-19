@@ -28,6 +28,8 @@ export const fetchCarrito = createAsyncThunk("carrito/fetchCarrito", async (_, {
       : "No pudimos conectar con el servidor. Intentá nuevamente.";
     throw new Error(mensaje, { cause: error });
   }
+}, {
+  condition: (_, { getState }) => Boolean(getState().users.token) && !getState().carrito.loading,
 });
 
 // Agrega las fechas confirmadas y conserva la publicación que ya cargó el detalle.
