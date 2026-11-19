@@ -64,6 +64,9 @@ function PublicationEditor({ modo = 'crear', id }) {
   const [versionCalendario, setVersionCalendario] = useState(0)
   const [recargar, setRecargar] = useState(0)
   const vigente = useRef(false)
+  // Los avisos están arriba del formulario: ante un error se lleva la pantalla hasta ellos
+  const avisos = useRef(null)
+  const [avisoError, setAvisoError] = useState(0)
   const ubicacionFija = editando || Boolean(publicacion?.idPublicacion)
 
   useEffect(() => {
@@ -108,8 +111,13 @@ function PublicationEditor({ modo = 'crear', id }) {
   function mostrarMensaje(texto, error = false) {
     setMensaje(texto)
     setEsError(error)
+    if (error) setAvisoError((actual) => actual + 1)
     dispatch(limpiarErrorGuardado())
   }
+
+  useEffect(() => {
+    if (avisoError || errorGuardado) avisos.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [avisoError, errorGuardado])
 
   function cambiarCampo(event) {
     if (guardando) return
@@ -320,6 +328,7 @@ function PublicationEditor({ modo = 'crear', id }) {
         </ol>
       )}
 
+      <div ref={avisos}>
       {mensaje && <MensajePublicacion error={esError}>{mensaje}</MensajePublicacion>}
       {!editando && !usuario?.idUsuario && errorUsuario && (
         <MensajePublicacion error>{errorUsuario}</MensajePublicacion>
@@ -340,6 +349,7 @@ function PublicationEditor({ modo = 'crear', id }) {
             </Link> antes de volver a guardar.
           </MensajePublicacion>)}
       {desactivada && <MensajePublicacion>Esta publicación está desactivada. No se puede modificar ni reactivar.</MensajePublicacion>}
+      </div>
 
       <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-8 mt-8 items-start tablet:grid-cols-1">
         <form id="form-publicacion" onSubmit={guardar} className="min-w-0">

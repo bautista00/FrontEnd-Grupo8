@@ -28,8 +28,8 @@ function VehicleEditor({ modo = 'crear', id }) {
   const { token, user: usuario, error: errorUsuario } = useSelector((state) => state.users)
   const { tiposVehiculo: tipos, errorTipos } = useSelector((state) => state.vehiculos)
   const editando = modo === 'editar'
-  // En el alta el dueño es el usuario logueado; al editar viene en el vehículo
-  const idUsuarioSesion = editando ? null : usuario?.idUsuario
+  // En el alta el dueño es el usuario logueado; al editar se usa para comprobar que el vehículo sea suyo
+  const idUsuarioSesion = usuario?.idUsuario
   // Alta iniciada desde Crear publicación: al cancelar o terminar se vuelve a ese formulario
   const desdePublicacion = !editando && location.state?.desdePublicacion === true
   const volver = desdePublicacion
@@ -51,11 +51,11 @@ function VehicleEditor({ modo = 'crear', id }) {
   }, [tipos.length, dispatch])
 
   useEffect(() => {
-    if (!editando && !usuario?.idUsuario) dispatch(fetchUser())
-  }, [editando, usuario, dispatch])
+    if (!usuario?.idUsuario) dispatch(fetchUser())
+  }, [usuario, dispatch])
 
   useEffect(() => {
-    if (!token || tipos.length === 0 || (!editando && !idUsuarioSesion)) return
+    if (!token || tipos.length === 0 || !idUsuarioSesion) return
     let vigente = true
     async function cargar() {
       try {
@@ -65,12 +65,20 @@ function VehicleEditor({ modo = 'crear', id }) {
           editando ? obtener(`/vehiculo/${id}`, token) : null,
         ])
         if (!vigente) return
+        // El backend rechaza cambios de otro usuario; acá además se evita mostrarle el formulario
+        if (editando && vehiculo.idUsuario !== idUsuarioSesion) {
+          setErrorGeneral('Este vehículo no es tuyo')
+          return
+        }
         setOtros((flota?.content ?? []).filter((v) => String(v.idVehiculo) !== String(id)))
         setValores(valoresInicialesVehiculo(vehiculo, tipos))
         setIdUsuario(editando ? vehiculo.idUsuario : idUsuarioSesion)
       } catch (e) {
         console.error('Error al cargar el formulario de vehículo', e)
-        if (vigente) setErrorGeneral(editando ? 'No pudimos cargar el vehículo.' : 'No pudimos cargar los tipos de vehículo.')
+        // Muestra el mensaje del backend; si no hubo respuesta (TypeError de fetch), uno propio
+        if (vigente) setErrorGeneral(e instanceof TypeError
+          ? (editando ? 'No pudimos cargar el vehículo.' : 'No pudimos cargar los tipos de vehículo.')
+          : e.message)
       } finally {
         if (vigente) setCargando(false)
       }
@@ -115,7 +123,7 @@ function VehicleEditor({ modo = 'crear', id }) {
   }, [datosParaGuardar, navigate])
 
   // Si no se pudieron traer los tipos o el usuario, se muestra el error del slice
-  const errorPrevio = (tipos.length === 0 && errorTipos) || (!editando && !usuario?.idUsuario && errorUsuario) || null
+  const errorPrevio = (tipos.length === 0 && errorTipos) || (!usuario?.idUsuario && errorUsuario) || null
   if (cargando && !errorPrevio) {
     return <main className={pageStyles + ' pb-20'}><MensajePublicacion>Cargando…</MensajePublicacion></main>
   }

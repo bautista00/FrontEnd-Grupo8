@@ -6,7 +6,7 @@ import guardarDatosPublicacion from "../publicaciones/guardarPublicacion";
 import { periodoDesdeApi } from "../publicaciones/datosFormularioPublicacion";
 
 // Detalle: la publicación junto con su vehículo y sus períodos disponibles
-export const fetchPublicacion = createAsyncThunk("publicaciones/fetchPublicacion", async (id, { getState }) => {
+export const fetchPublicacion = createAsyncThunk("publicaciones/fetchPublicacion", async (id, { getState, rejectWithValue }) => {
   try {
     const config = conToken(getState().users.token);
     const [[datos, vehiculo], periodos] = await Promise.all([
@@ -22,7 +22,11 @@ export const fetchPublicacion = createAsyncThunk("publicaciones/fetchPublicacion
       periodos: periodos.map((periodo) => ({ desde: periodo.fechaInicio, hasta: periodo.fechaFin })),
     };
   } catch (error) {
-    throw new Error(mensajeDe(error, "No pudimos cargar la publicación."), { cause: error });
+    // Reintentar solo sirve si no hubo respuesta o falló el servidor (no si ya no está disponible)
+    return rejectWithValue({
+      message: mensajeDe(error, "No pudimos cargar la publicación."),
+      reintentable: !error.response || error.response.status >= 500,
+    });
   }
 });
 
@@ -172,6 +176,7 @@ const initialState = {
   publicacion: null,
   loadingPublicacion: false,
   errorPublicacion: null,
+  errorPublicacionReintentable: false,
   requestIdPublicacion: null,
   misPublicaciones: null,
   loading: false,
@@ -266,7 +271,8 @@ const publicacionesSlice = createSlice({
       .addCase(fetchPublicacion.rejected, (state, action) => {
         if (action.meta.requestId !== state.requestIdPublicacion) return;
         state.loadingPublicacion = false;
-        state.errorPublicacion = action.error.message;
+        state.errorPublicacion = action.payload?.message ?? action.error.message;
+        state.errorPublicacionReintentable = action.payload?.reintentable ?? true;
       })
       .addCase(fetchMisPublicaciones.pending, (state, action) => {
         state.loading = true;

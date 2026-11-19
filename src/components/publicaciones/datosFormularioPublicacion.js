@@ -86,20 +86,33 @@ function fechaDeHoy() {
   return hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' + String(hoy.getDate()).padStart(2, '0')
 }
 
-// Devuelve el primer problema que encuentre, o '' si está todo bien
+// Campos del punto de retiro con el mismo mensaje que ValidacionVolanta del backend,
+// en el orden en que aparecen en la pantalla
+const CAMPOS_UBICACION = [
+  ['direccion', 'Ingresá la dirección.'],
+  ['zona', 'Ingresá el barrio o la zona.'],
+  ['localidad', 'Ingresá la localidad.'],
+  ['ciudad', 'Ingresá la ciudad.'],
+  ['provincia', 'Ingresá la provincia.'],
+  ['codigoPostal', 'Ingresá el código postal.'],
+]
+
+// Devuelve el primer problema que encuentre, o '' si está todo bien.
+// Donde el backend valida lo mismo, se usa su texto.
 export function validarFormulario(valores, editando) {
   const descuento = Number(valores.descuentoPorcentaje || 0)
 
   if (!valores.idVehiculo) return 'Elegí un vehículo.'
   if (!Number.isFinite(Number(valores.precioDia)) || Number(valores.precioDia) < 1) return 'Ingresá un precio por día mayor o igual a 1.'
-  if (!(descuento >= 0 && descuento <= 50)) return 'El descuento debe estar entre 0 y 50 %.'
-  if (!valores.descripcion.trim() || valores.descripcion.length > 600) return 'Completá la descripción, con un máximo de 600 caracteres.'
-  if (!valores.horaRetiroDevolucion) return 'Completá la hora de retiro y devolución.'
+  if (!(descuento >= 0 && descuento <= 50)) return 'El descuento tiene que estar entre 0 y 50 %.'
+  if (!valores.descripcion.trim()) return 'Ingresá una descripción.'
+  if (valores.descripcion.length > 600) return 'La descripción puede tener hasta 600 caracteres.'
+  if (!valores.horaRetiroDevolucion) return 'Elegí la hora de retiro y devolución.'
 
   if (!editando) {
-    const camposUbicacion = ['direccion', 'zona', 'localidad', 'ciudad', 'provincia', 'codigoPostal']
-    if (camposUbicacion.some((campo) => !valores[campo].trim())) return 'Completá los datos del punto de retiro.'
-    if (!tieneCoordenadas(valores)) return 'Seleccioná una ubicación con coordenadas válidas antes de publicar.'
+    const campoVacio = CAMPOS_UBICACION.find(([campo]) => !valores[campo].trim())
+    if (campoVacio) return campoVacio[1]
+    if (!tieneCoordenadas(valores)) return 'Elegí la dirección de la lista de sugerencias.'
     if (valores.periodos.length === 0) return 'Agregá al menos un período disponible.'
   }
 

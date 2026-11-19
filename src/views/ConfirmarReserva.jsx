@@ -23,7 +23,7 @@ function ReservationConfirmation({ ubicacion }) {
   const navegar = useNavigate()
   const dispatch = useDispatch()
   const token = useSelector((state) => state.users.token)
-  const { carrito: carritoGuardado, carritoConfirmado, metodoPagoConfirmado, carritoConsultado, loading: cargandoCarrito, error: errorCarrito, mensajeVacio } = useSelector((state) => state.carrito)
+  const { carrito: carritoGuardado, carritoConfirmado, metodoPagoConfirmado, carritoConsultado, loading: cargandoCarrito, error: errorCarrito } = useSelector((state) => state.carrito)
   const {
     confirmacion: confirmacionGuardada,
     idCarritoConfirmacion,
@@ -124,7 +124,7 @@ function ReservationConfirmation({ ubicacion }) {
       <main className="flex-1 w-full max-w-page mx-auto px-(--gutter) pt-10 pb-16 phone:pt-7 phone:pb-10">
         <header className="mb-6">
           <h1 className="mt-1.5 text-[2.25rem] leading-[1.2] text-ink phone:text-[1.875rem]">No hay un carrito para confirmar</h1>
-          <p className="mt-2 text-[0.75rem] leading-[1.7] text-muted">{mensajeVacio || 'Volvé al carrito y presioná «Continuar con la reserva» para revisar sus datos.'}</p>
+          <p className="mt-2 text-[0.75rem] leading-[1.7] text-muted">Volvé al carrito y presioná «Continuar con la reserva» para revisar sus datos.</p>
         </header>
         <Link to="/carrito" className="inline-block mt-6 text-[0.6875rem] text-soft hover:underline">Volver al carrito</Link>
       </main>

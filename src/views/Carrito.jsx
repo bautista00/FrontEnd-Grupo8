@@ -16,7 +16,7 @@ import ConfirmarQuitarCarrito from '../components/carrito/ConfirmarQuitarCarrito
 export default function Carrito() {
   const dispatch = useDispatch()
   const token = useSelector((state) => state.users.token)
-  const { carrito, carritoConsultado, mensajeVacio, loading, error, guardandoFechas, errorFechas, idCarritoFechas, quitando, errorQuitar, idCarritoQuitar } = useSelector((state) => state.carrito)
+  const { carrito, carritoConsultado, loading, error, guardandoFechas, errorFechas, idCarritoFechas, quitando, errorQuitar, idCarritoQuitar } = useSelector((state) => state.carrito)
   const mensajeFechas = String(idCarritoFechas) === String(carrito?.idCarrito) ? errorFechas : null
   const mensajeQuitar = String(idCarritoQuitar) === String(carrito?.idCarrito) ? errorQuitar : null
   const vigente = useRef(false)
@@ -101,7 +101,7 @@ export default function Carrito() {
         <section className="w-full max-w-[26.25rem] px-8 py-10 bg-card border border-border rounded-lg text-center phone:px-5 phone:py-8" aria-labelledby="cart-empty-title">
           <CartIcon size={48} className="block mx-auto mb-5 text-disabled" />
           <h1 id="cart-empty-title" className="text-[1.625rem] leading-[1.3] text-ink phone:text-[1.5rem]">
-            {error ? 'No pudimos cargar tu carrito' : mensajeVacio || 'Tu carrito está vacío'}
+            {error ? 'No pudimos cargar tu carrito' : 'Tu carrito está vacío'}
           </h1>
           {error ? (
             <p role="alert" className="mt-3 p-3 bg-red-50 border border-red-200 rounded-[0.25rem] text-[0.75rem] leading-[1.7] text-red-700">{error}</p>

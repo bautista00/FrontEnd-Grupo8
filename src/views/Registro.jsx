@@ -24,7 +24,7 @@ const VALORES_INICIALES = {
 
 // Devuelve el primer problema que encuentre, o '' si está todo bien
 function validar(valores) {
-  if (valores.password.length < MINIMO_PASSWORD) return `La contraseña debe tener al menos ${MINIMO_PASSWORD} caracteres.`
+  if (valores.password.length < MINIMO_PASSWORD) return `La contraseña tiene que tener al menos ${MINIMO_PASSWORD} caracteres.`
   if (valores.password !== valores.repetirPassword) return 'Las contraseñas no coinciden.'
   return ''
 }

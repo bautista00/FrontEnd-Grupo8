@@ -43,28 +43,29 @@ export function valoresInicialesVehiculo(vehiculo, tipos = []) {
 export function validarVehiculo(valores, tipos, otrosVehiculos = []) {
   const errores = {}
 
-  if (!valores.patente.trim()) errores.patente = 'La patente es obligatoria'
-  else if (!patenteValida(valores.patente)) errores.patente = 'La patente no es válida. Ejemplos: AB123CD o ABC123'
+  // Mismos textos que ValidacionVolanta del backend (salvo el formato de patente, que solo valida el front)
+  if (!valores.patente.trim()) errores.patente = 'Ingresá la patente.'
+  else if (!patenteValida(valores.patente)) errores.patente = 'La patente no es válida. Ejemplos: AB123CD o ABC123.'
   else if (otrosVehiculos.some((otro) => normalizarPatente(otro.patente) === normalizarPatente(valores.patente))) {
-    errores.patente = 'Ya registraste un vehículo con esa patente'
+    errores.patente = 'Ya hay un vehículo registrado con esa patente.'
   }
 
   if (!tipos.some((tipo) => String(tipo.idTipoVehiculo) === valores.idTipoVehiculo)) {
-    errores.idTipoVehiculo = 'Elegí un tipo de vehículo'
+    errores.idTipoVehiculo = 'Elegí un tipo de vehículo de la lista.'
   }
 
-  if (!valores.marca.trim()) errores.marca = 'La marca es obligatoria'
-  if (!valores.modelo.trim()) errores.modelo = 'El modelo es obligatorio'
-  if (!valores.color.trim()) errores.color = 'El color es obligatorio'
+  if (!valores.marca.trim()) errores.marca = 'Ingresá la marca.'
+  if (!valores.modelo.trim()) errores.modelo = 'Ingresá el modelo.'
+  if (!valores.color.trim()) errores.color = 'Ingresá el color.'
 
   const anio = Number(valores.anio)
   if (valores.anio === '' || !Number.isInteger(anio) || anio < ANIO_MIN || anio > ANIO_MAX) {
-    errores.anio = `El año debe estar entre ${ANIO_MIN} y ${ANIO_MAX}`
+    errores.anio = `El año tiene que estar entre ${ANIO_MIN} y ${ANIO_MAX}.`
   }
 
   const asientos = Number(valores.cantidadAsientos)
   if (valores.cantidadAsientos === '' || !Number.isInteger(asientos) || asientos < ASIENTOS_MIN || asientos > ASIENTOS_MAX) {
-    errores.cantidadAsientos = `Los asientos deben estar entre ${ASIENTOS_MIN} y ${ASIENTOS_MAX}`
+    errores.cantidadAsientos = `La cantidad de asientos tiene que estar entre ${ASIENTOS_MIN} y ${ASIENTOS_MAX}.`
   }
 
   return errores

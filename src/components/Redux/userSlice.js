@@ -15,7 +15,10 @@ export const fetchUser = createAsyncThunk("users/fetchUser", async (_, { getStat
     return data;
   } catch (error) {
     if (sesionCambiada(getState, token, "requestIdUser", requestId)) return rejectWithValue({ sesionCambiada: true });
-    throw new Error("No se pudieron cargar tus datos.", { cause: error });
+    const mensaje = error.response
+      ? mensajeDe(error, "No se pudieron cargar tus datos.")
+      : "No pudimos conectar con el servidor. Intentá nuevamente.";
+    throw new Error(mensaje, { cause: error });
   }
 });
 

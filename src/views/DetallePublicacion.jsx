@@ -28,7 +28,7 @@ function Detail({ id }) {
   const navigate = useNavigate()
   const dispatch = useDispatch()
   const token = useSelector((state) => state.users.token)
-  const { publicacion: guardada, loadingPublicacion: loading, errorPublicacion: error } = useSelector((state) => state.publicaciones)
+  const { publicacion: guardada, loadingPublicacion: loading, errorPublicacion: error, errorPublicacionReintentable: reintentable } = useSelector((state) => state.publicaciones)
   const { agregando, errorAgregar, idPublicacionAgregar } = useSelector((state) => state.carrito)
   // Mientras llega la nueva, el store puede tener la publicación que se vio antes
   const publicacion = guardada && String(guardada.idPublicacion) === String(id) ? guardada : null
@@ -71,7 +71,7 @@ function Detail({ id }) {
   if (error) {
     return (
       <main className={pageStyles + ' pb-20'}>
-        <MensajePublicacion error onRetry={() => dispatch(fetchPublicacion(id))}>{error}</MensajePublicacion>
+        <MensajePublicacion error onRetry={reintentable ? () => dispatch(fetchPublicacion(id)) : undefined}>{error}</MensajePublicacion>
         <Link to="/" className="text-[0.75rem] text-soft hover:underline">← Volver al catálogo</Link>
       </main>
     )

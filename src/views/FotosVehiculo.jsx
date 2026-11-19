@@ -195,7 +195,8 @@ function VehiclePhotosLoader({ id }) {
       })
       .catch((e) => {
         console.error('Error al cargar fotos', e)
-        if (vigente) setErrorCarga('No pudimos cargar el vehículo')
+        // Muestra el mensaje del backend; si no hubo respuesta (TypeError de fetch), uno propio
+        if (vigente) setErrorCarga(e instanceof TypeError ? 'No pudimos cargar el vehículo' : e.message)
       })
     return () => { vigente = false }
   }, [id, token, version, idUsuario])
