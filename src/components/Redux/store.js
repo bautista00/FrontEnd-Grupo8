@@ -6,6 +6,7 @@ import vehiculosReducer from "./vehiculosSlice"
 import publicacionesReducer from "./publicacionesSlice"
 import carritoReducer from "./carritoSlice"
 import reservasReducer from "./reservasSlice"
+import resenasReducer from "./resenasSlice"
 
 const userPersistConfig = {
   key: "users",                  // solo el nombre en localStorage: "persist:users"
@@ -21,6 +22,7 @@ export const store = configureStore({
     publicaciones: publicacionesReducer,
     carrito: carritoReducer,
     reservas: reservasReducer,
+    resenas: resenasReducer,
   },
   middleware: (getDefaultMiddleware) => getDefaultMiddleware({
     serializableCheck: {

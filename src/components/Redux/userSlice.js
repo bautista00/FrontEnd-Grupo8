@@ -22,6 +22,44 @@ export const fetchUser = createAsyncThunk("users/fetchUser", async (_, { getStat
   }
 });
 
+// Cambios del perfil propio. Cada uno devuelve el usuario actualizado; el error llega con el mensaje del backend
+const crearThunkPerfil = (tipo, pedido, mensajeError) => createAsyncThunk(tipo, async (datos, { getState, dispatch }) => {
+  try {
+    return await pedido(datos, conToken(getState().users.token), dispatch);
+  } catch (error) {
+    throw new Error(error.response ? mensajeDe(error, mensajeError) : "No pudimos conectar con el servidor. Intentá nuevamente.", { cause: error });
+  }
+});
+
+export const actualizarTelefono = crearThunkPerfil("users/actualizarTelefono", async (telefono, config) => {
+  const { data } = await axios.put(`${API_URL}/usuarios/me/telefono`, { telefono }, config);
+  return data;
+}, "No se pudo guardar el teléfono.");
+
+// Si el backend devuelve un token nuevo (el correo forma parte del token), se guarda y se vuelve a pedir el usuario
+export const actualizarEmail = crearThunkPerfil("users/actualizarEmail", async ({ email, password }, config, dispatch) => {
+  const { data } = await axios.put(`${API_URL}/usuarios/me/email`, { email, password }, config);
+  if (!data?.token) return (await axios.get(`${API_URL}/usuarios/me`, config)).data;
+  dispatch(setToken(data.token));
+  return (await axios.get(`${API_URL}/usuarios/me`, conToken(data.token))).data;
+}, "No se pudo cambiar el correo.");
+
+export const cambiarContrasena = crearThunkPerfil("users/cambiarContrasena", async ({ actual, nueva }, config) => {
+  await axios.put(`${API_URL}/usuarios/me/password`, { actual, nueva }, config);
+}, "No se pudo cambiar la contraseña.");
+
+export const subirFoto = crearThunkPerfil("users/subirFoto", async (archivo, config) => {
+  const formData = new FormData();
+  formData.append("file", archivo);
+  const { data } = await axios.post(`${API_URL}/usuarios/me/foto`, formData, config);
+  return data;
+}, "No se pudo subir la foto.");
+
+export const quitarFoto = crearThunkPerfil("users/quitarFoto", async (_, config) => {
+  const { data } = await axios.delete(`${API_URL}/usuarios/me/foto`, config);
+  return data;
+}, "No se pudo quitar la foto.");
+
 // Login y registro: los dos devuelven el token de la nueva sesión
 const crearThunkAuth = (tipo, ruta, mensajeError) => createAsyncThunk(
   tipo,
@@ -92,6 +130,13 @@ const userSlice = createSlice({
         state.requestIdUser = null;
         if (!action.payload?.sesionCambiada) state.error = action.error.message;
       });
+
+    // Teléfono, correo y foto devuelven el usuario con el cambio ya hecho
+    for (const thunk of [actualizarTelefono, actualizarEmail, subirFoto, quitarFoto]) {
+      builder.addCase(thunk.fulfilled, (state, action) => {
+        state.user = action.payload;
+      });
+    }
 
     for (const thunk of [loginUser, registerUser]) {
       builder

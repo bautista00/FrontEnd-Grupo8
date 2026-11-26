@@ -12,6 +12,7 @@ import VehiculoSeleccionado from "../components/reservas/compartidos/VehiculoSel
 import ItinerarioReserva from "../components/reservas/compartidos/ItinerarioReserva"
 import ResumenPagoReserva from "../components/detalleReserva/ResumenPagoReserva"
 import GestionReserva from "../components/detalleReserva/GestionReserva"
+import CalificacionesReserva from "../components/detalleReserva/CalificacionesReserva"
 import ConfirmarCancelacion from '../components/detalleReserva/ConfirmarCancelacion'
 import { cancelarReserva, crearCheckout, limpiarErrorCancelar } from '../components/Redux/reservasSlice'
 
@@ -31,13 +32,13 @@ export default function DetalleReserva() {
 
 function ReservationDetailsContent({ ubicacion }) {
   const dispatch = useDispatch()
-  const { reservas, reservaCancelada, loadingCheckout, errorCheckout, idPagoCheckout, cancelando, errorCancelar, idReservaCancelar } = useSelector((state) => state.reservas)
+  const { reservas, reservasDeMisAutos, reservaCancelada, loadingCheckout, errorCheckout, idPagoCheckout, cancelando, errorCancelar, idReservaCancelar } = useSelector((state) => state.reservas)
   const vigente = useRef(false)
 
   const reservaRecibida = ubicacion.state?.reserva
   const idReserva = reservaRecibida?.idReserva
   const cancelada = String(reservaCancelada?.idReserva) === String(idReserva) ? reservaCancelada : null
-  const reserva = reservas.find((item) => String(item.idReserva) === String(idReserva)) ?? cancelada ?? reservaRecibida ?? null
+  const reserva = [...reservas, ...reservasDeMisAutos].find((item) => String(item.idReserva) === String(idReserva)) ?? cancelada ?? reservaRecibida ?? null
   const vehiculo = ubicacion.state?.publicacion
   const pago = ubicacion.state?.pago
 
@@ -167,6 +168,7 @@ function ReservationDetailsContent({ ubicacion }) {
             cancelando={cancelando}
             mensajePago={mensajePago}
           />
+          {reserva.estado === 'FINALIZADA' && <CalificacionesReserva reserva={reserva} />}
         </aside>
       </div>
 

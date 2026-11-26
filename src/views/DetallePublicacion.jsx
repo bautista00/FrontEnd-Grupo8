@@ -16,6 +16,7 @@ import ReservaDetalle from '../components/detalle/ReservaDetalle'
 import EspecificacionesDetalle from '../components/detalle/EspecificacionesDetalle'
 import { fetchPublicacion } from '../components/Redux/publicacionesSlice'
 import { agregarCarrito } from '../components/Redux/carritoSlice'
+import PropietarioDetalle from '../components/detalle/PropietarioDetalle'
 import { formatFechaPublicacion } from '../utils/publicaciones'
 
 // La key inicia un detalle nuevo al cambiar el ID de la publicación.
@@ -110,6 +111,7 @@ function Detail({ id }) {
           <SeccionPublicacion titulo="Descripción del vehículo">
             <p className="max-w-[40rem] text-[0.75rem] leading-[1.8] text-soft">{publicacion.descripcion}</p>
           </SeccionPublicacion>
+          <PropietarioDetalle idUsuario={publicacion.idUsuario} />
           <UbicacionDetalle publicacion={publicacion} />
         </div>
 

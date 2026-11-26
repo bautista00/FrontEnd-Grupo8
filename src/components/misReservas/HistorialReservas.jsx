@@ -5,7 +5,7 @@
 import TarjetaHistorialReserva from "./TarjetaHistorialReserva"
 import SinReservas from "./SinReservas"
 
-export default function HistorialReservas({ reservas, publicaciones, pagos }) {
+export default function HistorialReservas({ reservas, publicaciones, pagos, alConfirmarDevolucion, alCalificar }) {
   return (
     <section aria-labelledby="reservation-history-title">
       <header className="flex items-center justify-between gap-3 mb-4">
@@ -28,6 +28,8 @@ export default function HistorialReservas({ reservas, publicaciones, pagos }) {
               reserva={reserva}
               publicacion={publicacion}
               pago={pago}
+              alConfirmarDevolucion={alConfirmarDevolucion}
+              alCalificar={alCalificar}
             />
           )
         })}

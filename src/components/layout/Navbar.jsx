@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom'
 import { Link, NavLink, matchPath, useLocation, useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { logout } from '../Redux/userSlice'
-import { CartIcon, UserIcon } from '../iconos/Iconos'
+import { CartIcon } from '../iconos/Iconos'
+import Avatar from '../ui/Avatar'
 import { btnBase, btnDark, btnSize } from '../ui/estilosBoton'
 import ConfirmarCerrarSesion from './ConfirmarCerrarSesion'
 
@@ -30,6 +31,7 @@ export default function Navbar() {
   const navigate = useNavigate()
   const dispatch = useDispatch()
   const conSesion = Boolean(useSelector((state) => state.users.token))
+  const usuario = useSelector((state) => state.users.user)
   const carrito = useSelector((state) => state.carrito.carrito)
   const cantidadCarrito = conSesion && carrito ? 1 : 0
 
@@ -119,7 +121,7 @@ export default function Navbar() {
                   aria-haspopup="menu"
                   aria-expanded={menuAbierto}
                 >
-                  <UserIcon size={18} />
+                  <Avatar foto={usuario?.foto} nombre={usuario?.nombre} apellido={usuario?.apellido} size={36} />
                 </button>
 
                 {menuAbierto && (
@@ -145,6 +147,16 @@ export default function Navbar() {
                     >
                       Mi perfil
                     </NavLink>
+                    {usuario?.idUsuario && (
+                      <NavLink
+                        to={`/usuarios/${usuario.idUsuario}`}
+                        role="menuitem"
+                        onClick={() => actualizarMenuAbierto(false)}
+                        className={({ isActive }) => `${isActive ? NAV_LINK_ACTIVE : NAV_LINK_IDLE} ${MENU_ITEM}`}
+                      >
+                        Ver mi perfil público
+                      </NavLink>
+                    )}
                     <button type="button" role="menuitem" onClick={pedirCerrarSesion} className={`${NAV_LINK_IDLE} ${MENU_ITEM} hidden phone:block`}>
                       Cerrar sesión
                     </button>

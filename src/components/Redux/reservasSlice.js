@@ -23,6 +23,12 @@ async function pagoDeReserva(idReserva, config) {
   }
 }
 
+// Publicaciones de las reservas, sin consultar dos veces la que aparece en varias
+async function publicacionesDe(reservas, config) {
+  const ids = [...new Set(reservas.map((reserva) => reserva.idPublicacion))];
+  return Promise.all(ids.map(async (idPublicacion) => (await axios.get(`${API_URL}/publicaciones/${idPublicacion}`, config)).data));
+}
+
 // Mis reservas con las publicaciones y los pagos que necesitan sus tarjetas
 export const fetchMisReservas = createAsyncThunk("reservas/fetchMisReservas", async (_, { getState }) => {
   try {
@@ -30,19 +36,35 @@ export const fetchMisReservas = createAsyncThunk("reservas/fetchMisReservas", as
     const { data } = await axios.get(`${API_URL}/reservas/mias`, config);
     const reservas = data.content;
 
-    // Evita consultar dos veces una publicación que aparece en varias reservas
-    const idsPublicaciones = [...new Set(reservas.map((reserva) => reserva.idPublicacion))];
-    const pedidosPublicaciones = idsPublicaciones.map(async (idPublicacion) => {
-      const respuesta = await axios.get(`${API_URL}/publicaciones/${idPublicacion}`, config);
-      return respuesta.data;
-    });
+    const pedidosPublicaciones = publicacionesDe(reservas, config);
     // Los pagos se consultan en paralelo con las publicaciones
     const pedidosPagos = reservas.map((reserva) => pagoDeReserva(reserva.idReserva, config));
 
-    const [publicaciones, pagos] = await Promise.all([Promise.all(pedidosPublicaciones), Promise.all(pedidosPagos)]);
+    const [publicaciones, pagos] = await Promise.all([pedidosPublicaciones, Promise.all(pedidosPagos)]);
     return { reservas, publicaciones, pagos: pagos.filter((pago) => pago !== null) };
   } catch (error) {
     throw new Error(mensajeDeError(error, "No pudimos cargar tus reservas."), { cause: error });
+  }
+});
+
+// Reservas de los autos del usuario (vista del propietario), con sus publicaciones
+export const fetchReservasDeMisVehiculos = createAsyncThunk("reservas/fetchReservasDeMisVehiculos", async (_, { getState }) => {
+  try {
+    const config = conToken(getState().users.token);
+    const { data } = await axios.get(`${API_URL}/reservas/de-mis-vehiculos`, config);
+    return { reservas: data.content, publicaciones: await publicacionesDe(data.content, config) };
+  } catch (error) {
+    throw new Error(mensajeDeError(error, "No pudimos cargar las reservas de tus autos."), { cause: error });
+  }
+});
+
+// El propietario confirma que recibió el auto: la reserva pasa a FINALIZADA
+export const finalizarReserva = createAsyncThunk("reservas/finalizarReserva", async ({ idReserva }, { getState }) => {
+  try {
+    const { data } = await axios.put(`${API_URL}/reservas/${idReserva}/finalizar`, null, conToken(getState().users.token));
+    return data;
+  } catch (error) {
+    throw new Error(mensajeDeError(error, "No se pudo confirmar la devolución."), { cause: error });
   }
 });
 
@@ -202,6 +224,11 @@ const initialState = {
   loading: false,
   error: null,
   requestIdReservas: null,
+  reservasDeMisAutos: [],
+  publicacionesDeMisAutos: [],
+  cargadasDeMisAutos: false,
+  loadingDeMisAutos: false,
+  errorDeMisAutos: null,
   publicacionResultado: null,
   loadingResultado: false,
   errorResultado: null,
@@ -259,6 +286,27 @@ const reservasSlice = createSlice({
         if (state.requestIdReservas !== action.meta.requestId) return;
         state.loading = false;
         state.error = action.error.message;
+      })
+      .addCase(fetchReservasDeMisVehiculos.pending, (state) => {
+        state.loadingDeMisAutos = true;
+        state.errorDeMisAutos = null;
+      })
+      .addCase(fetchReservasDeMisVehiculos.fulfilled, (state, action) => {
+        state.loadingDeMisAutos = false;
+        state.cargadasDeMisAutos = true;
+        state.reservasDeMisAutos = action.payload.reservas;
+        state.publicacionesDeMisAutos = action.payload.publicaciones;
+      })
+      .addCase(fetchReservasDeMisVehiculos.rejected, (state, action) => {
+        state.loadingDeMisAutos = false;
+        state.errorDeMisAutos = action.error.message;
+      })
+      // La reserva finalizada reemplaza a la anterior en las dos listas
+      .addCase(finalizarReserva.fulfilled, (state, action) => {
+        for (const lista of [state.reservas, state.reservasDeMisAutos]) {
+          const indice = lista.findIndex((reserva) => reserva.idReserva === action.payload.idReserva);
+          if (indice !== -1) lista[indice] = action.payload;
+        }
       })
       .addCase(fetchPagoReserva.pending, (state, action) => {
         state.loadingPago = true;

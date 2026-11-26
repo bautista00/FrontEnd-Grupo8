@@ -2,6 +2,7 @@
  * Muestra los importes de la reserva y el método del pago recibido.
  */
 
+import { useSelector } from 'react-redux'
 import { formatARS as formatearPrecio } from '../../utils/formatos'
 
 const METODOS_PAGO = {
@@ -10,6 +11,10 @@ const METODOS_PAGO = {
 }
 
 export default function ResumenPagoReserva({ reserva, pago }) {
+  const idUsuario = useSelector((state) => state.users.user?.idUsuario)
+  // El pago es del conductor: en un auto propio no se muestra
+  const esDeMiAuto = reserva.propietario?.idUsuario === idUsuario
+
   return (
     <section className="min-w-0 p-6 bg-card border border-border rounded-lg phone:p-4.5" aria-labelledby="reservation-payment-summary-title">
       <h2 id="reservation-payment-summary-title" className="mb-5 text-[1.25rem] leading-[1.4] text-ink">
@@ -32,10 +37,12 @@ export default function ResumenPagoReserva({ reserva, pago }) {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 mt-5 p-3 bg-paper border border-border rounded-[0.25rem] text-[0.6875rem] leading-[1.6]">
-        <span className="text-muted">Método de pago</span>
-        <span className="text-ink">{pago ? METODOS_PAGO[pago.metodo] : 'No disponible'}</span>
-      </div>
+      {!esDeMiAuto && (
+        <div className="flex flex-wrap items-center justify-between gap-3 mt-5 p-3 bg-paper border border-border rounded-[0.25rem] text-[0.6875rem] leading-[1.6]">
+          <span className="text-muted">Método de pago</span>
+          <span className="text-ink">{pago ? METODOS_PAGO[pago.metodo] : 'No disponible'}</span>
+        </div>
+      )}
     </section>
   )
 }

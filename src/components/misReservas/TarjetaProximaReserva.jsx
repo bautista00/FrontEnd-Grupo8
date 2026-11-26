@@ -4,6 +4,8 @@
  */
 
 import { Link } from 'react-router-dom'
+import { useSelector } from 'react-redux'
+import AccionesReserva from './AccionesReserva'
 import { CarIcon, MapPinIcon } from '../iconos/Iconos'
 import { formatARS as formatearPrecio, formatearFecha } from '../../utils/formatos'
 
@@ -15,7 +17,10 @@ const ESTADOS_RESERVA = {
   FINALIZADA: { texto: 'Finalizada', clases: 'bg-surface border-border text-muted' },
 }
 
-export default function TarjetaProximaReserva({ reserva, publicacion, pago }) {
+export default function TarjetaProximaReserva({ reserva, publicacion, pago, alConfirmarDevolucion, alCalificar }) {
+  const idUsuario = useSelector((state) => state.users.user?.idUsuario)
+  // El pago es del conductor: en un auto propio no se muestra
+  const esDeMiAuto = reserva.propietario?.idUsuario === idUsuario
   const estadoVisual = ESTADOS_RESERVA[reserva.estado]
   const horaRetiro = publicacion.horaRetiroDevolucion
   const fechaCreacionTexto = new Intl.DateTimeFormat('es-AR', {
@@ -84,13 +89,15 @@ export default function TarjetaProximaReserva({ reserva, publicacion, pago }) {
               <strong className="font-serif text-[1.5rem]">{formatearPrecio(reserva.precioTotal)}</strong>
               <span className="ml-1 text-[0.625rem] text-muted">ARS</span>
             </p>
-            <p className="mt-2 text-[0.6875rem] leading-[1.6] text-soft">
-              {!pago
-                ? 'Sin pago registrado'
-                : pago.metodo === 'EFECTIVO'
-                  ? 'Pago en efectivo'
-                  : 'Pago con Mercado Pago'}
-            </p>
+            {!esDeMiAuto && (
+              <p className="mt-2 text-[0.6875rem] leading-[1.6] text-soft">
+                {!pago
+                  ? 'Sin pago registrado'
+                  : pago.metodo === 'EFECTIVO'
+                    ? 'Pago en efectivo'
+                    : 'Pago con Mercado Pago'}
+              </p>
+            )}
             {tienePagoPendiente && (
               <p className="mt-2 text-[0.6875rem] leading-[1.6] text-amber-700">
                 Tenés un pago pendiente de Mercado Pago. Entrá al detalle para continuar.
@@ -98,6 +105,8 @@ export default function TarjetaProximaReserva({ reserva, publicacion, pago }) {
             )}
           </div>
 
+          <div className="grid gap-3">
+          <AccionesReserva reserva={reserva} alConfirmarDevolucion={alConfirmarDevolucion} alCalificar={alCalificar} />
           <Link
             to="/mis-reservas/detalle"
             state={{ reserva, publicacion, pago }}
@@ -105,6 +114,7 @@ export default function TarjetaProximaReserva({ reserva, publicacion, pago }) {
           >
             Ver detalle de reserva
           </Link>
+          </div>
         </div>
       </div>
     </article>
