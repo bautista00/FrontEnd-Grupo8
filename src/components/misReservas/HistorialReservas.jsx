@@ -1,11 +1,11 @@
 /**
- * Relaciona las reservas del historial con sus publicaciones y pagos y renderiza sus tarjetas.
+ * Relaciona las reservas del historial con sus publicaciones y renderiza sus tarjetas.
  */
 
 import TarjetaHistorialReserva from "./TarjetaHistorialReserva"
 import SinReservas from "./SinReservas"
 
-export default function HistorialReservas({ reservas, publicaciones, pagos, alConfirmarDevolucion, alCalificar }) {
+export default function HistorialReservas({ reservas, publicaciones, alConfirmarDevolucion, alCalificar }) {
   return (
     <section aria-labelledby="reservation-history-title">
       <header className="flex items-center justify-between gap-3 mb-4">
@@ -20,14 +20,12 @@ export default function HistorialReservas({ reservas, publicaciones, pagos, alCo
       <div className="grid gap-3">
         {reservas.map((reserva) => {
           const publicacion = publicaciones.find((publicacion) => publicacion.idPublicacion === reserva.idPublicacion)
-          const pago = pagos.find((pago) => pago.idReserva === reserva.idReserva)
 
           return (
             <TarjetaHistorialReserva
               key={reserva.idReserva}
               reserva={reserva}
               publicacion={publicacion}
-              pago={pago}
               alConfirmarDevolucion={alConfirmarDevolucion}
               alCalificar={alCalificar}
             />

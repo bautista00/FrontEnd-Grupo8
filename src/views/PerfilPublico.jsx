@@ -8,7 +8,8 @@ import Avatar from '../components/ui/Avatar'
 import Estrellas from '../components/resenas/Estrellas'
 import ResumenResenas from '../components/resenas/ResumenResenas'
 import ListaResenas from '../components/resenas/ListaResenas'
-import { fetchPerfilPublico } from '../components/Redux/resenasSlice'
+import { fetchPerfilPublico, fetchPublicacionesPerfil } from '../components/Redux/resenasSlice'
+import PaginacionPublicaciones from '../components/publicaciones/PaginacionPublicaciones'
 import { btnBase, btnOutline, btnSize } from '../components/ui/estilosBoton'
 import { miembroDesde, promedio } from '../utils/resenas'
 
@@ -28,6 +29,8 @@ function Contenido({ id }) {
   const navigate = useNavigate()
   const location = useLocation()
   const { datos, loading, error } = useSelector((state) => state.resenas.perfil)
+  const entradaPublicaciones = useSelector((state) => state.resenas.publicacionesPerfil)
+  const [pagina, actualizarPagina] = useState(0)
   const idPropio = useSelector((state) => state.users.user?.idUsuario)
   const [pestana, actualizarPestana] = useState('Publicaciones')
   const [rol, actualizarRol] = useState('PROPIETARIO')
@@ -35,6 +38,10 @@ function Contenido({ id }) {
   useEffect(() => {
     dispatch(fetchPerfilPublico(id))
   }, [dispatch, id])
+
+  useEffect(() => {
+    dispatch(fetchPublicacionesPerfil({ idUsuario: id, pagina }))
+  }, [dispatch, id, pagina])
 
   // Si se entró directo por la URL no hay pantalla anterior a la que volver
   function volver() {
@@ -52,7 +59,10 @@ function Contenido({ id }) {
     return <main className={pageStyles + ' pb-20'}>{botonVolver}<MensajePublicacion>Cargando el perfil…</MensajePublicacion></main>
   }
 
-  const { perfil: usuario, publicaciones } = perfil
+  const { perfil: usuario } = perfil
+  const paginaPublicaciones = entradaPublicaciones.datos?.idUsuario === id
+    ? entradaPublicaciones.datos.pagina : null
+  const publicaciones = paginaPublicaciones?.content ?? []
   const esPropio = String(idPropio) === String(id)
   const resenas = perfil[rol]
 
@@ -99,11 +109,19 @@ function Contenido({ id }) {
 
           <div role="tabpanel">
             {pestana === 'Publicaciones' ? (
-              publicaciones.length === 0 ? (
+              entradaPublicaciones.error ? (
+                <MensajePublicacion error onRetry={() => dispatch(fetchPublicacionesPerfil({ idUsuario: id, pagina }))}>{entradaPublicaciones.error}</MensajePublicacion>
+              ) : !paginaPublicaciones ? (
+                <p role="status" className="text-[0.75rem] text-muted">Cargando publicaciones…</p>
+              ) : publicaciones.length === 0 ? (
                 <p className="text-[0.75rem] text-muted">No tiene publicaciones activas.</p>
               ) : (
+                <div aria-busy={entradaPublicaciones.loading}>
                 <div className="grid grid-cols-2 gap-5 phone:grid-cols-1">
                   {publicaciones.map((publicacion) => <TarjetaVehiculo key={publicacion.idPublicacion} publicacion={publicacion} />)}
+                </div>
+                <PaginacionPublicaciones pagina={paginaPublicaciones.number} totalPages={paginaPublicaciones.totalPages}
+                  totalElements={paginaPublicaciones.totalElements} onChange={actualizarPagina} disabled={entradaPublicaciones.loading} />
                 </div>
               )
             ) : (

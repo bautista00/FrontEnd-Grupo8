@@ -1,8 +1,3 @@
-/**
- * Muestra la reserva elegida en Mis reservas y permite cancelarla o continuar su pago.
- * Recibe la selección por navegación y lee la reserva actualizada en Redux.
- */
-
 import { useEffect, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link, useLocation } from 'react-router-dom'
@@ -11,10 +6,11 @@ import { btnBase, btnOutline, btnSize } from '../components/ui/estilosBoton'
 import VehiculoSeleccionado from "../components/reservas/compartidos/VehiculoSeleccionado"
 import ItinerarioReserva from "../components/reservas/compartidos/ItinerarioReserva"
 import ResumenPagoReserva from "../components/detalleReserva/ResumenPagoReserva"
-import GestionReserva from "../components/detalleReserva/GestionReserva"
 import CalificacionesReserva from "../components/detalleReserva/CalificacionesReserva"
+import GestionReserva from "../components/detalleReserva/GestionReserva"
 import ConfirmarCancelacion from '../components/detalleReserva/ConfirmarCancelacion'
-import { cancelarReserva, crearCheckout, limpiarErrorCancelar } from '../components/Redux/reservasSlice'
+import { cancelarReserva, crearCheckout, limpiarErrorCancelar, fetchReserva, fetchPublicacionResultado } from '../components/Redux/reservasSlice'
+import { fetchUser } from '../components/Redux/userSlice'
 
 const ESTADOS_RESERVA = {
   PENDIENTE: { texto: 'Pendiente', clases: 'bg-amber-50 border-amber-200 text-amber-700' },
@@ -24,23 +20,49 @@ const ESTADOS_RESERVA = {
   FINALIZADA: { texto: 'Finalizada', clases: 'bg-surface border-border text-muted' },
 }
 
-// La key inicia otro detalle al elegir una reserva diferente.
 export default function DetalleReserva() {
   const ubicacion = useLocation()
-  return <ReservationDetailsContent key={ubicacion.state?.reserva?.idReserva ?? 'sin-reserva'} ubicacion={ubicacion} />
+  const token = useSelector((state) => state.users.token)
+  const idReserva = ubicacion.state?.idReserva ?? ubicacion.state?.reserva?.idReserva
+  return <ReservationDetailsContent key={`${token}:${idReserva}`} idReserva={idReserva} />
 }
 
-function ReservationDetailsContent({ ubicacion }) {
+function ReservationDetailsContent({ idReserva }) {
   const dispatch = useDispatch()
-  const { reservas, reservasDeMisAutos, reservaCancelada, loadingCheckout, errorCheckout, idPagoCheckout, cancelando, errorCancelar, idReservaCancelar } = useSelector((state) => state.reservas)
+  const token = useSelector((state) => state.users.token)
+  const {
+    reservas, reservasDeMisAutos, publicaciones, publicacionesDeMisAutos, pagos, reservaDetalle, pagoDetalle, idReservaDetalle, loadingDetalle, errorDetalle,
+    publicacionResultado, idReservaResultado, idPublicacionResultado, loadingResultado, errorResultado,
+    loadingCheckout, errorCheckout, idPagoCheckout, cancelando, errorCancelar, idReservaCancelar,
+  } = useSelector((state) => state.reservas)
   const vigente = useRef(false)
+  const esEsteDetalle = String(idReservaDetalle) === String(idReserva)
+  const reserva = (esEsteDetalle ? reservaDetalle : null)
+    ?? [...reservas, ...reservasDeMisAutos].find((item) => String(item.idReserva) === String(idReserva))
+  const idUsuario = useSelector((state) => state.users.user?.idUsuario)
+  const errorUsuario = useSelector((state) => state.users.error)
+  const esConductor = reserva?.conductor
+    ? String(reserva.conductor.idUsuario) === String(idUsuario)
+    : !reservasDeMisAutos.some((item) => String(item.idReserva) === String(idReserva))
+  const idPublicacion = reserva?.idPublicacion
+  const esEstaPublicacion = String(idReservaResultado) === String(idReserva)
+    && String(idPublicacionResultado) === String(idPublicacion)
+  const vehiculo = (esEstaPublicacion ? publicacionResultado : null)
+    ?? [...publicaciones, ...publicacionesDeMisAutos].find((item) => String(item.idPublicacion) === String(idPublicacion))
+  const pago = (esEsteDetalle ? pagoDetalle : null)
+    ?? pagos.find((item) => String(item.idReserva) === String(idReserva))
+  const mensajeDetalle = (esEsteDetalle ? errorDetalle : null) || (!idUsuario ? errorUsuario : null)
+  const mensajeUbicacion = esEstaPublicacion ? errorResultado : null
 
-  const reservaRecibida = ubicacion.state?.reserva
-  const idReserva = reservaRecibida?.idReserva
-  const cancelada = String(reservaCancelada?.idReserva) === String(idReserva) ? reservaCancelada : null
-  const reserva = [...reservas, ...reservasDeMisAutos].find((item) => String(item.idReserva) === String(idReserva)) ?? cancelada ?? reservaRecibida ?? null
-  const vehiculo = ubicacion.state?.publicacion
-  const pago = ubicacion.state?.pago
+  useEffect(() => {
+    if (token && idUsuario && idReserva && (!reserva || !reserva.fechaCreacion) && !mensajeDetalle) {
+      dispatch(fetchReserva(idReserva))
+    }
+  }, [dispatch, token, idUsuario, idReserva, reserva, mensajeDetalle])
+
+  useEffect(() => {
+    if (token && idReserva && idPublicacion) dispatch(fetchPublicacionResultado({ idReserva, idPublicacion }))
+  }, [dispatch, token, idReserva, idPublicacion])
 
   const [mostrarModalCancelar, actualizarModalCancelar] = useState(false)
   const mensajeCancelar = String(idReservaCancelar) === String(idReserva) ? errorCancelar : null
@@ -55,7 +77,7 @@ function ReservationDetailsContent({ ubicacion }) {
   }, [])
 
   const puedeContinuarPago =
-    reserva?.estado === 'PENDIENTE' &&
+    esConductor && reserva?.estado === 'PENDIENTE' &&
     pago?.metodo === 'MERCADO_PAGO' &&
     pago?.estado === 'PENDIENTE'
 
@@ -77,7 +99,7 @@ function ReservationDetailsContent({ ubicacion }) {
   }
 
   const abrirModalCancelar = () => {
-    if (cancelando || continuandoPago) return
+    if (!esConductor || cancelando || continuandoPago) return
 
     dispatch(limpiarErrorCancelar())
     actualizarModalCancelar(true)
@@ -92,7 +114,7 @@ function ReservationDetailsContent({ ubicacion }) {
 
   // Se pasa al modal como alConfirmar; Redux guarda la reserva devuelta por el backend.
   const confirmarCancelacion = async () => {
-    if (!idReserva || cancelando || continuandoPago) return
+    if (!esConductor || !idReserva || cancelando || continuandoPago) return
 
     try {
       await dispatch(cancelarReserva({ idReserva })).unwrap()
@@ -114,6 +136,19 @@ function ReservationDetailsContent({ ubicacion }) {
         <h1 className="text-[1.875rem] text-ink">
           {idReserva ? 'Detalle de tu reserva' : 'No hay una reserva para mostrar.'}
         </h1>
+        {idReserva && !mensajeDetalle && !mensajeUbicacion && (
+          <p role="status" className="mt-4 text-muted">{loadingDetalle || loadingResultado || !reserva ? 'Cargando tu reserva…' : 'Cargando el vehículo…'}</p>
+        )}
+        {(mensajeDetalle || mensajeUbicacion) && (
+          <>
+            <p role="alert" className="mt-4 text-error">{mensajeDetalle || mensajeUbicacion}</p>
+            <button type="button" className={`${btnBase} ${btnOutline} ${btnSize} mt-4`}
+              onClick={() => dispatch(!idUsuario ? fetchUser() : reserva
+                ? fetchPublicacionResultado({ idReserva, idPublicacion }) : fetchReserva(idReserva))}>
+              Volver a intentar
+            </button>
+          </>
+        )}
       </main>
     )
   }
@@ -121,11 +156,11 @@ function ReservationDetailsContent({ ubicacion }) {
   const hoy = new Date()
   const fechaActual = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`
   const estadoVisual = ESTADOS_RESERVA[reserva.estado]
-  const fechaCreacionTexto = new Intl.DateTimeFormat('es-AR', {
+  const fechaCreacionTexto = reserva.fechaCreacion ? new Intl.DateTimeFormat('es-AR', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
-  }).format(new Date(reserva.fechaCreacion))
+  }).format(new Date(reserva.fechaCreacion)) : null
 
   return (
     <main className="flex-1 w-full max-w-page mx-auto px-(--gutter) pt-10 pb-16 phone:pt-7 phone:pb-10">
@@ -145,9 +180,9 @@ function ReservationDetailsContent({ ubicacion }) {
           </span>
         </div>
 
-        <p className="text-[0.6875rem] text-muted">
+        {fechaCreacionTexto && <p className="text-[0.6875rem] text-muted">
           Realizada el <time dateTime={reserva.fechaCreacion}>{fechaCreacionTexto}</time>
-        </p>
+        </p>}
       </header>
 
 
@@ -158,7 +193,7 @@ function ReservationDetailsContent({ ubicacion }) {
         </div>
         <aside className="min-w-0">
           <ResumenPagoReserva reserva={reserva} pago={pago} />
-          <GestionReserva
+          {esConductor && <GestionReserva
             reserva={reserva}
             fechaActual={fechaActual}
             alCancelar={abrirModalCancelar}
@@ -167,7 +202,7 @@ function ReservationDetailsContent({ ubicacion }) {
             continuandoPago={continuandoPago}
             cancelando={cancelando}
             mensajePago={mensajePago}
-          />
+          />}
           {reserva.estado === 'FINALIZADA' && <CalificacionesReserva reserva={reserva} />}
         </aside>
       </div>

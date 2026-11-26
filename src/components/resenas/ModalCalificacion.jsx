@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import { toast } from 'react-toastify'
-import { crearResena, editarResena } from '../Redux/resenasSlice'
+import { crearResena, editarResena, fetchResenasReserva, limpiarErrorResena } from '../Redux/resenasSlice'
 import { btnBase, btnDark, btnOutline, btnSize } from '../ui/estilosBoton'
 import { inputStyles } from '../ui/CampoFormulario'
 import Estrellas from './Estrellas'
@@ -16,35 +16,39 @@ export default function ModalCalificacion({ idReserva, otraParte, rol, resena, a
   const id = useId()
   const [estrellas, actualizarEstrellas] = useState(resena?.estrellas ?? 0)
   const [comentario, actualizarComentario] = useState(resena?.comentario ?? '')
-  const [enviando, actualizarEnviando] = useState(false)
-  const [error, actualizarError] = useState(null)
+  const { guardando: enviando, errorGuardar: error, idReservaGuardar } = useSelector((state) => state.resenas)
+  const vigente = useRef(false)
 
   // Mismo manejo del <dialog> que ConfirmarAccion
   useEffect(() => {
     const modal = dialogo.current
+    vigente.current = true
+    dispatch(limpiarErrorResena())
     const overflowAnterior = document.body.style.overflow
     modal.showModal()
     document.body.style.overflow = 'hidden'
     return () => {
+      vigente.current = false
       modal.close()
       document.body.style.overflow = overflowAnterior
     }
-  }, [])
+  }, [dispatch])
 
   const nombre = otraParte?.nombre ?? 'la otra persona'
   const titulo = rol === 'PROPIETARIO' ? `¿Cómo fue alquilar el auto de ${nombre}?` : `¿Cómo fue el alquiler con ${nombre}?`
 
   async function enviar() {
-    actualizarEnviando(true)
-    actualizarError(null)
+    if (enviando || !estrellas) return
     const datos = { idReserva, estrellas, comentario: comentario.trim() }
     try {
-      await dispatch(resena ? editarResena({ ...datos, idResena: resena.idResena }) : crearResena(datos)).unwrap()
+      const guardada = await dispatch(resena ? editarResena({ ...datos, idResena: resena.idResena }) : crearResena(datos)).unwrap()
+      if (!vigente.current) return
+      // Si ambos calificaron, ahora podemos consultar la reseña de la otra parte.
+      if (guardada.publicada) dispatch(fetchResenasReserva(idReserva))
       toast.success('Calificación enviada')
       alCerrar()
-    } catch (e) {
-      actualizarError(e.message)
-      actualizarEnviando(false)
+    } catch {
+      // el error queda en el slice
     }
   }
 
@@ -66,7 +70,7 @@ export default function ModalCalificacion({ idReserva, otraParte, rol, resena, a
     </div>
 
     <p className="mt-3 text-[0.75rem] leading-relaxed text-muted">Tu reseña queda oculta hasta que {nombre} califique o pasen 7 días.</p>
-    {error && <p role="alert" className="mt-4 text-[0.75rem] leading-relaxed text-error">{error}</p>}
+    {error && idReservaGuardar === idReserva && <p role="alert" className="mt-4 text-[0.75rem] leading-relaxed text-error">{error}</p>}
 
     <div className="mt-8 flex flex-wrap justify-end gap-3 phone:flex-col [&_button:disabled]:cursor-not-allowed [&_button:disabled]:opacity-60">
       <button type="button" disabled={enviando} onClick={alCerrar} className={`${btnBase} ${btnOutline} ${btnSize}`}>Ahora no</button>

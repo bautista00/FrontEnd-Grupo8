@@ -17,7 +17,7 @@ import ConfirmarQuitarCarrito from '../components/carrito/ConfirmarQuitarCarrito
 export default function Carrito() {
   const dispatch = useDispatch()
   const token = useSelector((state) => state.users.token)
-  const { carrito, carritoConsultado, loading, error, guardandoFechas, errorFechas, idCarritoFechas, quitando, errorQuitar, idCarritoQuitar } = useSelector((state) => state.carrito)
+  const { carrito, carritoConsultado, resultadoIncierto, loading, error, guardandoFechas, errorFechas, idCarritoFechas, quitando, errorQuitar, idCarritoQuitar } = useSelector((state) => state.carrito)
   const mensajeFechas = String(idCarritoFechas) === String(carrito?.idCarrito) ? errorFechas : null
   const mensajeQuitar = String(idCarritoQuitar) === String(carrito?.idCarrito) ? errorQuitar : null
   const vigente = useRef(false)
@@ -33,9 +33,9 @@ export default function Carrito() {
 
   // Recupera el carrito, su publicación y sus períodos solo si todavía no los conocemos.
   useEffect(() => {
-    if (carritoConsultado || !token) return
+    if (carritoConsultado || !token || error) return
     dispatch(fetchCarrito())
-  }, [carritoConsultado, token, dispatch])
+  }, [carritoConsultado, token, error, dispatch])
 
   // Actualiza la hora cada segundo y detiene el intervalo al salir de la vista.
   useEffect(() => {
@@ -94,6 +94,18 @@ export default function Carrito() {
     }
   }
 
+  if (resultadoIncierto) {
+    return (
+      <main className="flex-1 w-full max-w-page mx-auto px-(--gutter) py-10">
+        <h1 className="text-[1.875rem] text-ink">Verificando tu carrito</h1>
+        <p role={error ? 'alert' : 'status'} className="mt-4 text-soft">
+          {error || 'No recibimos el resultado del cambio. Estamos consultando cómo quedó tu carrito antes de continuar.'}
+        </p>
+        {error && <button type="button" className="mt-4" onClick={() => dispatch(fetchCarrito())}>Volver a consultar</button>}
+      </main>
+    )
+  }
+
   if (carrito === null && (loading || (!carritoConsultado && !error))) {
     return (
       <main className="flex-1 w-full max-w-page mx-auto px-(--gutter) pt-10 pb-16">
@@ -117,6 +129,7 @@ export default function Carrito() {
               Cuando elijas un auto y sus fechas, lo retenemos acá por 15 minutos mientras confirmás.
             </p>
           )}
+          {error && <button type="button" className="mt-4" onClick={() => dispatch(fetchCarrito())}>Volver a consultar</button>}
           <Link to="/" className="flex items-center justify-center gap-2 w-full mt-6 px-4 py-3 bg-ink border border-ink rounded-[0.25rem] text-[0.6875rem] text-white">Explorar catálogo de vehículos</Link>
         </section>
       </main>

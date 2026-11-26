@@ -1,91 +1,90 @@
-import { useState } from 'react'
-import { useDispatch } from 'react-redux'
+import { useEffect, useRef, useState } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import { toast } from 'react-toastify'
-import { actualizarEmail, actualizarTelefono } from '../Redux/userSlice'
+import { actualizarEmail, actualizarTelefono, limpiarErrorPerfil } from '../Redux/userSlice'
 import CampoFormulario, { inputStyles } from '../ui/CampoFormulario'
 import CampoContrasena from '../ui/CampoContrasena'
 import { btnBase, btnDark, btnOutline, btnSize } from '../ui/estilosBoton'
 import { textButtonStyles } from '../publicaciones/estilosPublicacion'
 
-// Una fila con su valor y su "Cambiar"; al tocarlo se abre el formulario del campo
-function FilaEditable({ label, valor, children }) {
-  const [editando, actualizarEditando] = useState(false)
+export default function ContactoPerfil({ usuario }) {
+  const dispatch = useDispatch()
+  const { guardandoPerfil, errorPerfil, operacionPerfil } = useSelector((state) => state.users)
+  const [campo, actualizarCampo] = useState(null)
+  const [email, actualizarEmailLocal] = useState(usuario.email)
+  const [telefono, actualizarTelefonoLocal] = useState(usuario.telefono ?? '')
+  const [password, actualizarPassword] = useState('')
+  const vigente = useRef(false)
 
-  return (
-    <div className="px-5 py-4">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-        <dt className="text-[0.625rem] uppercase tracking-[0.08em] text-muted">{label}</dt>
-        <dd className="m-0 flex items-baseline gap-4">
-          <span className="text-[0.875rem] text-ink break-all">{valor}</span>
-          {!editando && <button type="button" onClick={() => actualizarEditando(true)} className={textButtonStyles + ' underline'}>Cambiar</button>}
-        </dd>
-      </div>
-      {editando && children(() => actualizarEditando(false))}
-    </div>
-  )
-}
+  useEffect(() => {
+    vigente.current = true
+    return () => { vigente.current = false }
+  }, [])
 
-// Formulario con "Guardar" y "Cancelar"; el error del backend queda junto a los campos
-function Formulario({ alGuardar, alCerrar, children }) {
-  const [guardando, actualizarGuardando] = useState(false)
-  const [error, actualizarError] = useState(null)
+  function abrir(nombre) {
+    actualizarEmailLocal(usuario.email)
+    actualizarTelefonoLocal(usuario.telefono ?? '')
+    actualizarPassword('')
+    dispatch(limpiarErrorPerfil())
+    actualizarCampo(nombre)
+  }
 
-  async function enviar(event) {
-    event.preventDefault()
-    actualizarGuardando(true)
-    actualizarError(null)
+  async function guardar(evento) {
+    evento.preventDefault()
+    if (guardandoPerfil) return
     try {
-      await alGuardar(new FormData(event.currentTarget))
-      alCerrar()
-    } catch (e) {
-      actualizarError(e.message)
-      actualizarGuardando(false)
+      const accion = campo === 'email'
+        ? actualizarEmail({ email: email.trim(), password })
+        : actualizarTelefono(telefono.trim())
+      await dispatch(accion).unwrap()
+      if (!vigente.current) return
+      toast.success(campo === 'email' ? 'Correo actualizado' : 'Teléfono actualizado')
+      actualizarPassword('')
+      actualizarCampo(null)
+    } catch {
+      // el error queda en el slice
     }
   }
 
-  return (
-    <form onSubmit={enviar} className="mt-4 grid max-w-sm gap-4">
-      {children}
-      {error && <p role="alert" className="text-xs text-error">{error}</p>}
-      <div className="flex gap-3 [&_button:disabled]:opacity-60">
-        <button type="submit" disabled={guardando} className={`${btnBase} ${btnDark} ${btnSize}`}>{guardando ? 'Guardando…' : 'Guardar'}</button>
-        <button type="button" disabled={guardando} onClick={alCerrar} className={`${btnBase} ${btnOutline} ${btnSize}`}>Cancelar</button>
-      </div>
-    </form>
-  )
-}
-
-export default function ContactoPerfil({ usuario }) {
-  const dispatch = useDispatch()
+  const operacion = campo === 'email' ? actualizarEmail.typePrefix : actualizarTelefono.typePrefix
+  const error = operacionPerfil === operacion ? errorPerfil : null
 
   return (
-    <dl className="rounded-[0.25rem] border border-border bg-card divide-y divide-border">
-      <FilaEditable label="Correo electrónico" valor={usuario.email}>
-        {(cerrar) => (
-          <Formulario alCerrar={cerrar} alGuardar={async (datos) => {
-            await dispatch(actualizarEmail({ email: datos.get('email').trim(), password: datos.get('password') })).unwrap()
-            toast.success('Correo actualizado')
-          }}>
-            <CampoFormulario id="email" label="Correo nuevo">
-              <input id="email" name="email" type="email" required defaultValue={usuario.email} className={inputStyles} />
-            </CampoFormulario>
-            <CampoContrasena id="password" label="Tu contraseña" required autoComplete="current-password" hint="La pedimos para confirmar que sos vos." />
-          </Formulario>
-        )}
-      </FilaEditable>
-
-      <FilaEditable label="Teléfono" valor={usuario.telefono || 'No informado'}>
-        {(cerrar) => (
-          <Formulario alCerrar={cerrar} alGuardar={async (datos) => {
-            await dispatch(actualizarTelefono(datos.get('telefono').trim())).unwrap()
-            toast.success('Teléfono actualizado')
-          }}>
-            <CampoFormulario id="telefono" label="Teléfono nuevo" hint="Entre 8 y 15 dígitos.">
-              <input id="telefono" name="telefono" type="tel" inputMode="numeric" required pattern="[0-9]{8,15}" defaultValue={usuario.telefono ?? ''} className={inputStyles} />
-            </CampoFormulario>
-          </Formulario>
-        )}
-      </FilaEditable>
-    </dl>
+    <div className="rounded-[0.25rem] border border-border bg-card divide-y divide-border">
+      {[['email', 'Correo electrónico', usuario.email], ['telefono', 'Teléfono', usuario.telefono || 'No informado']].map(([nombre, etiqueta, valor]) => (
+        <section key={nombre} className="px-5 py-4">
+          <dl className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+            <dt className="text-[0.625rem] uppercase tracking-[0.08em] text-muted">{etiqueta}</dt>
+            <dd className="m-0 flex items-baseline gap-4">
+              <span className="text-[0.875rem] text-ink break-all">{valor}</span>
+              {campo !== nombre && <button type="button" disabled={guardandoPerfil} onClick={() => abrir(nombre)} className={textButtonStyles + ' underline'}>Cambiar</button>}
+            </dd>
+          </dl>
+          {campo === nombre && (
+            <form onSubmit={guardar} className="mt-4 max-w-sm">
+              <fieldset disabled={guardandoPerfil} className="m-0 grid gap-4 border-0 p-0">
+                {nombre === 'email' ? (
+                  <>
+                    <CampoFormulario id="email" label="Correo nuevo">
+                      <input id="email" type="email" required value={email} onChange={(evento) => actualizarEmailLocal(evento.target.value)} className={inputStyles} />
+                    </CampoFormulario>
+                    <CampoContrasena id="password" label="Tu contraseña" required value={password} onChange={(evento) => actualizarPassword(evento.target.value)} autoComplete="current-password" hint="La pedimos para confirmar que sos vos." />
+                  </>
+                ) : (
+                  <CampoFormulario id="telefono" label="Teléfono nuevo" hint="Entre 8 y 15 dígitos.">
+                    <input id="telefono" type="tel" inputMode="numeric" required pattern="[0-9]{8,15}" value={telefono} onChange={(evento) => actualizarTelefonoLocal(evento.target.value)} className={inputStyles} />
+                  </CampoFormulario>
+                )}
+                {error && <p role="alert" className="text-xs text-error">{error}</p>}
+                <div className="flex gap-3 [&_button:disabled]:opacity-60">
+                  <button type="submit" className={`${btnBase} ${btnDark} ${btnSize}`}>{guardandoPerfil ? 'Guardando…' : 'Guardar'}</button>
+                  <button type="button" onClick={() => { actualizarCampo(null); actualizarPassword('') }} className={`${btnBase} ${btnOutline} ${btnSize}`}>Cancelar</button>
+                </div>
+              </fieldset>
+            </form>
+          )}
+        </section>
+      ))}
+    </div>
   )
 }

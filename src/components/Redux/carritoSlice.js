@@ -29,7 +29,9 @@ export const fetchCarrito = createAsyncThunk("carrito/fetchCarrito", async (_, {
     throw new Error(mensaje, { cause: error });
   }
 }, {
-  condition: (_, { getState }) => Boolean(getState().users.token) && !getState().carrito.loading,
+  condition: (_, { getState }) => Boolean(getState().users.token) && !getState().carrito.loading
+    && !getState().carrito.agregando && !getState().carrito.guardandoFechas
+    && !getState().carrito.quitando && !getState().reservas?.confirmando,
 });
 
 // Agrega las fechas confirmadas y conserva la publicación que ya cargó el detalle.
@@ -54,10 +56,19 @@ export const agregarCarrito = createAsyncThunk(
       const mensaje = error.response
         ? mensajeDe(error, "No pudimos agregar el vehículo al carrito. Intentá nuevamente.")
         : "No recibimos confirmación. Revisá tu carrito antes de volver a agregar el vehículo.";
-      throw new Error(mensaje, { cause: error });
+      return rejectWithValue({
+        mensaje,
+        resultadoIncierto: !error.response || error.response.status >= 500 || error.response.status === 408,
+      });
     }
   },
-  { condition: (_, { getState }) => Boolean(getState().users.token) && !getState().carrito.agregando && !getState().carrito.guardandoFechas && !getState().carrito.quitando && !getState().reservas?.confirmando },
+  {
+    condition: (_, { getState }) => {
+      const { users, carrito, reservas } = getState();
+      return Boolean(users.token) && !carrito.resultadoIncierto && !carrito.loading
+        && !carrito.agregando && !carrito.guardandoFechas && !carrito.quitando && !reservas?.confirmando;
+    },
+  },
 );
 
 // Guarda las fechas y los importes confirmados por el backend, conservando la publicación.
@@ -87,7 +98,10 @@ export const modificarFechasCarrito = createAsyncThunk(
       const mensaje = error.response
         ? mensajeDe(error, "No se pudieron modificar las fechas.")
         : "No recibimos confirmación del cambio. Volvé a consultar tu carrito antes de intentar otra vez.";
-      throw new Error(mensaje, { cause: error });
+      return rejectWithValue({
+        mensaje,
+        resultadoIncierto: !error.response || error.response.status >= 500 || error.response.status === 408,
+      });
     }
   },
   {
@@ -95,6 +109,7 @@ export const modificarFechasCarrito = createAsyncThunk(
       const { users, carrito } = getState();
       return Boolean(users.token) && Boolean(carrito.carrito)
         && String(carrito.carrito.idCarrito) === String(idCarrito)
+        && !carrito.resultadoIncierto && !carrito.loading
         && !carrito.guardandoFechas && !carrito.agregando && !carrito.quitando
         && !getState().reservas?.confirmando;
     },
@@ -123,7 +138,10 @@ export const eliminarCarrito = createAsyncThunk(
       const mensaje = error.response
         ? mensajeDe(error, "No pudimos quitar el vehículo. Intentá nuevamente.")
         : "No recibimos confirmación. Volvé a consultar tu carrito para comprobar si se quitó el vehículo.";
-      throw new Error(mensaje, { cause: error });
+      return rejectWithValue({
+        mensaje,
+        resultadoIncierto: !error.response || error.response.status >= 500 || error.response.status === 408,
+      });
     }
   },
   {
@@ -131,7 +149,8 @@ export const eliminarCarrito = createAsyncThunk(
       const { users, carrito } = getState();
       return Boolean(users.token) && Boolean(carrito.carrito)
         && String(carrito.carrito.idCarrito) === String(idCarrito)
-        && !carrito.quitando && !carrito.guardandoFechas && !carrito.agregando
+        && !carrito.quitando && !carrito.resultadoIncierto && !carrito.loading
+        && !carrito.guardandoFechas && !carrito.agregando
         && !getState().reservas?.confirmando;
     },
   },
@@ -143,6 +162,7 @@ const initialState = {
   metodoPagoConfirmado: null,
   // Distingue un carrito todavía no consultado de uno que ya sabemos que está vacío
   carritoConsultado: false,
+  resultadoIncierto: false,
   mensajeVacio: "",
   loading: false,
   error: null,
@@ -200,6 +220,7 @@ const carritoSlice = createSlice({
         state.carrito = action.payload.carrito;
         state.mensajeVacio = action.payload.mensajeVacio;
         state.carritoConsultado = true;
+        state.resultadoIncierto = false;
       })
       .addCase(fetchCarrito.rejected, (state, action) => {
         if (state.requestId !== action.meta.requestId) return;
@@ -229,7 +250,14 @@ const carritoSlice = createSlice({
         if (state.requestIdAgregar !== action.meta.requestId) return;
         state.agregando = false;
         state.requestIdAgregar = null;
-        if (!action.payload?.sesionCambiada) state.errorAgregar = action.error.message;
+        if (!action.payload?.sesionCambiada) state.errorAgregar = action.payload?.mensaje ?? action.error.message;
+        if (action.payload?.resultadoIncierto) {
+          state.resultadoIncierto = true;
+          state.carritoConsultado = false;
+          state.requestId = null;
+          state.loading = false;
+          state.error = null;
+        }
       })
       .addCase(modificarFechasCarrito.pending, (state, action) => {
         state.guardandoFechas = true;
@@ -252,7 +280,14 @@ const carritoSlice = createSlice({
         if (state.requestIdFechas !== action.meta.requestId) return;
         state.guardandoFechas = false;
         state.requestIdFechas = null;
-        if (!action.payload?.solicitudVencida) state.errorFechas = action.error.message;
+        if (!action.payload?.solicitudVencida) state.errorFechas = action.payload?.mensaje ?? action.error.message;
+        if (action.payload?.resultadoIncierto) {
+          state.resultadoIncierto = true;
+          state.carritoConsultado = false;
+          state.requestId = null;
+          state.loading = false;
+          state.error = null;
+        }
       })
       .addCase(eliminarCarrito.pending, (state, action) => {
         state.quitando = true;
@@ -281,7 +316,14 @@ const carritoSlice = createSlice({
         if (state.requestIdQuitar !== action.meta.requestId) return;
         state.quitando = false;
         state.requestIdQuitar = null;
-        if (!action.payload?.solicitudVencida) state.errorQuitar = action.error.message;
+        if (!action.payload?.solicitudVencida) state.errorQuitar = action.payload?.mensaje ?? action.error.message;
+        if (action.payload?.resultadoIncierto) {
+          state.resultadoIncierto = true;
+          state.carritoConsultado = false;
+          state.requestId = null;
+          state.loading = false;
+          state.error = null;
+        }
       })
       .addCase(confirmarCarrito.fulfilled, (state, action) => {
         if (String(state.carrito?.idCarrito) !== String(action.meta.arg.idCarrito)) return;

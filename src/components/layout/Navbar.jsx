@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { Link, NavLink, matchPath, useLocation, useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { logout } from '../Redux/userSlice'
+import { fetchCarrito } from '../Redux/carritoSlice'
 import { CartIcon } from '../iconos/Iconos'
 import Avatar from '../ui/Avatar'
 import { btnBase, btnDark, btnSize } from '../ui/estilosBoton'
@@ -30,10 +31,24 @@ export default function Navbar() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const dispatch = useDispatch()
-  const conSesion = Boolean(useSelector((state) => state.users.token))
   const usuario = useSelector((state) => state.users.user)
-  const carrito = useSelector((state) => state.carrito.carrito)
-  const cantidadCarrito = conSesion && carrito ? 1 : 0
+  const token = useSelector((state) => state.users.token)
+  const conSesion = Boolean(token)
+  const { carrito, carritoConsultado, loading, error } = useSelector((state) => state.carrito)
+  const [ahora, actualizarAhora] = useState(() => Date.now())
+  const cantidadCarrito = conSesion && carritoConsultado && carrito
+    && new Date(carrito.fechaExpiracion).getTime() > ahora ? 1 : 0
+
+  useEffect(() => {
+    if (token && !carritoConsultado && !loading && !error) dispatch(fetchCarrito())
+  }, [dispatch, token, carritoConsultado, loading, error])
+
+  useEffect(() => {
+    if (!carrito) return
+    const espera = Math.max(0, new Date(carrito.fechaExpiracion).getTime() - Date.now())
+    const temporizador = setTimeout(() => actualizarAhora(Date.now()), espera + 20)
+    return () => clearTimeout(temporizador)
+  }, [carrito])
 
   const [menuAbierto, actualizarMenuAbierto] = useState(false)
   const [mostrarModalCerrarSesion, actualizarMostrarModalCerrarSesion] = useState(false)

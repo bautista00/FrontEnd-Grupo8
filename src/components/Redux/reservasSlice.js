@@ -58,15 +58,41 @@ export const fetchReservasDeMisVehiculos = createAsyncThunk("reservas/fetchReser
   }
 });
 
-// El propietario confirma que recibió el auto: la reserva pasa a FINALIZADA
-export const finalizarReserva = createAsyncThunk("reservas/finalizarReserva", async ({ idReserva }, { getState }) => {
+export const finalizarReserva = createAsyncThunk("reservas/finalizarReserva", async ({ idReserva }, { getState, requestId, rejectWithValue }) => {
+  const token = getState().users.token;
+  const cambioSesion = () => getState().users.token !== token || getState().reservas.requestIdFinalizar !== requestId;
   try {
-    const { data } = await axios.put(`${API_URL}/reservas/${idReserva}/finalizar`, null, conToken(getState().users.token));
+    const { data } = await axios.put(`${API_URL}/reservas/${idReserva}/finalizar`, null, conToken(token));
+    if (cambioSesion()) return rejectWithValue({ solicitudVencida: true });
     return data;
   } catch (error) {
+    if (cambioSesion()) return rejectWithValue({ solicitudVencida: true });
     throw new Error(mensajeDeError(error, "No se pudo confirmar la devolución."), { cause: error });
   }
-});
+}, { condition: (_, { getState }) => Boolean(getState().users.token) && !getState().reservas.finalizando });
+
+// Recupera una reserva autorizada cuando no está en la sesión actual.
+export const fetchReserva = createAsyncThunk(
+  "reservas/fetchReserva",
+  async (idReserva, { getState }) => {
+    try {
+      const config = conToken(getState().users.token);
+      const { data: reserva } = await axios.get(`${API_URL}/reservas/${idReserva}`, config);
+      const idUsuario = getState().users.user?.idUsuario;
+      const esPropietario = String(reserva.propietario?.idUsuario) === String(idUsuario);
+      const esConductor = String(reserva.conductor?.idUsuario) === String(idUsuario);
+      const pago = esPropietario && !esConductor ? null : await pagoDeReserva(idReserva, config);
+      return { reserva, pago };
+    } catch (error) {
+      throw new Error(mensajeDeError(error, "No pudimos cargar tu reserva."), { cause: error });
+    }
+  },
+  {
+    condition: (idReserva, { getState }) => Boolean(idReserva) && Boolean(getState().users.token)
+      && !(getState().reservas.loadingDetalle
+        && String(getState().reservas.idReservaDetalle) === String(idReserva)),
+  },
+);
 
 // Verifica juntos el pago y la reserva al volver de Mercado Pago.
 export const fetchPagoReserva = createAsyncThunk(
@@ -133,6 +159,7 @@ export const confirmarCarrito = createAsyncThunk(
   "reservas/confirmarCarrito",
   async ({ idCarrito, metodoPago }, { getState, requestId, rejectWithValue }) => {
     const token = getState().users.token;
+    const carrito = getState().carrito.carrito;
     try {
       const { data } = await axios.post(
         `${API_URL}/carritos/${idCarrito}/confirmar`,
@@ -142,7 +169,26 @@ export const confirmarCarrito = createAsyncThunk(
       if (getState().users.token !== token || getState().reservas.requestIdConfirmar !== requestId) {
         return rejectWithValue({ solicitudVencida: true });
       }
-      return data;
+      return {
+        ...data,
+        reserva: {
+          idReserva: data.idReserva,
+          idPublicacion: carrito.idPublicacion,
+          estado: data.estadoReserva,
+          fechaInicio: carrito.fechaInicio,
+          fechaFin: carrito.fechaFin,
+          cantidadDias: carrito.cantidadDias,
+          precioDiaAplicado: carrito.precioDiaAplicado,
+          precioTotal: data.monto,
+        },
+        pago: {
+          idPago: data.idPago,
+          idReserva: data.idReserva,
+          estado: data.estadoPago,
+          metodo: metodoPago,
+          monto: data.monto,
+        },
+      };
     } catch (error) {
       if (getState().users.token !== token || getState().reservas.requestIdConfirmar !== requestId) {
         return rejectWithValue({ solicitudVencida: true });
@@ -155,6 +201,7 @@ export const confirmarCarrito = createAsyncThunk(
       const { users, carrito, reservas } = getState();
       return Boolean(users.token) && Boolean(carrito.carrito)
         && String(carrito.carrito.idCarrito) === String(idCarrito)
+        && carrito.carritoConsultado && !carrito.resultadoIncierto && !carrito.loading
         && !carrito.agregando && !carrito.guardandoFechas && !carrito.quitando
         && !reservas.confirmando && !reservas.loadingCheckout
         && !(String(reservas.idCarritoConfirmacion) === String(idCarrito) && reservas.confirmacion);
@@ -217,6 +264,13 @@ export const cancelarReserva = createAsyncThunk(
 );
 
 const initialState = {
+  reservaDetalle: null,
+  pagoDetalle: null,
+  idReservaDetalle: null,
+  loadingDetalle: false,
+  errorDetalle: null,
+  requestIdDetalle: null,
+  cambiosDuranteCarga: [],
   cargadas: false,
   reservas: [],
   publicaciones: [],
@@ -229,6 +283,13 @@ const initialState = {
   cargadasDeMisAutos: false,
   loadingDeMisAutos: false,
   errorDeMisAutos: null,
+  requestIdDeMisAutos: null,
+  cambiosAutosDuranteCarga: [],
+  finalizando: false,
+  errorFinalizar: null,
+  idReservaFinalizar: null,
+  requestIdFinalizar: null,
+  reservaFinalizada: null,
   publicacionResultado: null,
   loadingResultado: false,
   errorResultado: null,
@@ -262,6 +323,7 @@ const reservasSlice = createSlice({
   name: "reservas",
   initialState,
   reducers: {
+    limpiarErrorFinalizar: (state) => { state.errorFinalizar = null; },
     limpiarErrorCancelar: (state) => {
       state.errorCancelar = null;
       state.idReservaCancelar = null;
@@ -273,12 +335,15 @@ const reservasSlice = createSlice({
         state.loading = true;
         state.error = null;
         state.requestIdReservas = action.meta.requestId;
+        state.cambiosDuranteCarga = [];
       })
       .addCase(fetchMisReservas.fulfilled, (state, action) => {
         if (state.requestIdReservas !== action.meta.requestId) return;
         state.loading = false;
         state.cargadas = true;
-        state.reservas = action.payload.reservas;
+        state.reservas = action.payload.reservas.map((reserva) =>
+          state.cambiosDuranteCarga.find((cambio) => cambio.idReserva === reserva.idReserva) ?? reserva);
+        state.cambiosDuranteCarga = [];
         state.publicaciones = action.payload.publicaciones;
         state.pagos = action.payload.pagos;
       })
@@ -287,26 +352,79 @@ const reservasSlice = createSlice({
         state.loading = false;
         state.error = action.error.message;
       })
-      .addCase(fetchReservasDeMisVehiculos.pending, (state) => {
+      .addCase(fetchReserva.pending, (state, action) => {
+        state.loadingDetalle = true;
+        state.errorDetalle = null;
+        state.reservaDetalle = null;
+        state.pagoDetalle = null;
+        state.idReservaDetalle = action.meta.arg;
+        state.requestIdDetalle = action.meta.requestId;
+      })
+      .addCase(fetchReserva.fulfilled, (state, action) => {
+        if (state.requestIdDetalle !== action.meta.requestId) return;
+        state.loadingDetalle = false;
+        state.requestIdDetalle = null;
+        const reserva = action.payload.reserva;
+        const cambio = [state.reservaCancelada, state.reservaFinalizada]
+          .find((item) => item?.idReserva === reserva.idReserva);
+        state.reservaDetalle = cambio ?? reserva;
+        state.pagoDetalle = action.payload.pago;
+      })
+      .addCase(fetchReserva.rejected, (state, action) => {
+        if (state.requestIdDetalle !== action.meta.requestId) return;
+        state.loadingDetalle = false;
+        state.requestIdDetalle = null;
+        state.errorDetalle = action.error.message;
+      })
+      .addCase(fetchReservasDeMisVehiculos.pending, (state, action) => {
         state.loadingDeMisAutos = true;
         state.errorDeMisAutos = null;
+        state.requestIdDeMisAutos = action.meta.requestId;
+        state.cambiosAutosDuranteCarga = [];
       })
       .addCase(fetchReservasDeMisVehiculos.fulfilled, (state, action) => {
+        if (state.requestIdDeMisAutos !== action.meta.requestId) return;
         state.loadingDeMisAutos = false;
+        state.requestIdDeMisAutos = null;
         state.cargadasDeMisAutos = true;
-        state.reservasDeMisAutos = action.payload.reservas;
+        state.reservasDeMisAutos = action.payload.reservas.map((reserva) =>
+          state.cambiosAutosDuranteCarga.find((item) => item.idReserva === reserva.idReserva) ?? reserva);
+        state.cambiosAutosDuranteCarga = [];
         state.publicacionesDeMisAutos = action.payload.publicaciones;
       })
       .addCase(fetchReservasDeMisVehiculos.rejected, (state, action) => {
+        if (state.requestIdDeMisAutos !== action.meta.requestId) return;
         state.loadingDeMisAutos = false;
+        state.requestIdDeMisAutos = null;
         state.errorDeMisAutos = action.error.message;
+        state.cambiosAutosDuranteCarga = [];
       })
-      // La reserva finalizada reemplaza a la anterior en las dos listas
+      .addCase(finalizarReserva.pending, (state, action) => {
+        state.finalizando = true;
+        state.errorFinalizar = null;
+        state.idReservaFinalizar = action.meta.arg.idReserva;
+        state.requestIdFinalizar = action.meta.requestId;
+      })
       .addCase(finalizarReserva.fulfilled, (state, action) => {
+        if (state.requestIdFinalizar !== action.meta.requestId) return;
+        state.finalizando = false;
+        state.requestIdFinalizar = null;
+        const reserva = action.payload;
+        state.reservaFinalizada = reserva;
         for (const lista of [state.reservas, state.reservasDeMisAutos]) {
-          const indice = lista.findIndex((reserva) => reserva.idReserva === action.payload.idReserva);
-          if (indice !== -1) lista[indice] = action.payload;
+          const indice = lista.findIndex((item) => item.idReserva === reserva.idReserva);
+          if (indice !== -1) lista[indice] = reserva;
         }
+        if (state.loading) state.cambiosDuranteCarga.push(reserva);
+        if (state.loadingDeMisAutos) state.cambiosAutosDuranteCarga.push(reserva);
+        if (state.reservaDetalle?.idReserva === reserva.idReserva) state.reservaDetalle = reserva;
+        if (state.reservaPago?.idReserva === reserva.idReserva) state.reservaPago = reserva;
+      })
+      .addCase(finalizarReserva.rejected, (state, action) => {
+        if (state.requestIdFinalizar !== action.meta.requestId) return;
+        state.finalizando = false;
+        state.requestIdFinalizar = null;
+        if (!action.payload?.solicitudVencida) state.errorFinalizar = action.error.message;
       })
       .addCase(fetchPagoReserva.pending, (state, action) => {
         state.loadingPago = true;
@@ -361,6 +479,12 @@ const reservasSlice = createSlice({
         state.confirmando = false;
         state.requestIdConfirmar = null;
         state.confirmacion = action.payload;
+        state.reservaDetalle = action.payload.reserva;
+        state.pagoDetalle = action.payload.pago;
+        state.idReservaDetalle = action.payload.idReserva;
+        state.errorDetalle = null;
+        state.requestIdDetalle = null;
+        state.loadingDetalle = false;
       })
       .addCase(confirmarCarrito.rejected, (state, action) => {
         if (state.requestIdConfirmar !== action.meta.requestId) return;
@@ -400,12 +524,13 @@ const reservasSlice = createSlice({
         state.reservaCancelada = action.payload;
         const indice = state.reservas.findIndex((reserva) => String(reserva.idReserva) === String(action.payload.idReserva));
         if (indice !== -1) state.reservas[indice] = action.payload;
-        // El detalle puede haberse recargado sin cargar el listado y sus publicaciones.
-        // En ese caso conservamos la respuesta, sin insertar una tarjeta incompleta.
-        // Una consulta anterior no debe reemplazar la reserva recién cancelada.
-        state.requestIdReservas = null;
-        state.loading = false;
-        state.error = null;
+        if (state.loading) state.cambiosDuranteCarga.push(action.payload);
+        if (String(state.reservaDetalle?.idReserva) === String(action.payload.idReserva)) {
+          state.reservaDetalle = action.payload;
+        }
+        if (String(state.reservaPago?.idReserva) === String(action.payload.idReserva)) {
+          state.reservaPago = action.payload;
+        }
       })
       .addCase(cancelarReserva.rejected, (state, action) => {
         if (state.requestIdCancelar !== action.meta.requestId) return;
@@ -417,5 +542,5 @@ const reservasSlice = createSlice({
   },
 });
 
-export const { limpiarErrorCancelar } = reservasSlice.actions;
+export const { limpiarErrorCancelar, limpiarErrorFinalizar } = reservasSlice.actions;
 export default reservasSlice.reducer;

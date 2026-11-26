@@ -23,25 +23,26 @@ export const fetchUser = createAsyncThunk("users/fetchUser", async (_, { getStat
 });
 
 // Cambios del perfil propio. Cada uno devuelve el usuario actualizado; el error llega con el mensaje del backend
-const crearThunkPerfil = (tipo, pedido, mensajeError) => createAsyncThunk(tipo, async (datos, { getState, dispatch }) => {
+const crearThunkPerfil = (tipo, pedido, mensajeError) => createAsyncThunk(tipo, async (datos, { getState, requestId, rejectWithValue }) => {
+  const token = getState().users.token;
   try {
-    return await pedido(datos, conToken(getState().users.token), dispatch);
+    const resultado = await pedido(datos, conToken(token));
+    if (sesionCambiada(getState, token, "requestIdPerfil", requestId)) return rejectWithValue({ sesionCambiada: true });
+    return resultado;
   } catch (error) {
+    if (sesionCambiada(getState, token, "requestIdPerfil", requestId)) return rejectWithValue({ sesionCambiada: true });
     throw new Error(error.response ? mensajeDe(error, mensajeError) : "No pudimos conectar con el servidor. Intentá nuevamente.", { cause: error });
   }
-});
+}, { condition: (_, { getState }) => Boolean(getState().users.token) && !getState().users.guardandoPerfil });
 
 export const actualizarTelefono = crearThunkPerfil("users/actualizarTelefono", async (telefono, config) => {
   const { data } = await axios.put(`${API_URL}/usuarios/me/telefono`, { telefono }, config);
   return data;
 }, "No se pudo guardar el teléfono.");
 
-// Si el backend devuelve un token nuevo (el correo forma parte del token), se guarda y se vuelve a pedir el usuario
-export const actualizarEmail = crearThunkPerfil("users/actualizarEmail", async ({ email, password }, config, dispatch) => {
+export const actualizarEmail = crearThunkPerfil("users/actualizarEmail", async ({ email, password }, config) => {
   const { data } = await axios.put(`${API_URL}/usuarios/me/email`, { email, password }, config);
-  if (!data?.token) return (await axios.get(`${API_URL}/usuarios/me`, config)).data;
-  dispatch(setToken(data.token));
-  return (await axios.get(`${API_URL}/usuarios/me`, conToken(data.token))).data;
+  return { token: data.token, email: email.trim() };
 }, "No se pudo cambiar el correo.");
 
 export const cambiarContrasena = crearThunkPerfil("users/cambiarContrasena", async ({ actual, nueva }, config) => {
@@ -94,6 +95,10 @@ const initialState = {
   loadingAuth: false,
   errorAuth: null,
   requestIdAuth: null,
+  guardandoPerfil: false,
+  errorPerfil: null,
+  operacionPerfil: null,
+  requestIdPerfil: null,
 };
 
 const userSlice = createSlice({
@@ -109,6 +114,9 @@ const userSlice = createSlice({
     // Al entrar al login o al registro no se muestra el error del otro formulario
     limpiarErrorAuth: (state) => {
       state.errorAuth = null;
+    },
+    limpiarErrorPerfil: (state) => {
+      state.errorPerfil = null;
     },
   },
   extraReducers: (builder) => {
@@ -131,11 +139,34 @@ const userSlice = createSlice({
         if (!action.payload?.sesionCambiada) state.error = action.error.message;
       });
 
-    // Teléfono, correo y foto devuelven el usuario con el cambio ya hecho
-    for (const thunk of [actualizarTelefono, actualizarEmail, subirFoto, quitarFoto]) {
-      builder.addCase(thunk.fulfilled, (state, action) => {
-        state.user = action.payload;
-      });
+    for (const thunk of [actualizarTelefono, actualizarEmail, cambiarContrasena, subirFoto, quitarFoto]) {
+      builder
+        .addCase(thunk.pending, (state, action) => {
+          state.guardandoPerfil = true;
+          state.errorPerfil = null;
+          state.operacionPerfil = thunk.typePrefix;
+          state.requestIdPerfil = action.meta.requestId;
+        })
+        .addCase(thunk.fulfilled, (state, action) => {
+          if (state.requestIdPerfil !== action.meta.requestId) return;
+          state.guardandoPerfil = false;
+          state.requestIdPerfil = null;
+          // Un GET anterior al guardado ya no puede reemplazar estos datos.
+          state.requestIdUser = null;
+          state.loading = false;
+          if (thunk === actualizarEmail) {
+            state.token = action.payload.token;
+            state.user.email = action.payload.email;
+          } else if (thunk !== cambiarContrasena) {
+            state.user = action.payload;
+          }
+        })
+        .addCase(thunk.rejected, (state, action) => {
+          if (state.requestIdPerfil !== action.meta.requestId) return;
+          state.guardandoPerfil = false;
+          state.requestIdPerfil = null;
+          if (!action.payload?.sesionCambiada) state.errorPerfil = action.error.message;
+        });
     }
 
     for (const thunk of [loginUser, registerUser]) {
@@ -159,5 +190,5 @@ const userSlice = createSlice({
   },
 });
 
-export const { setToken, logout, limpiarErrorAuth } = userSlice.actions;
+export const { setToken, logout, limpiarErrorAuth, limpiarErrorPerfil } = userSlice.actions;
 export default userSlice.reducer;

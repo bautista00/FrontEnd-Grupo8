@@ -16,14 +16,14 @@ import VehiculoSeleccionado from "../components/reservas/compartidos/VehiculoSel
 // La key inicia una confirmación nueva si cambia el carrito seleccionado.
 export default function ConfirmarReserva() {
   const ubicacion = useLocation()
-  return <ReservationConfirmation key={ubicacion.state?.carrito?.idCarrito ?? 'sin-carrito'} ubicacion={ubicacion} />
+  return <ReservationConfirmation key={ubicacion.state?.idCarrito ?? ubicacion.state?.carrito?.idCarrito ?? 'sin-carrito'} />
 }
 
-function ReservationConfirmation({ ubicacion }) {
+function ReservationConfirmation() {
   const navegar = useNavigate()
   const dispatch = useDispatch()
   const token = useSelector((state) => state.users.token)
-  const { carrito: carritoGuardado, carritoConfirmado, metodoPagoConfirmado, carritoConsultado, loading: cargandoCarrito, error: errorCarrito } = useSelector((state) => state.carrito)
+  const { carrito: carritoGuardado, carritoConfirmado, metodoPagoConfirmado, carritoConsultado, resultadoIncierto, loading: cargandoCarrito, error: errorCarrito } = useSelector((state) => state.carrito)
   const {
     confirmacion: confirmacionGuardada,
     idCarritoConfirmacion,
@@ -38,7 +38,7 @@ function ReservationConfirmation({ ubicacion }) {
 
   const [metodoPago, actualizarMetodoPago] = useState('MERCADO_PAGO')
 
-  const idCarrito = ubicacion.state?.carrito?.idCarrito ?? carritoGuardado?.idCarrito ?? carritoConfirmado?.idCarrito
+  const idCarrito = carritoGuardado?.idCarrito ?? carritoConfirmado?.idCarrito
   const esEsteCarrito = String(idCarritoConfirmacion) === String(idCarrito)
   const confirmacion = esEsteCarrito ? confirmacionGuardada : null
   const datosCarrito = confirmacion ? carritoConfirmado : carritoGuardado
@@ -61,9 +61,9 @@ function ReservationConfirmation({ ubicacion }) {
 
   // La navegación normal reutiliza Redux; después de F5 recupera el carrito vigente.
   useEffect(() => {
-    if (carritoConsultado || !token) return
+    if (carritoConsultado || !token || errorCarrito) return
     dispatch(fetchCarrito())
-  }, [carritoConsultado, token, dispatch])
+  }, [carritoConsultado, token, errorCarrito, dispatch])
 
   // Mantiene el vencimiento del carrito y detiene el contador al salir.
   useEffect(() => {
@@ -77,7 +77,7 @@ function ReservationConfirmation({ ubicacion }) {
 
   // Se pasa a ResumenPago como alConfirmar; crea la reserva y luego abre su resultado o checkout.
   const confirmarReserva = async () => {
-    if (!carritoGuardado || cargandoCarrito || errorCarrito || confirmando || confirmacion !== null) return
+    if (!carritoConsultado || resultadoIncierto || !carritoGuardado || cargandoCarrito || errorCarrito || confirmando || confirmacion !== null) return
     if (new Date(carrito.fechaExpiracion).getTime() <= Date.now()) return
 
     try {
@@ -89,7 +89,7 @@ function ReservationConfirmation({ ubicacion }) {
 
       if (metodoPago === 'EFECTIVO') {
         navegar('/reservas/resultado', {
-          state: { carrito, confirmacion: datosConfirmacion, metodoPago }
+          state: { idReserva: datosConfirmacion.idReserva }
         })
         return
       }
@@ -99,6 +99,17 @@ function ReservationConfirmation({ ubicacion }) {
     } catch {
       // Los errores de confirmación y checkout se muestran desde el slice.
     }
+  }
+
+  if (!confirmacion && resultadoIncierto) {
+    return (
+      <main className="flex-1 w-full max-w-page mx-auto px-(--gutter) py-10">
+        <h1 className="text-[1.875rem] text-ink">Necesitamos verificar tu carrito</h1>
+        <p role={errorCarrito ? 'alert' : 'status'} className="mt-4 text-soft">{errorCarrito || 'Estamos consultando las fechas y el importe antes de confirmar la reserva.'}</p>
+        {errorCarrito && <button type="button" className="mt-4" onClick={() => dispatch(fetchCarrito())}>Volver a consultar</button>}
+        <Link to="/carrito" className="block mt-6 text-soft hover:underline">Volver al carrito</Link>
+      </main>
+    )
   }
 
   if (!confirmacion && (cargandoCarrito || (!carritoConsultado && !errorCarrito))) {

@@ -109,7 +109,7 @@ export default function TarjetaProximaReserva({ reserva, publicacion, pago, alCo
           <AccionesReserva reserva={reserva} alConfirmarDevolucion={alConfirmarDevolucion} alCalificar={alCalificar} />
           <Link
             to="/mis-reservas/detalle"
-            state={{ reserva, publicacion, pago }}
+            state={{ idReserva: reserva.idReserva }}
             className="flex items-center justify-center w-full px-4 py-3 bg-ink border-0 rounded-[0.25rem] text-[0.6875rem] text-white"
           >
             Ver detalle de reserva
