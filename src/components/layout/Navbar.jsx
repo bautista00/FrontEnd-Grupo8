@@ -3,7 +3,9 @@ import { createPortal } from 'react-dom'
 import { Link, NavLink, matchPath, useLocation, useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { logout } from '../Redux/userSlice'
-import { CartIcon, UserIcon } from '../iconos/Iconos'
+import { fetchCarrito } from '../Redux/carritoSlice'
+import { CartIcon } from '../iconos/Iconos'
+import Avatar from '../ui/Avatar'
 import { btnBase, btnDark, btnSize } from '../ui/estilosBoton'
 import ConfirmarCerrarSesion from './ConfirmarCerrarSesion'
 
@@ -29,9 +31,24 @@ export default function Navbar() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const dispatch = useDispatch()
-  const conSesion = Boolean(useSelector((state) => state.users.token))
-  const carrito = useSelector((state) => state.carrito.carrito)
-  const cantidadCarrito = conSesion && carrito ? 1 : 0
+  const usuario = useSelector((state) => state.users.user)
+  const token = useSelector((state) => state.users.token)
+  const conSesion = Boolean(token)
+  const { carrito, carritoConsultado, loading, error } = useSelector((state) => state.carrito)
+  const [ahora, actualizarAhora] = useState(() => Date.now())
+  const cantidadCarrito = conSesion && carritoConsultado && carrito
+    && new Date(carrito.fechaExpiracion).getTime() > ahora ? 1 : 0
+
+  useEffect(() => {
+    if (token && !carritoConsultado && !loading && !error) dispatch(fetchCarrito())
+  }, [dispatch, token, carritoConsultado, loading, error])
+
+  useEffect(() => {
+    if (!carrito) return
+    const espera = Math.max(0, new Date(carrito.fechaExpiracion).getTime() - Date.now())
+    const temporizador = setTimeout(() => actualizarAhora(Date.now()), espera + 20)
+    return () => clearTimeout(temporizador)
+  }, [carrito])
 
   const [menuAbierto, actualizarMenuAbierto] = useState(false)
   const [mostrarModalCerrarSesion, actualizarMostrarModalCerrarSesion] = useState(false)
@@ -119,7 +136,7 @@ export default function Navbar() {
                   aria-haspopup="menu"
                   aria-expanded={menuAbierto}
                 >
-                  <UserIcon size={18} />
+                  <Avatar foto={usuario?.foto} nombre={usuario?.nombre} apellido={usuario?.apellido} size={36} />
                 </button>
 
                 {menuAbierto && (
@@ -145,6 +162,16 @@ export default function Navbar() {
                     >
                       Mi perfil
                     </NavLink>
+                    {usuario?.idUsuario && (
+                      <NavLink
+                        to={`/usuarios/${usuario.idUsuario}`}
+                        role="menuitem"
+                        onClick={() => actualizarMenuAbierto(false)}
+                        className={({ isActive }) => `${isActive ? NAV_LINK_ACTIVE : NAV_LINK_IDLE} ${MENU_ITEM}`}
+                      >
+                        Ver mi perfil público
+                      </NavLink>
+                    )}
                     <button type="button" role="menuitem" onClick={pedirCerrarSesion} className={`${NAV_LINK_IDLE} ${MENU_ITEM} hidden phone:block`}>
                       Cerrar sesión
                     </button>

@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
+import { toast } from 'react-toastify'
+import ConfirmarAccion from '../components/ui/ConfirmarAccion'
 import { pageStyles, headingStyles, titleStyles, eyebrowStyles, introStyles } from '../components/publicaciones/estilosPublicacion'
 import IconoPublicacion from '../components/publicaciones/IconoPublicacion'
 import FilaPublicacion from '../components/publicaciones/FilaPublicacion'
 import MensajePublicacion from '../components/publicaciones/MensajePublicacion'
 import PaginacionPublicaciones from '../components/publicaciones/PaginacionPublicaciones'
 import { btnBase, btnDark, btnSize } from '../components/ui/estilosBoton'
-import { ESTADOS_PUBLICACION } from '../utils/publicaciones'
+import { ESTADOS_PUBLICACION, compararMisPublicaciones } from '../utils/publicaciones'
 import { cambiarEstadoPublicacion, fetchMisPublicaciones, limpiarEditor, limpiarErrorGuardado } from '../components/Redux/publicacionesSlice'
 
 // Botones para filtrar por estado: "Todas" + uno por cada estado
@@ -35,6 +37,8 @@ export default function MisPublicaciones() {
   const [busqueda, setBusqueda] = useState('')
 
   const [recargar, setRecargar] = useState(0)
+  const [porDesactivar, setPorDesactivar] = useState(null)
+  const [accionPendiente, setAccionPendiente] = useState(null)
 
   const token = useSelector((state) => state.users.token)
 
@@ -60,18 +64,29 @@ export default function MisPublicaciones() {
   }
 
   // Pausar y reactivar son PUT a su propia ruta; desactivar es un DELETE
-  async function cambiarEstado(publicacion, accion) {
-    if (procesando || incierto) return
-    if (accion === 'desactivar' && !window.confirm('¿Desactivar esta publicación? No vas a poder reactivarla.')) return
+  async function cambiarEstado(publicacion, accion, confirmado = false) {
+    if (procesando || loading || error || incierto) return
+    if (accion === 'desactivar' && !confirmado) {
+      dispatch(limpiarErrorGuardado())
+      setPorDesactivar(publicacion)
+      return
+    }
+    setAccionPendiente({ id: publicacion.idPublicacion, accion })
     try {
       const guardada = await dispatch(cambiarEstadoPublicacion({ publicacion, accion })).unwrap()
       if (!vigente.current) return
+      setPorDesactivar(null)
+      toast.success(accion === 'pausar' ? 'La publicación se pausó.' : accion === 'reactivar' ? 'La publicación se reactivó.' : 'La publicación se desactivó.')
       if (estado !== 'TODAS' && estado !== guardada.estado) {
         setPagina(Math.min(pagina, Math.max(0, Math.ceil((datos.totalElements - 1) / 10) - 1)))
+        setRecargar((actual) => actual + 1)
+      } else if (estado === 'TODAS' && datos.totalPages > 1) {
         setRecargar((actual) => actual + 1)
       }
     } catch {
       // El error se muestra desde el slice.
+    } finally {
+      if (vigente.current) setAccionPendiente(null)
     }
   }
 
@@ -87,16 +102,17 @@ export default function MisPublicaciones() {
 
   // Lo que se muestra debajo de los filtros
   let resultados
-  if (error) {
+  if (error && !datos) {
     resultados = <MensajePublicacion error onRetry={consultarDeNuevo}>{error}</MensajePublicacion>
-  } else if (loading || !datos) {
+  } else if (!datos) {
     resultados = <MensajePublicacion>Cargando tus publicaciones…</MensajePublicacion>
   } else if (datos.content.length === 0) {
     resultados = (
       <div className="flex min-h-[18.75rem] flex-col items-center justify-center gap-3.5 p-8 text-center bg-white border border-border rounded-lg">
         <IconoPublicacion nombre="carLarge" />
         <h2 className="text-[1.375rem]">
-          {busqueda || estado !== 'TODAS' ? 'No hay publicaciones con esos filtros' : 'Todavía no tenés publicaciones'}
+          {loading ? 'Actualizando tus publicaciones…' : error ? 'Los últimos resultados estaban vacíos'
+            : busqueda || estado !== 'TODAS' ? 'No hay publicaciones con esos filtros' : 'Todavía no tenés publicaciones'}
         </h2>
         <p className="text-muted text-[0.75rem] leading-[1.7]">Podés crear una publicación o cambiar los filtros.</p>
       </div>
@@ -104,23 +120,24 @@ export default function MisPublicaciones() {
   } else {
     resultados = (
       <>
-        <p className="mb-4 text-[0.75rem] text-muted">{datos.totalElements} {datos.totalElements === 1 ? 'publicación encontrada' : 'publicaciones encontradas'}</p>
+        <p className="mb-4 text-[0.75rem] text-muted">{datos.totalElements} {datos.totalElements === 1 ? 'publicación encontrada' : 'publicaciones encontradas'}<span role="status" className="inline-block min-w-32 ml-3">{loading ? 'Actualizando…' : error ? 'Sin actualizar' : ''}</span></p>
         <div className="grid gap-6">
-          {datos.content.map((publicacion) => (
+          {[...datos.content].sort(compararMisPublicaciones).map((publicacion) => (
             <FilaPublicacion
               key={publicacion.idPublicacion}
               publicacion={publicacion}
               onCambiarEstado={cambiarEstado}
-              deshabilitado={procesando || incierto}
+              deshabilitado={procesando || loading || Boolean(error) || incierto}
+              accionPendiente={accionPendiente?.id === publicacion.idPublicacion ? accionPendiente.accion : null}
             />
           ))}
         </div>
         <PaginacionPublicaciones
-          pagina={pagina}
+          pagina={datos.number ?? pagina}
           totalPages={datos.totalPages}
           totalElements={datos.totalElements}
           onChange={cambiarPagina}
-          disabled={procesando || incierto}
+          disabled={procesando || loading || Boolean(error) || incierto}
         />
       </>
     )
@@ -148,7 +165,7 @@ export default function MisPublicaciones() {
               disabled={procesando || incierto}
               aria-pressed={estado === filtro.valor}
               onClick={() => cambiarFiltro(filtro.valor)}
-              className={'border-0 rounded-[0.375rem] px-3.5 py-1.5 text-[0.75rem] phone:px-[0.5625rem] '
+              className={'border-0 rounded-[0.375rem] px-3.5 py-1.5 text-[0.75rem] phone:px-[0.5625rem] disabled:opacity-100! '
                 + (estado === filtro.valor ? 'bg-ink text-white' : 'bg-transparent text-soft')}
             >
               {filtro.etiqueta}
@@ -168,7 +185,7 @@ export default function MisPublicaciones() {
               onChange={(event) => setTexto(event.target.value)}
             />
           </div>
-          <button type="submit" disabled={procesando || incierto} className="border border-border rounded-[0.25rem] px-3 text-[0.75rem]">Buscar</button>
+          <button type="submit" disabled={procesando || incierto} className="border border-border rounded-[0.25rem] bg-card px-3 text-[0.75rem] disabled:opacity-100!">Buscar</button>
         </form>
       </div>
 
@@ -176,8 +193,21 @@ export default function MisPublicaciones() {
       {incierto && (errorGuardado?.tipo === 'guardar' && errorGuardado.idPublicacion
         ? <Link to={`/publicaciones/${errorGuardado.idPublicacion}/editar`} className="text-xs underline">Revisar publicación pendiente</Link>
         : <button type="button" onClick={consultarDeNuevo} className="text-xs underline">Comprobar estado</button>)}
-      {procesando && <MensajePublicacion>Guardando estado…</MensajePublicacion>}
-      {resultados}
+      <p role="status" className="sr-only">{procesando ? 'Guardando estado…' : ''}</p>
+      {error && datos && <MensajePublicacion error onRetry={consultarDeNuevo}>{error} Se muestran los últimos resultados cargados.</MensajePublicacion>}
+      <div aria-busy={loading}>{resultados}</div>
+      {porDesactivar && <ConfirmarAccion
+        titulo="¿Desactivar esta publicación?"
+        descripcion="Dejará de aparecer en el catálogo. No vas a poder reactivarla."
+        confirmar="Desactivar publicación"
+        cancelar="Mantener publicación"
+        procesando={procesando}
+        confirmarDeshabilitado={incierto}
+        textoProcesando="Desactivando…"
+        mensaje={errorGuardado ? errorGuardado.message + (incierto ? ' Cerrá este aviso y comprobá el estado antes de intentar otra vez.' : '') : null}
+        alCerrar={() => { if (!procesando) setPorDesactivar(null) }}
+        alConfirmar={() => cambiarEstado(porDesactivar, 'desactivar', true)}
+      />}
     </main>
   )
 }

@@ -4,11 +4,14 @@
 
 export default function EncabezadoResultadoReserva({ reserva, pago }) {
   const estaConfirmada = reserva.estado === 'CONFIRMADA'
+  const estadoCerrado = { CANCELADA: 'Reserva cancelada', RECHAZADA: 'Reserva rechazada', FINALIZADA: 'Alquiler finalizado' }[reserva.estado]
   const esEfectivo = pago.metodo === 'EFECTIVO'
   const pagoAprobado = pago.estado === 'APROBADO'
 
   // En efectivo se paga al retirar; la plataforma no verifica aquí que el dinero se haya cobrado.
-  const mensaje = !estaConfirmada
+  const mensaje = estadoCerrado
+    ? 'Podés consultar los datos y el estado del pago en Mis reservas.'
+    : !estaConfirmada
     ? 'La reserva quedó pendiente. Podés consultar su estado en Mis reservas.'
     : esEfectivo
       ? 'Pagás en efectivo al retirar. Ya podés ver dónde retirar el auto.'
@@ -28,7 +31,7 @@ export default function EncabezadoResultadoReserva({ reserva, pago }) {
         )}
       </div>
       <h1 className="text-[2.25rem] leading-[1.3] text-ink phone:text-[1.75rem]">
-        {estaConfirmada ? '¡Tu reserva está confirmada!' : 'Reserva creada'}
+        {estadoCerrado || (estaConfirmada ? '¡Tu reserva está confirmada!' : 'Reserva creada')}
       </h1>
       <p className="max-w-[40rem] mt-3 text-[0.75rem] leading-[1.8] text-soft">{mensaje}</p>
 
@@ -36,7 +39,7 @@ export default function EncabezadoResultadoReserva({ reserva, pago }) {
         <span className="text-muted">Reserva <strong className="ml-2 text-ink">#{reserva.idReserva}</strong></span>
         <span className={`inline-flex items-center gap-1.5 ${estaConfirmada ? 'text-emerald-700' : 'text-amber-700'}`}>
           <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />
-          {estaConfirmada ? 'Confirmada' : 'Pendiente'}
+          {estadoCerrado || (estaConfirmada ? 'Confirmada' : 'Pendiente')}
           {' · '}
           {esEfectivo ? 'Efectivo al retirar' : pagoAprobado ? 'Pago aprobado' : 'Pago pendiente'}
         </span>

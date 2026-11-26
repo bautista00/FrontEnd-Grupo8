@@ -8,12 +8,12 @@ import { formatARS as formatearPrecio } from '../../utils/formatos'
 
 export default function ResumenCarrito({ carrito, estaVencido, bloqueado = false }) {
   const navegar = useNavigate()
-  // Navega a la confirmación enviando el carrito. La reserva se crea en el paso siguiente.
+  // La reserva se crea en el paso siguiente.
   const continuarReserva = () => {
     if (bloqueado) return
 
     if (new Date(carrito.fechaExpiracion).getTime() <= Date.now()) return
-    navegar('/carrito/confirmar', { state: { carrito } })
+    navegar('/carrito/confirmar', { state: { idCarrito: carrito.idCarrito } })
   }
   return (
     <section className="min-w-0 p-6 bg-card border border-border rounded-lg phone:p-4.5" aria-labelledby="cart-summary-title">

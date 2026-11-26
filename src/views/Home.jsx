@@ -108,8 +108,7 @@ export default function Home() {
 
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6 text-[0.75rem] text-muted">
           <span>
-            Mostrando <strong className="text-ink">{catalogo?.totalElements ?? 0}</strong> unidades disponibles bajo estándares de
-            certificación
+            Mostrando <strong className="text-ink">{catalogo?.totalElements ?? 0}</strong> {catalogo?.totalElements === 1 ? 'resultado' : 'resultados'}.
           </span>
 
           {hayFiltros && (

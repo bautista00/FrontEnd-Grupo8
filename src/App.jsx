@@ -6,7 +6,7 @@
 import { useEffect } from 'react'
 import { Link, Route, Routes, useLocation } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
-import { logout } from './components/Redux/userSlice'
+import { fetchUser, logout } from './components/Redux/userSlice'
 import { vencimientoToken } from './utils/api'
 import RequireAuth from './components/auth/RequireAuth'
 import Footer from './components/layout/Footer'
@@ -27,6 +27,7 @@ import MisVehiculos from './views/MisVehiculos'
 import FormularioVehiculo from './views/FormularioVehiculo'
 import FotosVehiculo from './views/FotosVehiculo'
 import Perfil from './views/Perfil'
+import PerfilPublico from './views/PerfilPublico'
 
 export default function App() {
   const { pathname } = useLocation()
@@ -41,6 +42,11 @@ export default function App() {
     const temporizador = setTimeout(() => dispatch(logout()), vencimientoToken(token) - Date.now())
     return () => clearTimeout(temporizador)
   }, [token, dispatch])
+
+  // Con sesión iniciada, trae los datos del usuario para que estén en todas las pantallas
+  useEffect(() => {
+    if (token) dispatch(fetchUser())
+  }, [token, dispatch])
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -49,6 +55,7 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/registro" element={<Registro />} />
         <Route path="/perfil" element={<RequireAuth><Perfil /></RequireAuth>} />
+        <Route path="/usuarios/:id" element={<PerfilPublico />} />
         <Route path="/mis-reservas" element={<RequireAuth><MisReservas /></RequireAuth>} />
         <Route path="/mis-reservas/detalle" element={<RequireAuth><DetalleReserva /></RequireAuth>} />
         <Route path="/mis-publicaciones" element={<RequireAuth><MisPublicaciones /></RequireAuth>} />

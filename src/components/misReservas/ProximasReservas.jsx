@@ -5,7 +5,7 @@
 import TarjetaProximaReserva from "./TarjetaProximaReserva"
 import SinReservas from "./SinReservas"
 
-export default function ProximasReservas({ reservas, publicaciones, pagos }) {
+export default function ProximasReservas({ reservas, publicaciones, pagos, alConfirmarDevolucion, alCalificar }) {
   return (
     <section className="mb-12" aria-labelledby="upcoming-reservations-title">
       <h2 id="upcoming-reservations-title" className="mb-4 text-[1.25rem] leading-[1.4] text-ink">
@@ -23,6 +23,8 @@ export default function ProximasReservas({ reservas, publicaciones, pagos }) {
               reserva={reserva}
               publicacion={publicacion}
               pago={pago}
+              alConfirmarDevolucion={alConfirmarDevolucion}
+              alCalificar={alCalificar}
             />
           )
         })}

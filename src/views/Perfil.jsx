@@ -1,18 +1,24 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
+import { Link } from 'react-router-dom'
 import MensajePublicacion from '../components/publicaciones/MensajePublicacion'
 import { pageStyles, titleStyles, eyebrowStyles, introStyles } from '../components/publicaciones/estilosPublicacion'
 import { fetchUser } from '../components/Redux/userSlice'
+import Avatar from '../components/ui/Avatar'
+import { btnBase, btnOutline, btnSize } from '../components/ui/estilosBoton'
+import FotoPerfil from '../components/perfil/FotoPerfil'
+import DatosPersonales from '../components/perfil/DatosPersonales'
+import ContactoPerfil from '../components/perfil/ContactoPerfil'
+import CambiarContrasena from '../components/perfil/CambiarContrasena'
+import ResenasPerfil from '../components/perfil/ResenasPerfil'
+import { miembroDesde } from '../utils/resenas'
 
-// La fecha llega como "AAAA-MM-DD"; con el mediodía no se corre de día por la zona horaria
-function formatearNacimiento(fecha) {
-  return new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })
-    .format(new Date(fecha + 'T12:00:00'))
-}
+const PESTANAS = ['Datos', 'Contraseña', 'Reseñas']
 
 export default function Perfil() {
   const dispatch = useDispatch()
   const { user: usuario, loading, error } = useSelector((state) => state.users)
+  const [pestana, actualizarPestana] = useState('Datos')
 
   // El backend identifica al usuario por el token
   useEffect(() => {
@@ -23,33 +29,51 @@ export default function Perfil() {
     dispatch(fetchUser())
   }
 
-  const campos = usuario?.idUsuario && [
-    { label: 'Nombre', valor: usuario.nombre },
-    { label: 'Apellido', valor: usuario.apellido },
-    { label: 'Correo electrónico', valor: usuario.email },
-    { label: 'Fecha de nacimiento', valor: formatearNacimiento(usuario.fechaNacimiento) },
-    { label: 'Teléfono', valor: usuario.telefono || 'No informado' },
-  ]
+  // Con el usuario ya cargado, volver a pedirlo no tapa las pestañas con el mensaje de carga
+  const cargando = loading && !usuario?.idUsuario
 
   return (
     <main className={pageStyles + ' pb-20'}>
       <p className={eyebrowStyles}>Tu cuenta</p>
       <h1 className={titleStyles}>Mi perfil</h1>
-      <p className={introStyles}>Estos son los datos con los que te registraste.</p>
+      <p className={introStyles}>Tus datos, tu contraseña y tus reseñas.</p>
 
-      {error ? (
+      {error && !usuario?.idUsuario ? (
         <MensajePublicacion error onRetry={reintentar}>No se pudieron cargar tus datos. Intentá nuevamente.</MensajePublicacion>
-      ) : loading || !usuario?.idUsuario ? (
+      ) : cargando || !usuario?.idUsuario ? (
         <MensajePublicacion>Cargando tus datos…</MensajePublicacion>
       ) : (
-        <dl className="mt-8 max-w-xl rounded-[0.25rem] border border-border bg-card divide-y divide-border">
-          {campos.map((campo) => (
-            <div key={campo.label} className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 px-5 py-4">
-              <dt className="text-[0.625rem] uppercase tracking-[0.08em] text-muted">{campo.label}</dt>
-              <dd className="m-0 text-[0.875rem] text-ink break-all">{campo.valor}</dd>
+        <div className="mt-8 grid grid-cols-[16rem_minmax(0,1fr)] items-start gap-8 tablet:grid-cols-1">
+          <aside className="flex flex-col items-center gap-2 rounded-[0.25rem] border border-border bg-card p-6 text-center">
+            <Avatar foto={usuario.foto} nombre={usuario.nombre} apellido={usuario.apellido} size={96} />
+            <p className="mt-2 font-serif text-[1.25rem] text-ink">{usuario.nombre} {usuario.apellido}</p>
+            {usuario.fechaRegistro && <p className="text-xs text-muted">{miembroDesde(usuario.fechaRegistro)}</p>}
+            <Link to={`/usuarios/${usuario.idUsuario}`} className={`${btnBase} ${btnOutline} ${btnSize} mt-3`}>Ver mi perfil público</Link>
+          </aside>
+
+          <div className="min-w-0">
+            <div role="tablist" aria-label="Secciones del perfil" className="mb-6 flex gap-1 border-b border-border">
+              {PESTANAS.map((nombre) => (
+                <button key={nombre} type="button" role="tab" aria-selected={pestana === nombre} onClick={() => actualizarPestana(nombre)}
+                  className={'-mb-px border-0 border-b-2 bg-transparent px-4 py-2.5 text-[0.75rem] font-medium ' + (pestana === nombre ? 'border-ink text-ink' : 'border-transparent text-muted hover:text-ink')}>
+                  {nombre}
+                </button>
+              ))}
             </div>
-          ))}
-        </dl>
+
+            <div role="tabpanel">
+              {pestana === 'Datos' && (
+                <div className="grid gap-6">
+                  <FotoPerfil usuario={usuario} />
+                  <DatosPersonales usuario={usuario} />
+                  <ContactoPerfil usuario={usuario} />
+                </div>
+              )}
+              {pestana === 'Contraseña' && <CambiarContrasena />}
+              {pestana === 'Reseñas' && <ResenasPerfil />}
+            </div>
+          </div>
+        </div>
       )}
     </main>
   )

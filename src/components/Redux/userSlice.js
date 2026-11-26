@@ -22,6 +22,45 @@ export const fetchUser = createAsyncThunk("users/fetchUser", async (_, { getStat
   }
 });
 
+// Cambios del perfil propio. Cada uno devuelve el usuario actualizado; el error llega con el mensaje del backend
+const crearThunkPerfil = (tipo, pedido, mensajeError) => createAsyncThunk(tipo, async (datos, { getState, requestId, rejectWithValue }) => {
+  const token = getState().users.token;
+  try {
+    const resultado = await pedido(datos, conToken(token));
+    if (sesionCambiada(getState, token, "requestIdPerfil", requestId)) return rejectWithValue({ sesionCambiada: true });
+    return resultado;
+  } catch (error) {
+    if (sesionCambiada(getState, token, "requestIdPerfil", requestId)) return rejectWithValue({ sesionCambiada: true });
+    throw new Error(error.response ? mensajeDe(error, mensajeError) : "No pudimos conectar con el servidor. Intentá nuevamente.", { cause: error });
+  }
+}, { condition: (_, { getState }) => Boolean(getState().users.token) && !getState().users.guardandoPerfil });
+
+export const actualizarTelefono = crearThunkPerfil("users/actualizarTelefono", async (telefono, config) => {
+  const { data } = await axios.put(`${API_URL}/usuarios/me/telefono`, { telefono }, config);
+  return data;
+}, "No se pudo guardar el teléfono.");
+
+export const actualizarEmail = crearThunkPerfil("users/actualizarEmail", async ({ email, password }, config) => {
+  const { data } = await axios.put(`${API_URL}/usuarios/me/email`, { email, password }, config);
+  return { token: data.token, email: email.trim() };
+}, "No se pudo cambiar el correo.");
+
+export const cambiarContrasena = crearThunkPerfil("users/cambiarContrasena", async ({ actual, nueva }, config) => {
+  await axios.put(`${API_URL}/usuarios/me/password`, { actual, nueva }, config);
+}, "No se pudo cambiar la contraseña.");
+
+export const subirFoto = crearThunkPerfil("users/subirFoto", async (archivo, config) => {
+  const formData = new FormData();
+  formData.append("file", archivo);
+  const { data } = await axios.post(`${API_URL}/usuarios/me/foto`, formData, config);
+  return data;
+}, "No se pudo subir la foto.");
+
+export const quitarFoto = crearThunkPerfil("users/quitarFoto", async (_, config) => {
+  const { data } = await axios.delete(`${API_URL}/usuarios/me/foto`, config);
+  return data;
+}, "No se pudo quitar la foto.");
+
 // Login y registro: los dos devuelven el token de la nueva sesión
 const crearThunkAuth = (tipo, ruta, mensajeError) => createAsyncThunk(
   tipo,
@@ -56,6 +95,10 @@ const initialState = {
   loadingAuth: false,
   errorAuth: null,
   requestIdAuth: null,
+  guardandoPerfil: false,
+  errorPerfil: null,
+  operacionPerfil: null,
+  requestIdPerfil: null,
 };
 
 const userSlice = createSlice({
@@ -71,6 +114,9 @@ const userSlice = createSlice({
     // Al entrar al login o al registro no se muestra el error del otro formulario
     limpiarErrorAuth: (state) => {
       state.errorAuth = null;
+    },
+    limpiarErrorPerfil: (state) => {
+      state.errorPerfil = null;
     },
   },
   extraReducers: (builder) => {
@@ -93,6 +139,36 @@ const userSlice = createSlice({
         if (!action.payload?.sesionCambiada) state.error = action.error.message;
       });
 
+    for (const thunk of [actualizarTelefono, actualizarEmail, cambiarContrasena, subirFoto, quitarFoto]) {
+      builder
+        .addCase(thunk.pending, (state, action) => {
+          state.guardandoPerfil = true;
+          state.errorPerfil = null;
+          state.operacionPerfil = thunk.typePrefix;
+          state.requestIdPerfil = action.meta.requestId;
+        })
+        .addCase(thunk.fulfilled, (state, action) => {
+          if (state.requestIdPerfil !== action.meta.requestId) return;
+          state.guardandoPerfil = false;
+          state.requestIdPerfil = null;
+          // Un GET anterior al guardado ya no puede reemplazar estos datos.
+          state.requestIdUser = null;
+          state.loading = false;
+          if (thunk === actualizarEmail) {
+            state.token = action.payload.token;
+            state.user.email = action.payload.email;
+          } else if (thunk !== cambiarContrasena) {
+            state.user = action.payload;
+          }
+        })
+        .addCase(thunk.rejected, (state, action) => {
+          if (state.requestIdPerfil !== action.meta.requestId) return;
+          state.guardandoPerfil = false;
+          state.requestIdPerfil = null;
+          if (!action.payload?.sesionCambiada) state.errorPerfil = action.error.message;
+        });
+    }
+
     for (const thunk of [loginUser, registerUser]) {
       builder
         .addCase(thunk.pending, (state, action) => {
@@ -114,5 +190,5 @@ const userSlice = createSlice({
   },
 });
 
-export const { setToken, logout, limpiarErrorAuth } = userSlice.actions;
+export const { setToken, logout, limpiarErrorAuth, limpiarErrorPerfil } = userSlice.actions;
 export default userSlice.reducer;

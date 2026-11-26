@@ -9,3 +9,8 @@ export function formatFechaPublicacion(fecha) {
   if (!fecha) return '—'
   return new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(fecha + 'T12:00:00'))
 }
+
+export function compararMisPublicaciones(a, b) {
+  const prioridad = { ACTIVA: 0, PAUSADA: 1, DESACTIVADA: 2 }
+  return (prioridad[a.estado] ?? 3) - (prioridad[b.estado] ?? 3) || b.idPublicacion - a.idPublicacion
+}

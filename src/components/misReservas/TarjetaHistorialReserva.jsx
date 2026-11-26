@@ -3,10 +3,11 @@
  */
 
 import { Link } from 'react-router-dom'
+import AccionesReserva from './AccionesReserva'
 import { CarIcon } from '../iconos/Iconos'
 import { formatARS as formatearPrecio, formatearFecha } from '../../utils/formatos'
 
-export default function TarjetaHistorialReserva({ reserva, publicacion, pago }) {
+export default function TarjetaHistorialReserva({ reserva, publicacion, alConfirmarDevolucion, alCalificar }) {
   const clasesEstado = ['CANCELADA', 'RECHAZADA'].includes(reserva.estado)
     ? 'bg-red-50 border-red-200 text-red-700'
     : 'bg-surface border-border text-muted'
@@ -35,6 +36,7 @@ export default function TarjetaHistorialReserva({ reserva, publicacion, pago }) 
         <p className="mt-1 text-[0.625rem] text-muted">
           {publicacion.localidad}, {publicacion.zona} · Reserva #{reserva.idReserva}
         </p>
+        <div className="mt-2"><AccionesReserva reserva={reserva} alConfirmarDevolucion={alConfirmarDevolucion} alCalificar={alCalificar} /></div>
       </div>
 
       <div className="flex items-center gap-4 tablet:flex-col tablet:items-end tablet:gap-3 phone:items-start">
@@ -44,7 +46,7 @@ export default function TarjetaHistorialReserva({ reserva, publicacion, pago }) 
         </div>
         <Link
           to="/mis-reservas/detalle"
-          state={{ reserva, publicacion, pago }}
+          state={{ idReserva: reserva.idReserva }}
           className="inline-flex items-center justify-center px-3 py-2 bg-transparent border border-border rounded-[0.1875rem] text-[0.625rem] text-soft"
         >
           Ver detalle

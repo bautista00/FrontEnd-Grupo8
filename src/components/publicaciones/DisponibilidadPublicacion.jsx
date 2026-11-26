@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { helpStyles, textButtonStyles } from './estilosPublicacion'
 import IconoPublicacion from './IconoPublicacion'
 import CalendarioMes from '../ui/CalendarioMes'
@@ -8,27 +7,23 @@ function fechaTexto(fecha) {
   return new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'short' }).format(new Date(fecha + 'T12:00:00'))
 }
 
-export default function DisponibilidadPublicacion({ periodos, onChange, onSelectionChange }) {
-  const [inicio, setInicio] = useState('')
+export default function DisponibilidadPublicacion({ periodos, onChange, inicio = '', onSelectionChange }) {
   const hoy = new Date()
   const fechaHoy = fechaISO(hoy.getFullYear(), hoy.getMonth(), hoy.getDate())
 
   function elegirDia(fecha) {
     if (fecha < fechaHoy || fecha === inicio) return
     if (!inicio) {
-      setInicio(fecha)
       onSelectionChange?.(fecha)
       return
     }
     const desde = fecha < inicio ? fecha : inicio
     const hasta = fecha < inicio ? inicio : fecha
     onChange([...periodos, { desde, hasta, clave: crypto.randomUUID() }])
-    setInicio('')
     onSelectionChange?.('')
   }
 
   function descartarSeleccion() {
-    setInicio('')
     onSelectionChange?.('')
   }
 
