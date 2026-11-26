@@ -179,7 +179,7 @@ function VehiclePhotosLoader({ id }) {
     if (!token || !idUsuario) return
     let vigente = true
     Promise.all([
-      dispatch(fetchVehiculo({ id })).unwrap(),
+      dispatch(fetchVehiculo(id)).unwrap(),
       fotosDeVehiculo(id),
       publicacionActualDe(token, id),
     ])

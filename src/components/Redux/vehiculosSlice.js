@@ -299,6 +299,7 @@ const vehiculosSlice = createSlice({
         state.loadingGuardar = true;
         state.errorGuardar = null;
       })
+
       .addCase(updateVehiculo.fulfilled, (state, action) => {
         state.loadingGuardar = false;
         const editado = action.payload;
@@ -310,13 +311,12 @@ const vehiculosSlice = createSlice({
         }
         if (state.vehiculoElegido?.idVehiculo === editado.idVehiculo) {
           state.vehiculoElegido = editado;
-          if (state.vehiculoActual?.idVehiculo === editado.idVehiculo) {
+        }
+        if (state.vehiculoActual?.idVehiculo === editado.idVehiculo) {
           state.vehiculoActual = editado;
         }
-          if (state.vehiculoActual?.idVehiculo === id) state.vehiculoActual = null;
-          
-        }
       })
+      
       .addCase(updateVehiculo.rejected, (state, action) => {
         state.loadingGuardar = false;
         state.errorGuardar = action.error.message;
@@ -334,6 +334,7 @@ const vehiculosSlice = createSlice({
           const antes = state.vehiculos.content.length;
           state.vehiculos.content = state.vehiculos.content.filter((v) => v.idVehiculo !== id);
           if (state.vehiculos.content.length < antes) state.vehiculos.totalElements -= 1;
+          if (state.vehiculoActual?.idVehiculo === id) state.vehiculoActual = null;
         }
         if (state.paraPublicar) {
           state.paraPublicar.content = state.paraPublicar.content.filter((v) => v.idVehiculo !== id);
@@ -377,7 +378,7 @@ const vehiculosSlice = createSlice({
       })
       // ───────── fin de lo nuevo ─────────
       .addCase(logout, () => initialState);
-  },
+  }
 });
 
 export default vehiculosSlice.reducer;
