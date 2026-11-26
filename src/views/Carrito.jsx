@@ -4,6 +4,7 @@
  */
 
 import { Link } from 'react-router-dom'
+import { toast } from 'react-toastify'
 import { CartIcon } from '../components/iconos/Iconos'
 import AvisoCarrito from "../components/carrito/AvisoCarrito"
 import ResumenCarrito from "../components/carrito/ResumenCarrito"
@@ -65,7 +66,10 @@ export default function Carrito() {
 
     try {
       await dispatch(eliminarCarrito({ idCarrito: carrito.idCarrito })).unwrap()
-      if (vigente.current) actualizarModalQuitar(false)
+      if (vigente.current) {
+        actualizarModalQuitar(false)
+        toast.success('Se quitó el auto de tu carrito.')
+      }
     } catch {
       // El modal permanece abierto y muestra el error guardado en Redux.
     }
@@ -81,7 +85,10 @@ export default function Carrito() {
         fechaInicio,
         fechaFin
       })).unwrap()
-      if (vigente.current) alGuardarCorrectamente()
+      if (vigente.current) {
+        alGuardarCorrectamente()
+        toast.success('Se actualizaron las fechas del carrito.')
+      }
     } catch {
       // El error del slice llega al editor mediante mensajeFechas.
     }

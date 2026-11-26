@@ -15,7 +15,7 @@ import { fetchMisReservas } from '../components/Redux/reservasSlice'
 export default function MisReservas() {
   const dispatch = useDispatch()
   const [filtroSeleccionado, actualizarFiltro] = useState('todas')
-  const { reservas, publicaciones, pagos, loading, error: mensaje } = useSelector((state) => state.reservas)
+  const { reservas, publicaciones, pagos, cargadas, loading, error: mensaje } = useSelector((state) => state.reservas)
 
   // Obtiene las reservas del usuario y los datos necesarios para mostrar sus tarjetas.
   useEffect(() => {
@@ -46,7 +46,9 @@ export default function MisReservas() {
 
       <FiltrosReservas hayReservasConfirmadas={hayReservasConfirmadas} filtroSeleccionado={filtroSeleccionado} alCambiar={actualizarFiltro}/>
 
-      {!mensaje && (loading ? (
+      <p role="status" className="sr-only">{loading && cargadas ? 'Actualizando tus reservas…' : ''}</p>
+      <div aria-busy={loading}>
+      {(!mensaje || cargadas) && (loading && !cargadas ? (
         <p className="text-[0.75rem] text-muted">Cargando tus reservas…</p>
       ) : reservas.length === 0 ? (
         <SinReservas mensaje="Todavía no tenés reservas." />
@@ -61,6 +63,7 @@ export default function MisReservas() {
           )}
         </>
       ))}
+      </div>
     </main>
   )
 }

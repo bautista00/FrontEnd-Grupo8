@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Link, useBlocker, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { toast } from 'react-toastify'
+import ConfirmarAccion from '../components/ui/ConfirmarAccion'
 import { pageStyles, headingStyles, titleStyles, eyebrowStyles, introStyles, descriptionStyles, actionsStyles, textButtonStyles, smallButtonStyles } from '../components/publicaciones/estilosPublicacion'
 import CampoFormulario, { inputStyles } from '../components/ui/CampoFormulario'
 import { btnBase, btnDark, btnOutline, btnSize } from '../components/ui/estilosBoton'
@@ -61,13 +63,43 @@ function PublicationEditor({ modo = 'crear', id }) {
   const [mensaje, setMensaje] = useState(regreso?.mensaje ?? '')
   const [esError, setEsError] = useState(regreso?.error ?? false)
   const [inicioPeriodo, setInicioPeriodo] = useState('')
-  const [versionCalendario, setVersionCalendario] = useState(0)
   const [recargar, setRecargar] = useState(0)
+  const [confirmarDesactivacion, setConfirmarDesactivacion] = useState(false)
+  const [accionPendiente, setAccionPendiente] = useState(null)
+  const destinoGuardado = useRef(null)
   const vigente = useRef(false)
   // Los avisos están arriba del formulario: ante un error se lleva la pantalla hasta ellos
   const avisos = useRef(null)
   const [avisoError, setAvisoError] = useState(0)
   const ubicacionFija = editando || Boolean(publicacion?.idPublicacion)
+  const hayCambios = editando && Boolean(publicacion)
+    && (cambiaronDatos(valores, publicacion) || cambiaronPeriodos(valores, publicacion))
+  const borradorPendiente = Boolean(inicioPeriodo) || (editando ? hayCambios
+    : JSON.stringify(valores) !== JSON.stringify(valoresIniciales()))
+  const salida = useBlocker(({ currentLocation, nextLocation }) => {
+    if (destinoGuardado.current === nextLocation.pathname) {
+      destinoGuardado.current = null
+      return false
+    }
+    return (borradorPendiente || guardando) && (currentLocation.pathname !== nextLocation.pathname
+      || currentLocation.search !== nextLocation.search)
+  })
+
+  useEffect(() => {
+    if (salida.state === 'blocked' && !borradorPendiente && !guardando) salida.proceed()
+  }, [salida, borradorPendiente, guardando])
+
+  useEffect(() => {
+    if (!borradorPendiente && !guardando) return
+    function antesDeCerrar(event) {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', antesDeCerrar)
+    return () => {
+      window.removeEventListener('beforeunload', antesDeCerrar)
+    }
+  }, [borradorPendiente, guardando])
 
   useEffect(() => {
     vigente.current = true
@@ -101,7 +133,7 @@ function PublicationEditor({ modo = 'crear', id }) {
       setValores(pendiente ? {
         ...pendiente, periodos: completarIds(pendiente.periodos, completa.periodos, regreso.periodosAnteriores, true),
       } : valoresIniciales(completa))
-      setVersionCalendario((version) => version + 1)
+      setInicioPeriodo('')
     }).catch((error) => {
       if (actual && error instanceof Error) dispatch(bloquearGuardado(error.message))
     })
@@ -148,11 +180,16 @@ function PublicationEditor({ modo = 'crear', id }) {
     setValores({ ...valores, idVehiculo: String(vehiculo.idVehiculo) })
   }
 
-  // Guarda lo completado y va al alta de vehículo; al terminar, las fotos vuelven acá con el vehículo nuevo
+  function navegarConDatosGuardados(destino, opciones) {
+    destinoGuardado.current = destino
+    navigate(destino, opciones)
+  }
+
+  // El borrador queda guardado para volver desde el alta del vehículo.
   function registrarOtroVehiculo() {
     if (guardando || incierto) return
     dispatch(guardarBorradorAlta({ idUsuario, valores }))
-    navigate('/vehiculos/nuevo', { state: { desdePublicacion: true } })
+    navegarConDatosGuardados('/vehiculos/nuevo', { state: { desdePublicacion: true } })
   }
 
   async function guardar(event) {
@@ -182,10 +219,10 @@ function PublicationEditor({ modo = 'crear', id }) {
       if (!vigente.current) return
       setValores(valoresIniciales(guardada))
       setInicioPeriodo('')
-      setVersionCalendario((version) => version + 1)
-      mostrarMensaje('Los cambios se guardaron.')
-      if (!editando) navigate(`/publicaciones/${guardada.idPublicacion}/editar`, {
-        replace: true, state: { mensaje: 'La publicación se creó.', usarGuardada: true },
+      mostrarMensaje('')
+      toast.success(editando ? 'Los cambios se guardaron.' : 'La publicación se creó.')
+      if (!editando) navegarConDatosGuardados(`/publicaciones/${guardada.idPublicacion}/editar`, {
+        replace: true, state: { usarGuardada: true },
       })
     } catch (error) {
       if (!vigente.current || error.sesionCambiada || error.name === 'ConditionError') return
@@ -194,7 +231,7 @@ function PublicationEditor({ modo = 'crear', id }) {
         const borrador = { ...valores, periodos: completarIds(valores.periodos, guardada.periodos, anteriores?.periodos) }
         setValores(borrador)
         if (!editando && guardada.idPublicacion && !error.incierto) {
-          navigate(`/publicaciones/${guardada.idPublicacion}/editar`, { replace: true, state: {
+          navegarConDatosGuardados(`/publicaciones/${guardada.idPublicacion}/editar`, { replace: true, state: {
             usarGuardada: true, borrador, idUsuario, idPublicacion: guardada.idPublicacion,
           } })
         }
@@ -202,16 +239,26 @@ function PublicationEditor({ modo = 'crear', id }) {
     }
   }
 
-  async function cambiarEstado(accion) {
+  async function cambiarEstado(accion, confirmado = false) {
     if (guardando || incierto || !publicacion?.idPublicacion || publicacion.estado === 'DESACTIVADA'
       || cambiaronDatos(valores, publicacion) || cambiaronPeriodos(valores, publicacion)) return
-    if (accion === 'desactivar' && !window.confirm('¿Desactivar esta publicación? No vas a poder reactivarla.')) return
+    if (accion === 'desactivar' && !confirmado) {
+      dispatch(limpiarErrorGuardado())
+      setConfirmarDesactivacion(true)
+      return
+    }
     mostrarMensaje('')
+    setAccionPendiente(accion)
     try {
       await dispatch(cambiarEstadoPublicacion({ publicacion, accion })).unwrap()
-      if (vigente.current) mostrarMensaje('El estado de la publicación se actualizó.')
+      if (vigente.current) {
+        setConfirmarDesactivacion(false)
+        toast.success(accion === 'pausar' ? 'La publicación se pausó.' : accion === 'reactivar' ? 'La publicación se reactivó.' : 'La publicación se desactivó.')
+      }
     } catch {
       // El error se muestra desde el slice.
+    } finally {
+      if (vigente.current) setAccionPendiente(null)
     }
   }
 
@@ -219,7 +266,6 @@ function PublicationEditor({ modo = 'crear', id }) {
   function descartar() {
     if (guardando) return
     setValores(valoresIniciales(publicacion))
-    setVersionCalendario(versionCalendario + 1)
     setInicioPeriodo('')
     mostrarMensaje('')
   }
@@ -235,7 +281,7 @@ function PublicationEditor({ modo = 'crear', id }) {
       const guardada = await dispatch(fetchEdicionPublicacion(publicacion.idPublicacion)).unwrap()
       if (!vigente.current) return
       setValores({ ...valores, periodos: completarIds(valores.periodos, guardada.periodos, publicacion.periodos, true) })
-      setVersionCalendario((version) => version + 1)
+      setInicioPeriodo('')
       mostrarMensaje('Ya comprobamos los datos guardados. Revisá lo que sigue pendiente.')
     } catch (error) {
       if (vigente.current && error instanceof Error) dispatch(bloquearGuardado(error.message))
@@ -262,7 +308,6 @@ function PublicationEditor({ modo = 'crear', id }) {
   const vehiculo = editando ? publicacion : vehiculoElegido
   const desactivada = publicacion?.estado === 'DESACTIVADA'
   const idPendiente = errorGuardado?.idPublicacion
-  const hayCambios = editando && (cambiaronDatos(valores, publicacion) || cambiaronPeriodos(valores, publicacion))
   // Pausar/desactivar solo se puede si no hay cambios sin guardar
   const estadoBloqueado = guardando || hayCambios || desactivada || incierto
 
@@ -277,8 +322,8 @@ function PublicationEditor({ modo = 'crear', id }) {
 
   const calendario = (
     <DisponibilidadPublicacion
-      key={versionCalendario}
       periodos={valores.periodos}
+      inicio={inicioPeriodo}
       onChange={(periodos) => setValores({ ...valores, periodos })}
       onSelectionChange={setInicioPeriodo}
     />
@@ -287,7 +332,10 @@ function PublicationEditor({ modo = 'crear', id }) {
   return (
     <main className={pageStyles + (hayCambios ? ' pb-[9.375rem] phone:pb-[10.625rem]' : ' pb-20 phone:pb-12')}>
       {editando
-        ? <Link to="/mis-publicaciones" aria-disabled={guardando} onClick={(event) => { if (guardando) event.preventDefault() }} className={eyebrowStyles + ' inline-block mb-3'}>← Mis publicaciones</Link>
+        ? <Link to="/mis-publicaciones" aria-disabled={guardando} onClick={(event) => { if (guardando) event.preventDefault() }}
+            className={btnBase + ' ' + btnOutline + ' ' + btnSize + ' mb-4'}>
+            <IconoPublicacion nombre="left" />Volver a mis publicaciones
+          </Link>
         : <p className={eyebrowStyles}>Panel de propietario · Nueva publicación</p>}
 
       <div className={headingStyles + (editando ? ' pb-4 border-b border-border' : '')}>
@@ -302,7 +350,7 @@ function PublicationEditor({ modo = 'crear', id }) {
         {editando && (
           <div className={actionsStyles}>
             <label className="flex items-center gap-2 text-[0.75rem] text-soft">
-              Pausar publicación
+              <span className="inline-block min-w-36">{accionPendiente === 'pausar' ? 'Pausando…' : accionPendiente === 'reactivar' ? 'Reactivando…' : 'Pausar publicación'}</span>
               <input
                 type="checkbox"
                 role="switch"
@@ -312,7 +360,11 @@ function PublicationEditor({ modo = 'crear', id }) {
                 className="appearance-none w-9 h-5 border-0 bg-border rounded-[0.75rem] relative after:content-[''] after:absolute after:left-0.5 after:top-0.5 after:size-4 after:bg-white after:rounded-full checked:bg-gold checked:after:translate-x-4"
               />
             </label>
-            <button type="button" disabled className={smallButtonStyles}><IconoPublicacion nombre="eye" />Ver como usuario</button>
+            <Link to={`/publicaciones/${publicacion.idPublicacion}`} target="_blank" rel="noopener noreferrer"
+              aria-label="Ver publicación guardada en otra pestaña" aria-disabled={guardando || incierto}
+              onClick={(event) => { if (guardando || incierto) event.preventDefault() }} className={smallButtonStyles}>
+              <IconoPublicacion nombre="eye" />Ver publicación
+            </Link>
           </div>
         )}
       </div>
@@ -340,7 +392,7 @@ function PublicationEditor({ modo = 'crear', id }) {
         {errorGuardado.message}
         {incierto ? ' No recibimos una confirmación. Comprobá lo guardado antes de intentar otra vez.' : ''}
       </MensajePublicacion>}
-      {guardando && <MensajePublicacion>Guardando cambios…</MensajePublicacion>}
+      <p role="status" className="sr-only">{guardando ? 'Guardando cambios…' : ''}</p>
       {incierto && (publicacion?.idPublicacion && idPendiente === publicacion.idPublicacion
         ? <button type="button" disabled={guardando} onClick={comprobarGuardado} className={smallButtonStyles}>Comprobar guardado</button>
         : <MensajePublicacion>
@@ -408,9 +460,9 @@ function PublicationEditor({ modo = 'crear', id }) {
                   las reservas existentes se mantienen, pero la publicación no se puede reactivar.
                 </p>
                 <div className={actionsStyles}>
-                  <button type="button" disabled={estadoBloqueado} className={smallButtonStyles}
+                  <button type="button" disabled={estadoBloqueado} className={smallButtonStyles + ' min-w-44'}
                     onClick={() => cambiarEstado(publicacion.estado === 'ACTIVA' ? 'pausar' : 'reactivar')}>
-                    {publicacion.estado === 'PAUSADA' ? 'Reactivar publicación' : 'Pausar publicación'}
+                    {accionPendiente === 'pausar' ? 'Pausando…' : accionPendiente === 'reactivar' ? 'Reactivando…' : publicacion.estado === 'PAUSADA' ? 'Reactivar publicación' : 'Pausar publicación'}
                   </button>
                   <button type="button" disabled={estadoBloqueado} className={textButtonStyles + ' text-error'}
                     onClick={() => cambiarEstado('desactivar')}>
@@ -422,7 +474,7 @@ function PublicationEditor({ modo = 'crear', id }) {
               <div className="flex justify-between gap-4 pt-2">
                 <Link to="/mis-publicaciones" className={btnBase + ' ' + btnOutline + ' ' + btnSize}>Cancelar</Link>
                 <button type="submit" disabled={incierto} className={btnBase + ' ' + btnDark + ' ' + btnSize}>
-                  Publicar <IconoPublicacion nombre="arrow" />
+                  {guardando ? 'Publicando…' : 'Publicar'} <IconoPublicacion nombre="arrow" />
                 </button>
               </div>
             )}
@@ -435,6 +487,27 @@ function PublicationEditor({ modo = 'crear', id }) {
       {hayCambios && (
         <BarraCambiosPendientes onDiscard={descartar} formId="form-publicacion" disabled={guardando} saveDisabled={guardando || desactivada || incierto} />
       )}
+      {salida.state === 'blocked' && !confirmarDesactivacion && <ConfirmarAccion
+        titulo={guardando ? 'Estamos guardando los cambios' : '¿Salir sin guardar?'}
+        descripcion={guardando ? 'Esperá a que termine el guardado antes de salir.' : 'Los cambios que hiciste en esta publicación se van a descartar.'}
+        confirmar="Salir sin guardar"
+        cancelar="Seguir editando"
+        procesando={guardando}
+        alCerrar={() => salida.reset()}
+        alConfirmar={() => salida.proceed()}
+      />}
+      {confirmarDesactivacion && <ConfirmarAccion
+        titulo="¿Desactivar esta publicación?"
+        descripcion="Dejará de aparecer en el catálogo. No vas a poder reactivarla."
+        confirmar="Desactivar publicación"
+        cancelar="Mantener publicación"
+        procesando={guardando}
+        confirmarDeshabilitado={incierto}
+        textoProcesando="Desactivando…"
+        mensaje={errorGuardado ? errorGuardado.message + (incierto ? ' Cerrá este aviso y comprobá el estado antes de intentar otra vez.' : '') : null}
+        alCerrar={() => { if (!guardando) setConfirmarDesactivacion(false) }}
+        alConfirmar={() => cambiarEstado('desactivar', true)}
+      />}
     </main>
   )
 }

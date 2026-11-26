@@ -53,7 +53,7 @@ export const agregarCarrito = createAsyncThunk(
       }
       const mensaje = error.response
         ? mensajeDe(error, "No pudimos agregar el vehículo al carrito. Intentá nuevamente.")
-        : "No pudimos conectar con el servidor. Intentá nuevamente.";
+        : "No recibimos confirmación. Revisá tu carrito antes de volver a agregar el vehículo.";
       throw new Error(mensaje, { cause: error });
     }
   },
@@ -86,7 +86,7 @@ export const modificarFechasCarrito = createAsyncThunk(
       }
       const mensaje = error.response
         ? mensajeDe(error, "No se pudieron modificar las fechas.")
-        : "No pudimos conectar con el servidor. Intentá nuevamente.";
+        : "No recibimos confirmación del cambio. Volvé a consultar tu carrito antes de intentar otra vez.";
       throw new Error(mensaje, { cause: error });
     }
   },
@@ -122,7 +122,7 @@ export const eliminarCarrito = createAsyncThunk(
       }
       const mensaje = error.response
         ? mensajeDe(error, "No pudimos quitar el vehículo. Intentá nuevamente.")
-        : "No pudimos conectar con el servidor. Intentá nuevamente.";
+        : "No recibimos confirmación. Volvé a consultar tu carrito para comprobar si se quitó el vehículo.";
       throw new Error(mensaje, { cause: error });
     }
   },

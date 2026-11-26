@@ -7,7 +7,7 @@ import { formatARS, precioFinal } from '../../utils/formatos'
 import { ESTADOS_PUBLICACION, formatFechaPublicacion } from '../../utils/publicaciones'
 
 // Tarjeta de una publicación en "Mis publicaciones"
-export default function FilaPublicacion({ publicacion, onCambiarEstado, deshabilitado }) {
+export default function FilaPublicacion({ publicacion, onCambiarEstado, deshabilitado, accionPendiente }) {
   const estado = ESTADOS_PUBLICACION[publicacion.estado]
   const desactivada = publicacion.estado === 'DESACTIVADA'
 
@@ -53,9 +53,9 @@ export default function FilaPublicacion({ publicacion, onCambiarEstado, deshabil
                 type="button"
                 disabled={deshabilitado}
                 onClick={() => onCambiarEstado(publicacion, publicacion.estado === 'ACTIVA' ? 'pausar' : 'reactivar')}
-                className={btnBase + ' ' + btnOutline + ' ' + btnSize}
+                className={btnBase + ' ' + btnOutline + ' ' + btnSize + ' w-32 whitespace-nowrap'}
               >
-                {publicacion.estado === 'ACTIVA' ? 'Pausar' : 'Reactivar'}
+                {accionPendiente === 'pausar' ? 'Pausando…' : accionPendiente === 'reactivar' ? 'Reactivando…' : publicacion.estado === 'ACTIVA' ? 'Pausar' : 'Reactivar'}
               </button>
               <button
                 type="button"

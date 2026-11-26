@@ -6,9 +6,9 @@ import { logout } from "./userSlice";
 const SIN_CONEXION = "No pudimos conectar con el servidor. Intentá nuevamente.";
 
 // Mensaje para mostrar cuando falla un pedido: si axios no recibió respuesta, es un problema de conexión
-function mensajeDeError(error, porDefecto) {
+function mensajeDeError(error, porDefecto, sinRespuesta = SIN_CONEXION) {
   if (error.response) return mensajeDe(error, porDefecto);
-  if (axios.isAxiosError(error)) return SIN_CONEXION;
+  if (axios.isAxiosError(error)) return sinRespuesta;
   return error.message || porDefecto;
 }
 
@@ -125,7 +125,7 @@ export const confirmarCarrito = createAsyncThunk(
       if (getState().users.token !== token || getState().reservas.requestIdConfirmar !== requestId) {
         return rejectWithValue({ solicitudVencida: true });
       }
-      throw new Error(mensajeDeError(error, "No se pudo crear la reserva."), { cause: error });
+      throw new Error(mensajeDeError(error, "No se pudo crear la reserva.", "No recibimos confirmación. Revisá Mis reservas antes de volver a confirmar o pagar."), { cause: error });
     }
   },
   {
@@ -180,7 +180,7 @@ export const cancelarReserva = createAsyncThunk(
       if (getState().users.token !== token || getState().reservas.requestIdCancelar !== requestId) {
         return rejectWithValue({ solicitudVencida: true });
       }
-      throw new Error(mensajeDeError(error, "No se pudo cancelar la reserva."), { cause: error });
+      throw new Error(mensajeDeError(error, "No se pudo cancelar la reserva.", "No recibimos confirmación de la cancelación. Consultá Mis reservas para comprobar su estado."), { cause: error });
     }
   },
   {
@@ -195,6 +195,7 @@ export const cancelarReserva = createAsyncThunk(
 );
 
 const initialState = {
+  cargadas: false,
   reservas: [],
   publicaciones: [],
   pagos: [],
@@ -249,6 +250,7 @@ const reservasSlice = createSlice({
       .addCase(fetchMisReservas.fulfilled, (state, action) => {
         if (state.requestIdReservas !== action.meta.requestId) return;
         state.loading = false;
+        state.cargadas = true;
         state.reservas = action.payload.reservas;
         state.publicaciones = action.payload.publicaciones;
         state.pagos = action.payload.pagos;
