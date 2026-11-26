@@ -122,6 +122,24 @@ export const deleteVehiculo = createAsyncThunk(
     }
   },
 );
+
+export const fetchVehiculo = createAsyncThunk("vehiculos/fetchVehiculo", async (id, { getState }) => {
+  try {
+    const { data } = await axios.get(`${API_URL}/vehiculo/${id}`, conToken(getState().users.token));
+    return data; // GET por id: el back devuelve un solo vehículo
+  } catch (error) {
+    throw new Error(mensajeDe(error, "No pudimos cargar el vehículo."), { cause: error });
+  }
+});
+
+export const fetchFlotaVehiculos = createAsyncThunk("vehiculos/fetchFlotaVehiculos", async (_, { getState }) => {
+  try {
+    const { data } = await axios.get(`${API_URL}/vehiculo/mios?size=100`, conToken(getState().users.token));
+    return data.content; // la respuesta es una página: la lista está en content
+  } catch (error) {
+    throw new Error(mensajeDe(error, "No pudimos cargar tus vehículos."), { cause: error });
+  }
+});
 // ───────── fin de lo nuevo ─────────
 
 const initialState = {
@@ -147,6 +165,13 @@ const initialState = {
   errorGuardar: null,    // NUEVO: paso 2
   loadingEliminar: false,
   errorEliminar: null,
+  vehiculoActual: null,       // vehículo que se está editando o al que se le cargan fotos
+  loadingVehiculo: false,
+  errorVehiculo: null,
+  requestIdVehiculo: null,
+  flota: [],                  // mis vehículos, para detectar patentes repetidas
+  loadingFlota: false,
+  errorFlota: null,
 };
 
 const vehiculosSlice = createSlice({
@@ -285,6 +310,11 @@ const vehiculosSlice = createSlice({
         }
         if (state.vehiculoElegido?.idVehiculo === editado.idVehiculo) {
           state.vehiculoElegido = editado;
+          if (state.vehiculoActual?.idVehiculo === editado.idVehiculo) {
+          state.vehiculoActual = editado;
+        }
+          if (state.vehiculoActual?.idVehiculo === id) state.vehiculoActual = null;
+          
         }
       })
       .addCase(updateVehiculo.rejected, (state, action) => {
@@ -314,6 +344,36 @@ const vehiculosSlice = createSlice({
       .addCase(deleteVehiculo.rejected, (state, action) => {
         state.loadingEliminar = false;
         state.errorEliminar = action.error.message;
+      })
+
+      .addCase(fetchVehiculo.pending, (state, action) => {
+        state.loadingVehiculo = true;
+        state.errorVehiculo = null;
+        state.vehiculoActual = null; // evita mostrar por un instante los datos del vehículo anterior
+        state.requestIdVehiculo = action.meta.requestId;
+      })
+      .addCase(fetchVehiculo.fulfilled, (state, action) => {
+        if (state.requestIdVehiculo !== action.meta.requestId) return;
+        state.loadingVehiculo = false;
+        state.vehiculoActual = action.payload;
+      })
+      .addCase(fetchVehiculo.rejected, (state, action) => {
+        if (state.requestIdVehiculo !== action.meta.requestId) return;
+        state.loadingVehiculo = false;
+        state.errorVehiculo = action.error.message;
+      })
+      .addCase(fetchFlotaVehiculos.pending, (state) => {
+        state.loadingFlota = true;
+        state.errorFlota = null;
+      })
+      .addCase(fetchFlotaVehiculos.fulfilled, (state, action) => {
+        state.loadingFlota = false;
+        state.flota = action.payload;
+      })
+      .addCase(fetchFlotaVehiculos.rejected, (state, action) => {
+        // Si falla no se bloquea el formulario: solo se pierde la detección de patentes repetidas
+        state.loadingFlota = false;
+        state.errorFlota = action.error.message;
       })
       // ───────── fin de lo nuevo ─────────
       .addCase(logout, () => initialState);

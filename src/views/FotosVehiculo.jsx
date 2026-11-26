@@ -7,8 +7,8 @@ import MensajePublicacion from '../components/publicaciones/MensajePublicacion'
 import { olvidarPortada } from '../components/publicaciones/FotoPublicacion'
 import { btnBase, btnDark, btnOutline, btnSize } from '../components/ui/estilosBoton'
 import { pageStyles, titleStyles, eyebrowStyles, introStyles, actionsStyles } from '../components/publicaciones/estilosPublicacion'
-import { obtener } from '../utils/api'
 import { fetchUser } from '../components/Redux/userSlice'
+import { fetchVehiculo } from '../components/Redux/vehiculosSlice'
 import {
   agregarFotos, fotosDeVehiculo, moverFoto, publicacionActualDe,
   quitarFoto, sincronizarFotos, validarArchivoFoto,
@@ -179,7 +179,7 @@ function VehiclePhotosLoader({ id }) {
     if (!token || !idUsuario) return
     let vigente = true
     Promise.all([
-      obtener(`/vehiculo/${id}`, token),
+      dispatch(fetchVehiculo({ id })).unwrap(),
       fotosDeVehiculo(id),
       publicacionActualDe(token, id),
     ])

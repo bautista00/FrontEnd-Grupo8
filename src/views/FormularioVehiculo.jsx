@@ -6,12 +6,12 @@ import MensajePublicacion from '../components/publicaciones/MensajePublicacion'
 import CampoTexto from '../components/ui/CampoTexto'
 import CampoFormulario, { inputStyles } from '../components/ui/CampoFormulario'
 import { btnBase, btnDark, btnOutline, btnSize } from '../components/ui/estilosBoton'
-import { obtener } from '../utils/api'
 import { normalizarPatente, validarVehiculo, valoresAVehiculo, valoresInicialesVehiculo } from '../utils/vehiculos'
 import { fetchUser } from '../components/Redux/userSlice'
-import { fetchTiposVehiculo, createVehiculo, updateVehiculo, limpiarErrorGuardar } from '../components/Redux/vehiculosSlice'
+import { fetchTiposVehiculo, fetchVehiculo, fetchFlotaVehiculos, createVehiculo, updateVehiculo, limpiarErrorGuardar } from '../components/Redux/vehiculosSlice'
 
 const PASOS = ['Datos', 'Fotos', 'Publicación']
+
 // Muestra el error de un campo debajo del input
 const aviso = (mensaje) => mensaje && <span role="alert" className="text-error">{mensaje}</span>
 
@@ -25,7 +25,7 @@ function VehicleEditor({ modo = 'crear', id }) {
   const location = useLocation()
   const dispatch = useDispatch()
   const { token, user: usuario, error: errorUsuario } = useSelector((state) => state.users)
-  const { tiposVehiculo: tipos, errorTipos, loadingGuardar: guardando, errorGuardar } = useSelector((state) => state.vehiculos)
+  const { tiposVehiculo: tipos, errorTipos, loadingGuardar: guardando, errorGuardar, vehiculoActual, errorVehiculo, flota } = useSelector((state) => state.vehiculos)
   const editando = modo === 'editar'
   // En el alta el dueño es el usuario logueado; al editar se usa para comprobar que el vehículo sea suyo
   const idUsuarioSesion = usuario?.idUsuario
@@ -36,11 +36,14 @@ function VehicleEditor({ modo = 'crear', id }) {
     : { to: '/mis-vehiculos', texto: 'Volver a mis vehículos' }
 
   const [valores, setValores] = useState(valoresInicialesVehiculo())
-  const [otros, setOtros] = useState([]) // resto de la flota, para detectar patentes repetidas
-  const [idUsuario, setIdUsuario] = useState(null) // dueño del vehículo
   const [errores, setErrores] = useState({})
-  const [errorGeneral, setErrorGeneral] = useState('')
-  const [cargando, setCargando] = useState(true)
+
+  // Lo que antes eran estados locales ahora se calcula a partir del store
+  const vehiculo = editando && String(vehiculoActual?.idVehiculo) === String(id) ? vehiculoActual : null
+  const otros = flota.filter((v) => String(v.idVehiculo) !== String(id)) // resto de la flota, para detectar patentes repetidas
+  const idUsuario = editando ? vehiculo?.idUsuario : idUsuarioSesion // dueño del vehículo
+  // El backend rechaza cambios de otro usuario; acá además se evita mostrarle el formulario
+  const noEsTuyo = Boolean(vehiculo && idUsuarioSesion && vehiculo.idUsuario !== idUsuarioSesion)
 
   // Los tipos de vehículo y el usuario logueado se piden al store si todavía no están
   useEffect(() => {
@@ -52,41 +55,24 @@ function VehicleEditor({ modo = 'crear', id }) {
   }, [usuario, dispatch])
 
   useEffect(() => {
-  dispatch(limpiarErrorGuardar())
+    dispatch(limpiarErrorGuardar())
   }, [dispatch])
 
+  // Se piden al store la flota (para detectar patentes repetidas) y, al editar, el vehículo
   useEffect(() => {
-    if (!token || tipos.length === 0 || !idUsuarioSesion) return
-    let vigente = true
-    async function cargar() {
-      try {
-        // El backend pide el dueño en el body y verifica que sea el usuario del token.
-        const [flota, vehiculo] = await Promise.all([
-          obtener('/vehiculo/mios?size=100', token).catch(() => null),
-          editando ? obtener(`/vehiculo/${id}`, token) : null,
-        ])
-        if (!vigente) return
-        // El backend rechaza cambios de otro usuario; acá además se evita mostrarle el formulario
-        if (editando && vehiculo.idUsuario !== idUsuarioSesion) {
-          setErrorGeneral('Este vehículo no es tuyo')
-          return
-        }
-        setOtros((flota?.content ?? []).filter((v) => String(v.idVehiculo) !== String(id)))
-        setValores(valoresInicialesVehiculo(vehiculo, tipos))
-        setIdUsuario(editando ? vehiculo.idUsuario : idUsuarioSesion)
-      } catch (e) {
-        console.error('Error al cargar el formulario de vehículo', e)
-        // Muestra el mensaje del backend; si no hubo respuesta (TypeError de fetch), uno propio
-        if (vigente) setErrorGeneral(e instanceof TypeError
-          ? (editando ? 'No pudimos cargar el vehículo.' : 'No pudimos cargar los tipos de vehículo.')
-          : e.message)
-      } finally {
-        if (vigente) setCargando(false)
-      }
+    if (!token) return
+    dispatch(fetchFlotaVehiculos())
+    if (editando) dispatch(fetchVehiculo(id))
+  }, [dispatch, token, editando, id])
+
+  // Cuando llegan los datos, se cargan en el formulario (lo que escribe la persona sigue siendo estado local)
+  useEffect(() => {
+    if (editando) {
+      if (vehiculo && !noEsTuyo) setValores(valoresInicialesVehiculo(vehiculo, tipos))
+    } else if (tipos.length > 0) {
+      setValores(valoresInicialesVehiculo(undefined, tipos))
     }
-    cargar()
-    return () => { vigente = false }
-  }, [id, editando, token, tipos, idUsuarioSesion])
+  }, [editando, vehiculo, noEsTuyo, tipos])
 
   function cambiar(event) {
     if (guardando) return
@@ -95,36 +81,40 @@ function VehicleEditor({ modo = 'crear', id }) {
     if (errores[name]) setErrores({ ...errores, [name]: undefined })
   }
 
-async function guardar(event) {
-  event.preventDefault()
-  if (guardando) return
-  const encontrados = validarVehiculo(valores, tipos, otros)
-  setErrores(encontrados)
-  if (Object.keys(encontrados).length > 0) return
-  setErrorGeneral('')
-  const datos = { ...valoresAVehiculo(valores), idUsuario }
-  try {
-    // unwrap() devuelve el payload si salió bien y lanza el error si falló
-    const vehiculo = await dispatch(editando ? updateVehiculo({ id, ...datos }) : createVehiculo(datos)).unwrap()
-    navigate(
-      editando ? '/mis-vehiculos' : '/vehiculos/' + vehiculo.idVehiculo + '/fotos',
-      { state: desdePublicacion ? { desdePublicacion } : null },
-    )
-  } catch {
-    // No hace falta mostrar nada acá: el rejected del slice ya guardó el mensaje en errorGuardar
+  async function guardar(event) {
+    event.preventDefault()
+    if (guardando) return
+    const encontrados = validarVehiculo(valores, tipos, otros)
+    setErrores(encontrados)
+    if (Object.keys(encontrados).length > 0) return
+    const datos = { ...valoresAVehiculo(valores), idUsuario }
+    try {
+      // unwrap() devuelve el payload si salió bien y lanza el error si falló
+      const guardado = await dispatch(editando ? updateVehiculo({ id, ...datos }) : createVehiculo(datos)).unwrap()
+      navigate(
+        editando ? '/mis-vehiculos' : '/vehiculos/' + guardado.idVehiculo + '/fotos',
+        { state: desdePublicacion ? { desdePublicacion } : null },
+      )
+    } catch {
+      // No hace falta mostrar nada acá: el rejected del slice ya guardó el mensaje en errorGuardar
+    }
   }
-}
 
-  // Si no se pudieron traer los tipos o el usuario, se muestra el error del slice
-  const errorPrevio = (tipos.length === 0 && errorTipos) || (!usuario?.idUsuario && errorUsuario) || null
+  // Si no se pudo traer algo de lo necesario, se muestra el error del slice
+  const errorPrevio = (tipos.length === 0 && errorTipos)
+    || (!usuario?.idUsuario && errorUsuario)
+    || (editando && errorVehiculo)
+    || (noEsTuyo && 'Este vehículo no es tuyo')
+    || null
+  const cargando = tipos.length === 0 || !idUsuarioSesion || (editando && !vehiculo)
   if (cargando && !errorPrevio) {
     return <main className={pageStyles + ' pb-20'}><MensajePublicacion>Cargando…</MensajePublicacion></main>
   }
 
-  if (errorPrevio || (errorGeneral && (editando ? !valores.patente : tipos.length === 0))) {
+  if (errorPrevio) {
     return (
       <main className={pageStyles + ' pb-20'}>
-        <MensajePublicacion error>{errorGeneral || errorPrevio}</MensajePublicacion>
+        <MensajePublicacion error>{errorPrevio}</MensajePublicacion>
         <Link aria-disabled={guardando} onClick={(event) => { if (guardando) event.preventDefault() }} to={volver.to} state={volver.state} className="inline-block mt-5 text-gold">{volver.texto}</Link>
       </main>
     )
@@ -171,7 +161,6 @@ async function guardar(event) {
 
           <p className={helpStyles}>La patente no se muestra en el catálogo.</p>
 
-          {errorGeneral && <div className="mt-4"><MensajePublicacion error>{errorGeneral}</MensajePublicacion></div>}
           {errorGuardar && <div className="mt-4"><MensajePublicacion error>{errorGuardar}</MensajePublicacion></div>}
 
           <div className={actionsStyles + ' justify-end mt-8'}>
