@@ -172,6 +172,13 @@ const initialState = {
   flota: [],                  // mis vehículos, para detectar patentes repetidas
   loadingFlota: false,
   errorFlota: null,
+  // NUEVO: fotos del vehículo (pantalla FotosVehiculo)
+  loadingGuardarFotos: false,
+  errorGuardarFotos: null,
+  publicacionVigente: null,       // publicación ACTIVA o PAUSADA del vehículo, o null si no tiene
+  loadingPublicacionVigente: false,
+  errorPublicacionVigente: null,
+  requestIdPublicacionVigente: null, // para ignorar respuestas viejas si se cambia de vehículo
 };
 
 const vehiculosSlice = createSlice({
