@@ -28,12 +28,6 @@
 
   --default-transition-duration: 200ms;
   --default-transition-timing-function: ease;
-  --animate-entrada-cambios: entrada-cambios 180ms ease-out both;
-
-  @keyframes entrada-cambios {
-    from { opacity: 0; transform: translateY(0.5rem); }
-    to { opacity: 1; transform: translateY(0); }
-  }
 
   --breakpoint-sm: 40rem;
   --breakpoint-md: 48rem;
