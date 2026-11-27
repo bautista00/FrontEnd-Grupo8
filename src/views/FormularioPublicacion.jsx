@@ -330,7 +330,7 @@ function PublicationEditor({ modo = 'crear', id }) {
   )
 
   return (
-    <main className={pageStyles + (hayCambios ? ' pb-[9.375rem] phone:pb-[10.625rem]' : ' pb-20 phone:pb-12')}>
+    <main className={pageStyles + (editando ? ' pb-[9.375rem] phone:pb-[10.625rem]' : ' pb-20 phone:pb-12')}>
       {editando
         ? <Link to="/mis-publicaciones" aria-disabled={guardando} onClick={(event) => { if (guardando) event.preventDefault() }}
             className={btnBase + ' ' + btnOutline + ' ' + btnSize + ' mb-4'}>
@@ -350,7 +350,7 @@ function PublicationEditor({ modo = 'crear', id }) {
         {editando && (
           <div className={actionsStyles}>
             <label className="flex items-center gap-2 text-[0.75rem] text-soft">
-              <span className="inline-block min-w-36">{accionPendiente === 'pausar' ? 'Pausando…' : accionPendiente === 'reactivar' ? 'Reactivando…' : 'Pausar publicación'}</span>
+              <span className="inline-block min-w-36">{accionPendiente === 'pausar' ? 'Pausando…' : accionPendiente === 'reactivar' ? 'Reanudando…' : 'Pausar publicación'}</span>
               <input
                 type="checkbox"
                 role="switch"
@@ -456,13 +456,13 @@ function PublicationEditor({ modo = 'crear', id }) {
                 className="border-[#fecaca] [&_h2]:font-sans [&_h2]:text-[0.875rem] [&_h2]:text-[#dc2626]"
               >
                 <p className="text-muted text-[0.75rem] leading-[1.7] mb-4">
-                  Pausar oculta el auto del catálogo y lo podés reactivar cuando quieras. Desactivar lo da de baja definitivamente:
-                  las reservas existentes se mantienen, pero la publicación no se puede reactivar.
+                  Pausar oculta el auto del catálogo y lo podés reanudar cuando quieras. Desactivar lo da de baja definitivamente:
+                  las reservas existentes se mantienen, pero para volver a ofrecer el auto tenés que crear otra publicación.
                 </p>
                 <div className={actionsStyles}>
                   <button type="button" disabled={estadoBloqueado} className={smallButtonStyles + ' min-w-44'}
                     onClick={() => cambiarEstado(publicacion.estado === 'ACTIVA' ? 'pausar' : 'reactivar')}>
-                    {accionPendiente === 'pausar' ? 'Pausando…' : accionPendiente === 'reactivar' ? 'Reactivando…' : publicacion.estado === 'PAUSADA' ? 'Reactivar publicación' : 'Pausar publicación'}
+                    {accionPendiente === 'pausar' ? 'Pausando…' : accionPendiente === 'reactivar' ? 'Reanudando…' : publicacion.estado === 'PAUSADA' ? 'Reanudar publicación' : 'Pausar publicación'}
                   </button>
                   <button type="button" disabled={estadoBloqueado} className={textButtonStyles + ' text-error'}
                     onClick={() => cambiarEstado('desactivar')}>
@@ -484,9 +484,7 @@ function PublicationEditor({ modo = 'crear', id }) {
         <VistaPreviaPublicacion vehiculo={vehiculo} valores={valores} editando={editando} />
       </div>
 
-      {hayCambios && (
-        <BarraCambiosPendientes onDiscard={descartar} formId="form-publicacion" disabled={guardando} saveDisabled={guardando || desactivada || incierto} />
-      )}
+      <BarraCambiosPendientes visible={hayCambios} onDiscard={descartar} formId="form-publicacion" disabled={guardando} saveDisabled={guardando || desactivada || incierto} />
       {salida.state === 'blocked' && !confirmarDesactivacion && <ConfirmarAccion
         titulo={guardando ? 'Estamos guardando los cambios' : '¿Salir sin guardar?'}
         descripcion={guardando ? 'Esperá a que termine el guardado antes de salir.' : 'Los cambios que hiciste en esta publicación se van a descartar.'}

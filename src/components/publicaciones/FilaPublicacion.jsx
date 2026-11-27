@@ -55,7 +55,7 @@ export default function FilaPublicacion({ publicacion, onCambiarEstado, deshabil
                 onClick={() => onCambiarEstado(publicacion, publicacion.estado === 'ACTIVA' ? 'pausar' : 'reactivar')}
                 className={btnBase + ' ' + btnOutline + ' ' + btnSize + ' w-32 whitespace-nowrap'}
               >
-                {accionPendiente === 'pausar' ? 'Pausando…' : accionPendiente === 'reactivar' ? 'Reactivando…' : publicacion.estado === 'ACTIVA' ? 'Pausar' : 'Reactivar'}
+                {accionPendiente === 'pausar' ? 'Pausando…' : accionPendiente === 'reactivar' ? 'Reanudando…' : publicacion.estado === 'ACTIVA' ? 'Pausar' : 'Reanudar'}
               </button>
               <button
                 type="button"

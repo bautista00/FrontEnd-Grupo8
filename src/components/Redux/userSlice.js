@@ -7,7 +7,7 @@ const sesionCambiada = (getState, token, campoRequestId, requestId) =>
   getState().users.token !== token || getState().users[campoRequestId] !== requestId;
 
 // Datos del usuario logueado: el backend lo identifica por el token
-export const fetchUser = createAsyncThunk("users/fetchUser", async (_, { getState, requestId, rejectWithValue }) => {
+export const fetchUser = createAsyncThunk("users/fetchUser", async (_, { getState, dispatch, requestId, rejectWithValue }) => {
   const token = getState().users.token;
   try {
     const { data } = await axios.get(`${API_URL}/usuarios/me`, conToken(token));
@@ -15,6 +15,10 @@ export const fetchUser = createAsyncThunk("users/fetchUser", async (_, { getStat
     return data;
   } catch (error) {
     if (sesionCambiada(getState, token, "requestIdUser", requestId)) return rejectWithValue({ sesionCambiada: true });
+    if (error.response?.status === 401) {
+      dispatch(logout());
+      return rejectWithValue({ sesionCambiada: true });
+    }
     const mensaje = error.response
       ? mensajeDe(error, "No se pudieron cargar tus datos.")
       : "No pudimos conectar con el servidor. Intentá nuevamente.";

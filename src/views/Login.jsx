@@ -40,7 +40,7 @@ export default function Login() {
       await dispatch(loginUser({ email: valores.email.trim(), password: valores.password })).unwrap()
       if (!vigente.current) return
       setValores((actuales) => ({ ...actuales, password: '' }))
-      navigate(volverA)
+      navigate(volverA, { replace: true })
     } catch {
       // El error del backend queda en Redux y se muestra en el formulario
     }
