@@ -140,6 +140,55 @@ export const fetchFlotaVehiculos = createAsyncThunk("vehiculos/fetchFlotaVehicul
     throw new Error(mensajeDe(error, "No pudimos cargar tus vehículos."), { cause: error });
   }
 });
+
+export const fetchPublicacionVigente = createAsyncThunk(
+  "vehiculos/fetchPublicacionVigente",
+  async (idVehiculo, { getState }) => {
+    try {
+      const { data } = await axios.get(`${API_URL}/publicaciones/mias?size=100`, conToken(getState().users.token));
+      // GET: el back devuelve una página, la lista está en content. Si no hay ninguna vigente, se devuelve null
+      return data.content.find(
+        (publicacion) => publicacion.estado !== "DESACTIVADA" && publicacion.idVehiculo === Number(idVehiculo),
+      ) ?? null;
+    } catch (error) {
+      throw new Error(mensajeDe(error, "No se pudo verificar la publicación del vehículo."), { cause: error });
+    }
+  },
+);
+
+export const guardarFotosVehiculo = createAsyncThunk(
+  "vehiculos/guardarFotosVehiculo",
+  async ({ idVehiculo, originales, actuales }, { getState }) => {
+    const config = conToken(getState().users.token);
+    const idsActuales = new Set(actuales.map((foto) => foto.idFoto));
+    try {
+      for (const foto of originales) {
+        if (!idsActuales.has(foto.idFoto)) {
+          await axios.delete(`${API_URL}/imagen-vehiculo/${foto.idFoto}`, config);
+        }
+      }
+      for (const foto of actuales) {
+        if (foto.archivo) {
+          const form = new FormData();
+          form.append("file", foto.archivo);
+          form.append("idVehiculo", idVehiculo);
+          form.append("orden", foto.orden);
+          await axios.post(`${API_URL}/imagen-vehiculo`, form, config);
+        } else {
+          const original = originales.find((otra) => otra.idFoto === foto.idFoto);
+          if (original && original.orden !== foto.orden) {
+            // El back lee "orden" como parámetro, por eso va en la URL
+            await axios.put(`${API_URL}/imagen-vehiculo/${foto.idFoto}?orden=${foto.orden}`, null, config);
+          }
+        }
+      }
+      // El payload es lo que quedó guardado en el back, no lo que había en pantalla
+      return { idVehiculo, fotos: await fotosDeVehiculo(idVehiculo) };
+    } catch (error) {
+      throw new Error(mensajeDe(error, "No se pudieron guardar las fotos. Intentá nuevamente."), { cause: error });
+    }
+  },
+);
 // ───────── fin de lo nuevo ─────────
 
 const initialState = {
@@ -199,9 +248,12 @@ const vehiculosSlice = createSlice({
     limpiarErrorGuardar: (state) => {
       state.errorGuardar = null;
     },
-
     limpiarErrorEliminar: (state) => {
     state.errorEliminar = null;
+    },
+    // NUEVO
+    limpiarErrorGuardarFotos: (state) => {
+      state.errorGuardarFotos = null;
     },
   },
   extraReducers: (builder) => {
@@ -306,7 +358,6 @@ const vehiculosSlice = createSlice({
         state.loadingGuardar = true;
         state.errorGuardar = null;
       })
-
       .addCase(updateVehiculo.fulfilled, (state, action) => {
         state.loadingGuardar = false;
         const editado = action.payload;
@@ -323,12 +374,10 @@ const vehiculosSlice = createSlice({
           state.vehiculoActual = editado;
         }
       })
-      
       .addCase(updateVehiculo.rejected, (state, action) => {
         state.loadingGuardar = false;
         state.errorGuardar = action.error.message;
       })
-
       .addCase(deleteVehiculo.pending, (state) => {
       state.loadingEliminar = true;
       state.errorEliminar = null;
@@ -353,7 +402,6 @@ const vehiculosSlice = createSlice({
         state.loadingEliminar = false;
         state.errorEliminar = action.error.message;
       })
-
       .addCase(fetchVehiculo.pending, (state, action) => {
         state.loadingVehiculo = true;
         state.errorVehiculo = null;
@@ -383,10 +431,44 @@ const vehiculosSlice = createSlice({
         state.loadingFlota = false;
         state.errorFlota = action.error.message;
       })
+      .addCase(fetchPublicacionVigente.pending, (state, action) => {
+        state.loadingPublicacionVigente = true;
+        state.errorPublicacionVigente = null;
+        state.publicacionVigente = null; // evita mostrar la publicación del vehículo anterior
+        state.requestIdPublicacionVigente = action.meta.requestId;
+      })
+      .addCase(fetchPublicacionVigente.fulfilled, (state, action) => {
+        if (state.requestIdPublicacionVigente !== action.meta.requestId) return;
+        state.loadingPublicacionVigente = false;
+        state.publicacionVigente = action.payload; // la publicación o null
+      })
+      .addCase(fetchPublicacionVigente.rejected, (state, action) => {
+        if (state.requestIdPublicacionVigente !== action.meta.requestId) return;
+        state.loadingPublicacionVigente = false;
+        state.errorPublicacionVigente = action.error.message;
+      })
+      .addCase(guardarFotosVehiculo.pending, (state) => {
+        state.loadingGuardarFotos = true;
+        state.errorGuardarFotos = null;
+      })
+      .addCase(guardarFotosVehiculo.fulfilled, (state, action) => {
+        state.loadingGuardarFotos = false;
+        const { idVehiculo, fotos } = action.payload;
+        // Las fotos guardadas reemplazan a las del caché: así la portada se actualiza sin otro GET
+        state.fotosPorVehiculo[idVehiculo] = { fotos, loading: false, error: null, requestId: null };
+        state.versionFotos += 1; // una carga de Mis vehículos que venía en camino no pisa las fotos nuevas
+        // La tarjeta de Mis vehículos usa vehiculo.fotos: se actualiza también
+        const tarjeta = state.vehiculos?.content.find((v) => String(v.idVehiculo) === String(idVehiculo));
+        if (tarjeta) tarjeta.fotos = fotos;
+      })
+      .addCase(guardarFotosVehiculo.rejected, (state, action) => {
+        state.loadingGuardarFotos = false;
+        state.errorGuardarFotos = action.error.message;
+      })
       // ───────── fin de lo nuevo ─────────
       .addCase(logout, () => initialState);
   }
-});
+  });
 
 export default vehiculosSlice.reducer;
-export const { elegirVehiculoPublicacion, olvidarFotosVehiculo, limpiarErrorGuardar, limpiarErrorEliminar } = vehiculosSlice.actions;
+export const { elegirVehiculoPublicacion, olvidarFotosVehiculo, limpiarErrorGuardar, limpiarErrorEliminar, limpiarErrorGuardarFotos } = vehiculosSlice.actions;
