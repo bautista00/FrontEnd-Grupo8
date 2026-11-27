@@ -5,7 +5,8 @@ import { btnBase, btnDark, btnOutline, btnSize } from '../ui/estilosBoton'
 import { ESTADOS_PUBLICACION } from '../../utils/publicaciones'
 import { portadaDe, puedePublicar, tieneFotos } from '../../utils/vehiculos'
 
-export default function TarjetaMiVehiculo({ vehiculo }) {
+
+  export default function TarjetaMiVehiculo({ vehiculo, onEliminar }) {
   const portada = portadaDe(vehiculo)
   const conFotos = tieneFotos(vehiculo)
   const publicacion = vehiculo.publicacionActual
@@ -52,6 +53,16 @@ export default function TarjetaMiVehiculo({ vehiculo }) {
             : puedePublicar(vehiculo)
               ? <Link to="/publicaciones/nueva" state={{ idVehiculo: vehiculo.idVehiculo }} className={btnBase + ' ' + btnDark + ' ' + btnSize + ' w-full'}>Crear publicación</Link>
               : <button className={btnBase + ' ' + btnDark + ' ' + btnSize + ' w-full'} disabled>Crear publicación</button>}
+
+              <button
+                type="button"
+                onClick={() => onEliminar(vehiculo)}
+                disabled={Boolean(publicacion)}
+                title={publicacion ? 'Primero desactivá la publicación' : undefined}
+                className={btnBase + ' ' + btnOutline + ' ' + btnSize + ' w-full text-error disabled:opacity-50 disabled:cursor-not-allowed'}
+              >
+                Eliminar vehículo
+              </button>
         </div>
       </div>
     </article>
