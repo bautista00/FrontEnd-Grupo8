@@ -65,14 +65,14 @@ function VehicleEditor({ modo = 'crear', id }) {
     if (editando) dispatch(fetchVehiculo(id))
   }, [dispatch, token, editando, id])
 
-  // Cuando llegan los datos, se cargan en el formulario (lo que escribe la persona sigue siendo estado local)
-  useEffect(() => {
-    if (editando) {
-      if (vehiculo && !noEsTuyo) setValores(valoresInicialesVehiculo(vehiculo, tipos))
-    } else if (tipos.length > 0) {
-      setValores(valoresInicialesVehiculo(undefined, tipos))
-    }
-  }, [editando, vehiculo, noEsTuyo, tipos])
+  // Cuando llegan los datos, se cargan en el formulario (lo que escribe la persona sigue siendo estado local).
+  // Se ajusta durante el render, no en un useEffect: solo corre cuando cambia el origen de los datos
+  const origenDeDatos = editando ? (vehiculo && !noEsTuyo ? vehiculo : null) : (tipos.length > 0 ? tipos : null)
+  const [cargadoDesde, setCargadoDesde] = useState(null)
+  if (origenDeDatos && origenDeDatos !== cargadoDesde) {
+    setCargadoDesde(origenDeDatos)
+    setValores(valoresInicialesVehiculo(editando ? vehiculo : undefined, tipos))
+  }
 
   function cambiar(event) {
     if (guardando) return

@@ -54,7 +54,7 @@ export const fetchVehiculosParaPublicar = createAsyncThunk(
       const { data } = await axios.get(`${API_URL}/vehiculo/mios?page=${pagina}&size=10`, conToken(getState().users.token));
       return data;
     } catch (error) {
-      throw new Error(mensajeDe(error, "No se pudieron cargar tus vehículos. Intentá nuevamente."));
+      throw new Error(mensajeDe(error, "No se pudieron cargar tus vehículos. Intentá nuevamente."), { cause: error });
     }
   },
 );
@@ -340,15 +340,18 @@ const vehiculosSlice = createSlice({
         entrada.loading = false;
         entrada.error = "No se pudieron cargar las fotos.";
       })
+      
       // ───────── NUEVO: paso 4, los addCase ─────────
       .addCase(createVehiculo.pending, (state) => {
         state.loadingGuardar = true;
         state.errorGuardar = null;
       })
-      .addCase(createVehiculo.fulfilled, (state) => {
+      .addCase(createVehiculo.fulfilled, (state, action) => {
         state.loadingGuardar = false;
-        // No se agrega a vehiculos.content: la lista es paginada y la tarjeta necesita fotos y
-        // publicacionActual, que el POST no devuelve. MisVehiculos vuelve a pedir la página al montarse.
+        // Se agrega a flota con spread, como pide la profe: así la detección de patente repetida lo ve sin otro GET
+        state.flota = [...state.flota, action.payload];
+        // No se agrega a vehiculos.content ni a paraPublicar: son listas paginadas y la tarjeta necesita fotos y
+        // publicacionActual, que el POST no devuelve. MisVehiculos y la pantalla de publicar vuelven a pedir la página al montarse.
       })
       .addCase(createVehiculo.rejected, (state, action) => {
         state.loadingGuardar = false;
@@ -367,6 +370,15 @@ const vehiculosSlice = createSlice({
           // Se mezcla para no perder las fotos y la publicación que ya tenía la tarjeta
           lista[index] = { ...lista[index], ...editado };
         }
+        // Mismo reemplazo con findIndex en las otras dos listas
+        const indexFlota = state.flota.findIndex((v) => v.idVehiculo === editado.idVehiculo);
+        if (indexFlota !== -1) {
+          state.flota[indexFlota] = { ...state.flota[indexFlota], ...editado };
+        }
+        const indexPublicar = state.paraPublicar?.content.findIndex((v) => v.idVehiculo === editado.idVehiculo) ?? -1;
+        if (indexPublicar !== -1) {
+          state.paraPublicar.content[indexPublicar] = { ...state.paraPublicar.content[indexPublicar], ...editado };
+        }
         if (state.vehiculoElegido?.idVehiculo === editado.idVehiculo) {
           state.vehiculoElegido = editado;
         }
@@ -379,8 +391,8 @@ const vehiculosSlice = createSlice({
         state.errorGuardar = action.error.message;
       })
       .addCase(deleteVehiculo.pending, (state) => {
-      state.loadingEliminar = true;
-      state.errorEliminar = null;
+        state.loadingEliminar = true;
+        state.errorEliminar = null;
       })
       .addCase(deleteVehiculo.fulfilled, (state, action) => {
         state.loadingEliminar = false;
@@ -390,11 +402,15 @@ const vehiculosSlice = createSlice({
           const antes = state.vehiculos.content.length;
           state.vehiculos.content = state.vehiculos.content.filter((v) => v.idVehiculo !== id);
           if (state.vehiculos.content.length < antes) state.vehiculos.totalElements -= 1;
-          if (state.vehiculoActual?.idVehiculo === id) state.vehiculoActual = null;
         }
         if (state.paraPublicar) {
+          const antes = state.paraPublicar.content.length;
           state.paraPublicar.content = state.paraPublicar.content.filter((v) => v.idVehiculo !== id);
+          if (state.paraPublicar.content.length < antes) state.paraPublicar.totalElements -= 1;
         }
+        state.flota = state.flota.filter((v) => v.idVehiculo !== id);
+        // Estos dos van fuera de los if: antes vehiculoActual solo se limpiaba si vehiculos estaba cargada
+        if (state.vehiculoActual?.idVehiculo === id) state.vehiculoActual = null;
         if (state.vehiculoElegido?.idVehiculo === id) state.vehiculoElegido = null;
         delete state.fotosPorVehiculo[id];
       })
@@ -466,6 +482,7 @@ const vehiculosSlice = createSlice({
         state.errorGuardarFotos = action.error.message;
       })
       // ───────── fin de lo nuevo ─────────
+
       .addCase(logout, () => initialState);
   }
   });
