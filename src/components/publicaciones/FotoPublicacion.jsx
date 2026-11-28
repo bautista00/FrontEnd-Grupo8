@@ -1,8 +1,7 @@
 import { useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import IconoPublicacion from './IconoPublicacion'
-import { fetchFotosVehiculo, olvidarFotosVehiculo } from '../Redux/vehiculosSlice'
-import { store } from '../Redux/store'
+import { fetchFotosVehiculo } from '../Redux/vehiculosSlice'
 
 // Muestra la primera foto del vehículo; si no tiene, muestra un ícono de auto
 export default function FotoPublicacion({ idVehiculo, alt = '', large = false }) {
@@ -18,7 +17,3 @@ export default function FotoPublicacion({ idVehiculo, alt = '', large = false })
   return <img src={portada} alt={alt} className="w-full h-full object-cover" />
 }
 
-// Borra la portada guardada para que se vuelva a pedir al back.
-export function olvidarPortada(idVehiculo) {
-  store.dispatch(olvidarFotosVehiculo(idVehiculo))
-}

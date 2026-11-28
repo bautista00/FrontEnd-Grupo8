@@ -4,26 +4,28 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import ZonaSubirFotos from '../components/vehiculos/ZonaSubirFotos'
 import MiniaturaFoto from '../components/vehiculos/MiniaturaFoto'
 import MensajePublicacion from '../components/publicaciones/MensajePublicacion'
-import { olvidarPortada } from '../components/publicaciones/FotoPublicacion'
 import { btnBase, btnDark, btnOutline, btnSize } from '../components/ui/estilosBoton'
 import { pageStyles, titleStyles, eyebrowStyles, introStyles, actionsStyles } from '../components/publicaciones/estilosPublicacion'
 import { fetchUser } from '../components/Redux/userSlice'
-import { fetchVehiculo } from '../components/Redux/vehiculosSlice'
+// CAMBIO: los thunks y acciones del slice
 import {
-  agregarFotos, fotosDeVehiculo, moverFoto, publicacionActualDe,
-  quitarFoto, sincronizarFotos, validarArchivoFoto,
-} from '../utils/vehiculos'
+  fetchVehiculo, fetchFotosVehiculo, fetchPublicacionVigente,
+  guardarFotosVehiculo, limpiarErrorGuardarFotos, olvidarFotosVehiculo,
+} from '../components/Redux/vehiculosSlice'
+// CAMBIO: de utils solo quedan las funciones puras (sin fetch)
+import { agregarFotos, moverFoto, quitarFoto, validarArchivoFoto } from '../utils/vehiculos'
 
 let contadorNuevas = 0
 
-function Fotos({ vehiculo, fotosIniciales, sinPublicacion, desdePublicacion, aviso, onRecargar }) {
+// CAMBIO: ya no recibe "aviso"; recibe onRecargar sin argumentos
+function Fotos({ vehiculo, fotosIniciales, sinPublicacion, desdePublicacion, onRecargar }) {
   const navigate = useNavigate()
-  const token = useSelector((state) => state.users.token)
+  const dispatch = useDispatch()
+  // CAMBIO: guardando y el error vienen del store, no de useState
+  const { loadingGuardarFotos: guardando, errorGuardarFotos } = useSelector((state) => state.vehiculos)
   // Se trabaja sobre una copia: los cambios recién se guardan con "Guardar fotos".
   const [fotos, setFotos] = useState(fotosIniciales)
   const [problemas, setProblemas] = useState([])
-  const [datosParaGuardar, setDatosParaGuardar] = useState(null)
-  const guardando = datosParaGuardar !== null
   // URLs de vista previa creadas en esta pantalla: se liberan al salir de ella
   const vistasPrevias = useRef([])
   // Si el alta empezó en Crear publicación, cancelar vuelve a ese formulario con su borrador
@@ -62,32 +64,21 @@ function Fotos({ vehiculo, fotosIniciales, sinPublicacion, desdePublicacion, avi
     setFotos(quitarFoto(fotos, posicion))
   }
 
-  function guardar(destino, state) {
+  // CAMBIO: ahora despacha el thunk; unwrap() devuelve el payload o lanza el error
+  async function guardar(destino, state) {
     if (guardando) return
-    setDatosParaGuardar({
-      token, idVehiculo: vehiculo.idVehiculo, originales: fotosIniciales.map((foto) => ({ ...foto })),
-      actuales: fotos.map((foto) => ({ ...foto })), destino, state, onRecargar,
-    })
+    try {
+      await dispatch(guardarFotosVehiculo({
+        idVehiculo: vehiculo.idVehiculo,
+        originales: fotosIniciales,
+        actuales: fotos,
+      })).unwrap()
+      navigate(destino, { state })
+    } catch {
+      // El mensaje ya quedó en errorGuardarFotos. Pudo quedar una parte guardada: se piden las fotos de nuevo
+      onRecargar()
+    }
   }
-
-  useEffect(() => {
-    if (!datosParaGuardar) return
-    let vigente = true
-    const { token: tokenEnvio, idVehiculo, originales, actuales, destino, state, onRecargar } = datosParaGuardar
-    sincronizarFotos(tokenEnvio, idVehiculo, originales, actuales)
-      .then(() => {
-        if (!vigente) return
-        olvidarPortada(idVehiculo)
-        setDatosParaGuardar(null)
-        navigate(destino, { state })
-      })
-      .catch((error) => {
-        if (!vigente) return
-        // pudo quedar una parte guardada
-        onRecargar(error.message + ' Mostramos las fotos tal como quedaron guardadas; revisalas e intentá de nuevo.')
-      })
-    return () => { vigente = false }
-  }, [datosParaGuardar, navigate])
 
   return (
     <main className={pageStyles + ' pb-20 phone:pb-12'}>
@@ -96,7 +87,12 @@ function Fotos({ vehiculo, fotosIniciales, sinPublicacion, desdePublicacion, avi
         <h1 className={titleStyles}>Fotos del {vehiculo.marca} {vehiculo.modelo}</h1>
         <p className={introStyles}>La primera foto es la portada en el catálogo. Usá las flechas para cambiar el orden.</p>
 
-        {aviso && <MensajePublicacion error>{aviso}</MensajePublicacion>}
+        {/* CAMBIO: el aviso sale del store */}
+        {errorGuardarFotos && (
+          <MensajePublicacion error>
+            {errorGuardarFotos} Mostramos las fotos tal como quedaron guardadas; revisalas e intentá de nuevo.
+          </MensajePublicacion>
+        )}
 
         <fieldset disabled={guardando} className="contents">
         <div className="mt-8">
@@ -164,45 +160,46 @@ function VehiclePhotosLoader({ id }) {
   const desdePublicacion = useLocation().state?.desdePublicacion === true
   const dispatch = useDispatch()
   const { token, user: usuario, error: errorUsuario } = useSelector((state) => state.users)
+  // CAMBIO: todo lo que antes eran useState (datos, errorCarga, version) ahora se lee del store
+  const {
+    vehiculoActual, errorVehiculo, fotosPorVehiculo,
+    publicacionVigente, loadingPublicacionVigente, errorPublicacionVigente,
+  } = useSelector((state) => state.vehiculos)
   const idUsuario = usuario?.idUsuario
-  const [datos, setDatos] = useState(null)
-  const [errorCarga, setErrorCarga] = useState('')
-  const [aviso, setAviso] = useState('')
-  const [version, setVersion] = useState(0)
+
+  const vehiculo = String(vehiculoActual?.idVehiculo) === String(id) ? vehiculoActual : null
+  const entradaFotos = fotosPorVehiculo[id]
+  // El back rechaza cambios de otro usuario; acá además se evita mostrarle la pantalla
+  const noEsTuyo = Boolean(vehiculo && idUsuario && vehiculo.idUsuario !== idUsuario)
 
   // El usuario logueado se usa para comprobar que el vehículo sea suyo
   useEffect(() => {
     if (!usuario?.idUsuario) dispatch(fetchUser())
   }, [usuario, dispatch])
 
+  // Un error de un guardado anterior no se muestra al entrar a la pantalla
+  useEffect(() => {
+    dispatch(limpiarErrorGuardarFotos())
+  }, [dispatch, id])
+
+  // CAMBIO: los tres pedidos son thunks; fetchFotosVehiculo no repite el GET si las fotos ya están en el store
   useEffect(() => {
     if (!token || !idUsuario) return
-    let vigente = true
-    Promise.all([
-      dispatch(fetchVehiculo(id)).unwrap(),
-      fotosDeVehiculo(id),
-      publicacionActualDe(token, id),
-    ])
-      .then(([vehiculo, fotos, publicacion]) => {
-        if (!vigente) return
-        // El backend rechaza cambios de otro usuario; acá además se evita mostrarle la pantalla
-        if (vehiculo.idUsuario !== idUsuario) {
-          setErrorCarga('Este vehículo no es tuyo')
-          return
-        }
-        setDatos({ vehiculo, fotos, sinPublicacion: !publicacion, clave: version })
-        setErrorCarga('')
-      })
-      .catch((e) => {
-        console.error('Error al cargar fotos', e)
-        // Muestra el mensaje del backend; si no hubo respuesta (TypeError de fetch), uno propio
-        if (vigente) setErrorCarga(e instanceof TypeError ? 'No pudimos cargar el vehículo' : e.message)
-      })
-    return () => { vigente = false }
-  }, [id, token, version, idUsuario])
+    dispatch(fetchVehiculo(id))
+    dispatch(fetchFotosVehiculo(id))
+    dispatch(fetchPublicacionVigente(id))
+  }, [dispatch, token, idUsuario, id])
 
-  // Si no se pudo traer el usuario, se muestra el error del slice
+  // CAMBIO: tras un guardado fallido se descartan las fotos del store y se vuelven a pedir.
+  // Mientras llegan se muestra "Cargando fotos…", y al volver Fotos se arma de cero con lo que quedó guardado
+  function recargarFotos() {
+    dispatch(olvidarFotosVehiculo(id))
+    dispatch(fetchFotosVehiculo(id))
+  }
+
+  // Si no se pudo traer algo de lo necesario, se muestra el error del slice
   const errorPrevio = !usuario?.idUsuario ? errorUsuario : null
+  const errorCarga = errorVehiculo || errorPublicacionVigente || entradaFotos?.error || (noEsTuyo && 'Este vehículo no es tuyo') || null
   if (errorCarga || errorPrevio) {
     return (
       <main className={pageStyles + ' pb-20'}>
@@ -212,20 +209,17 @@ function VehiclePhotosLoader({ id }) {
     )
   }
 
-  if (!datos) {
+  if (!idUsuario || !vehiculo || !entradaFotos?.fotos || loadingPublicacionVigente) {
     return <main className={pageStyles + ' pb-20'}><MensajePublicacion>Cargando fotos…</MensajePublicacion></main>
   }
 
   return (
     <Fotos
-      // La key nueva arma la pantalla de cero con lo que devolvió el backend
-      key={`${datos.vehiculo.idVehiculo}-${datos.clave}`}
-      vehiculo={datos.vehiculo}
-      fotosIniciales={datos.fotos}
-      sinPublicacion={datos.sinPublicacion}
+      vehiculo={vehiculo}
+      fotosIniciales={entradaFotos.fotos}
+      sinPublicacion={!publicacionVigente}
       desdePublicacion={desdePublicacion}
-      aviso={aviso}
-      onRecargar={(mensaje) => { setDatos(null); setAviso(mensaje); setVersion((actual) => actual + 1) }}
+      onRecargar={recargarFotos}
     />
   )
 }

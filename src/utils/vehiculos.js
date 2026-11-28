@@ -1,5 +1,3 @@
-import { obtener, enviar, subirArchivo } from './api.js'
-
 // Patentes argentinas: formato nuevo (AB123CD) y formato anterior (ABC123).
 const PATENTE_NUEVA_REGEX = /^[A-Z]{2}\d{3}[A-Z]{2}$/
 const PATENTE_ANTIGUA_REGEX = /^[A-Z]{3}\d{3}$/
@@ -121,58 +119,4 @@ export const portadaDe = (vehiculo) => {
 export const tieneFotos = (vehiculo) => vehiculo.fotos.length > 0
 export const puedePublicar = (vehiculo) => tieneFotos(vehiculo)
 
-// Fotos guardadas de un vehículo, con la forma que usan MiniaturaFoto y las funciones de arriba.
-// El backend ya las devuelve ordenadas por "orden"; la primera es la portada.
-export async function fotosDeVehiculo(idVehiculo) {
-  const imagenes = await obtener(`/imagen-vehiculo/por-vehiculo/${idVehiculo}`)
-  return imagenes.map((imagen) => ({
-    idFoto: imagen.id,
-    orden: imagen.orden,
-    url: `data:image/jpeg;base64,${imagen.file}`,
-  }))
-}
-
-// Publicaciones ACTIVAS o PAUSADAS del usuario. Un vehículo tiene a lo sumo una.
-// Se piden todas en un solo pedido y se descartan las desactivadas.
-async function publicacionesVigentes(token) {
-  const publicaciones = await obtener('/publicaciones/mias?size=100', token)
-  return publicaciones.content.filter((publicacion) => publicacion.estado !== 'DESACTIVADA')
-}
-
-const publicacionDe = (publicaciones, idVehiculo) =>
-  publicaciones.find((publicacion) => publicacion.idVehiculo === Number(idVehiculo)) ?? null
-
-// Publicación ACTIVA o PAUSADA del vehículo (o null). Define si se ofrece "Guardar y crear publicación".
-export async function publicacionActualDe(token, idVehiculo) {
-  return publicacionDe(await publicacionesVigentes(token), idVehiculo)
-}
-
 export const VEHICULOS_POR_PAGINA = 9
-
-// Lleva al backend las diferencias entre las fotos guardadas (`originales`) y las de la pantalla (`actuales`):
-// borra las quitadas, sube las nuevas y actualiza el orden de las que cambiaron de lugar.
-export async function sincronizarFotos(token, idVehiculo, originales, actuales) {
-  const idsActuales = new Set(actuales.map((foto) => foto.idFoto))
-
-  for (const foto of originales) {
-    if (!idsActuales.has(foto.idFoto)) {
-      await enviar(`/imagen-vehiculo/${foto.idFoto}`, 'DELETE', token, null, 'No se pudo borrar una foto.')
-    }
-  }
-
-  for (const foto of actuales) {
-    if (foto.archivo) {
-      const form = new FormData()
-      form.append('file', foto.archivo)
-      form.append('idVehiculo', idVehiculo)
-      form.append('orden', foto.orden)
-      await subirArchivo('/imagen-vehiculo', 'POST', token, form, 'No se pudo subir una foto.')
-    } else {
-      const original = originales.find((otra) => otra.idFoto === foto.idFoto)
-      if (original && original.orden !== foto.orden) {
-        // El backend lee "orden" como parámetro, por eso va en la URL
-        await enviar(`/imagen-vehiculo/${foto.idFoto}?orden=${foto.orden}`, 'PUT', token, null, 'No se pudo cambiar el orden de las fotos.')
-      }
-    }
-  }
-}
